@@ -62,6 +62,7 @@ public class TerminalAccessory: UIInputView, UIInputViewAudioFeedback {
     @objc func pipe (_ sender: AnyObject) { clickAndSend ([UInt8 (ascii: "|")]) }
     @objc func slash (_ sender: AnyObject) { clickAndSend ([UInt8 (ascii: "/")]) }
     @objc func dash (_ sender: AnyObject) { clickAndSend ([UInt8 (ascii: "-")]) }
+    @objc func colon (_ sender: AnyObject) { clickAndSend ([UInt8 (ascii: ":")]) }
     
     @objc
     func ctrl (_ sender: UIButton)
@@ -125,6 +126,7 @@ public class TerminalAccessory: UIInputView, UIInputViewAudioFeedback {
         views.append(makeButton ("|", #selector(pipe)))
         views.append(makeButton ("/", #selector(slash)))
         views.append(makeButton ("-", #selector(dash)))
+        views.append(makeButton (":", #selector(colon)))
         views.append(makeAutoRepeatButton ("arrow.left", #selector(left)))
         views.append(makeAutoRepeatButton ("arrow.up", #selector(up)))
         views.append(makeAutoRepeatButton ("arrow.down", #selector(down)))
