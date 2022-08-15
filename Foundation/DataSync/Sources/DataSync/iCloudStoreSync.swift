@@ -26,30 +26,7 @@ public protocol iCloudSyncItem : Codable {
     init(With record:CKRecord)
 }
 
-enum CompareResult {
-    case remoteNeedUpdate
-    case localNeedUpdate
-    case same
-}
 
-extension iCloudSyncItem {
-    func compareWithRecord(record:CKRecord) -> CompareResult {
-        if let remoteModifiedDate = record["lastModifiedDate"] as? Date {
-            let interval = remoteModifiedDate.timeIntervalSince(self.lastModifiedDate)
-            if interval == 0 {
-                return .same
-            }
-            else if interval > 0 {
-                return .localNeedUpdate
-            }
-            else {
-                return .remoteNeedUpdate
-            }
-        }
-        return .remoteNeedUpdate
-    }
-    
-}
 
 public class iCloudStoreSync {
     
@@ -80,36 +57,6 @@ public class iCloudStoreSync {
         }
     }
     
-    
-    public func syncItem<T:iCloudSyncItem>(items:[T]) async throws {
-        do {
-            let ids = items.map {$0.recordId};
-            if #available(iOS 15.0, macOS 12.0,*) {
-                let fetchResults = try await db.records(for: ids)
-            
-                var needLocalUpdates : [CKRecord] = items.filter { item in
-                    if let recordResult = fetchResults[item.recordId],
-                       let record = try? recordResult.get() {
-                        return item.compareWithRecord(record: record) == .localNeedUpdate
-                    }
-                    return false
-                }.compactMap {try? fetchResults[$0.recordId]?.get()}
-                var needRemoteUpdate : [T] = items.filter { item in
-                    if let recordResult = fetchResults[item.recordId],
-                       let record = try? recordResult.get() {
-                        return item.compareWithRecord(record: record) == .remoteNeedUpdate
-                    }
-                    return true
-                }
-            } else {
-                // Fallback on earlier versions
-            }
-            
-            
-        } catch let error {
-            throw error
-        }
-    }
     
     public func finishSync() {
         self.lastSyncDate = Date()

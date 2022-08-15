@@ -9,7 +9,6 @@ import Combine
 import Foundation
 import NSRemoteShell
 import PropertyWrapper
-import DataSync
 
 public class RayonStore: ObservableObject {
     public init() {
@@ -234,24 +233,5 @@ public class RayonStore: ObservableObject {
                 with: portForwardGroup
             )
         }
-    }
-    
-    public func uploadMathine() async throws {
-        
-        do {
-//            for identity  in self.identityGroup.identities {
-//                try await iCloudStoreSync.share.upload(item: identity)
-//            }
-            
-            for  machine in self.machineGroup.machines {
-                try await iCloudStoreSync.share.upload(item: machine)
-            }
-        }
-        catch let error {
-            throw error
-        }
-        
-        
-        
     }
 }
