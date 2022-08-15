@@ -51,6 +51,7 @@ struct MachineEditView: View {
             generator.comment = comment
             generator.associatedIdentity = associatedIdentity?.uuidString
             generator.fileTransferLoginPath = sftpLoginPath
+            generator.lastModifiedDate = Date()
             store.machineGroup.insert(generator)
             shouldDismiss = true
         }

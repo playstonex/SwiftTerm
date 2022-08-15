@@ -7,6 +7,7 @@
 
 import RayonModule
 import SwiftUI
+import DataSync
 
 struct SettingView: View {
     @StateObject var store = RayonStore.shared
@@ -27,6 +28,42 @@ struct SettingView: View {
                 Label("App", systemImage: "arrow.right")
             } footer: {
                 Text("Rayon is open sourced at GitHub, any pull request are welcome!")
+            }
+            
+            Section {
+                
+                Button {
+                    Task {
+                        
+                    }
+                } label: {
+                    Label("Sync", systemImage: "arrow.counterclockwise.icloud")
+                }
+
+                
+                Button {
+                    Task {
+                        do {
+                            let machines = RayonStore.shared.machineGroup.machines
+                            
+                            try await iCloudStoreSync.share.startSync(items: machines)
+                            
+                            
+                            let identity = RayonStore.shared.identityGroup.identities
+                            
+                            try await iCloudStoreSync.share.startSync(items: identity)
+                            
+                            iCloudStoreSync.share.finishSync()
+                        }
+                        catch let error {
+                            print(error)
+                        }
+                    }
+                    
+                } label: {
+                    Label( "Fetch Info", systemImage:"arrow.counterclockwise.icloud")
+                }
+
             }
 
             Section {

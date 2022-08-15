@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "RayonModule",
     platforms: [
-        .macOS(.v11),
+        .macOS(.v10_15),
         .iOS(.v13),
         .watchOS(.v7),
     ],
@@ -27,6 +27,7 @@ let package = Package(
         .package(name: "PropertyWrapper", path: "../PropertyWrapper"),
         .package(name: "NSRemoteShell", path: "../NSRemoteShell"),
         .package(name: "Keychain", path: "../Keychain"),
+        .package(name: "DataSync", path: "../DataSync")
     ],
     targets: [
         .target(
@@ -35,6 +36,7 @@ let package = Package(
                 "PropertyWrapper",
                 "NSRemoteShell",
                 "Keychain",
+                "DataSync"
             ]
         ),
     ]
