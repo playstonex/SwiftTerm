@@ -65,7 +65,8 @@ extension RDMachine : iCloudSyncItem {
         else {
             machine = RDMachine(With: record)
         }
-        if let machine = machine {
+        if var machine = machine {
+            machine.lastModifiedDate = Date()
             RayonStore.shared.machineGroup.insert(machine )
         }
         

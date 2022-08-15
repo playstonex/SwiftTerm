@@ -91,13 +91,14 @@ extension RDIdentity: iCloudSyncItem {
             else {
                 idt.attachment = [:]
             }
-            idt.lastModifiedDate = record["lastModifiedDate"] as? Date ?? Date()
+            idt.lastModifiedDate = Date()
             idt.isDeleted = record["isDeleted"] as? Bool ?? false
             
             RayonStore.shared.identityGroup.insert(idt)
         }
         else {
-            let identify = RDIdentity(With: record)
+            var identify = RDIdentity(With: record)
+            identify.lastModifiedDate = Date()
             RayonStore.shared.identityGroup.insert(identify)
         }
     }

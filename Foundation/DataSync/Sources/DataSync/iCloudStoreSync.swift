@@ -116,22 +116,24 @@ public class iCloudStoreSync {
         UserDefaults.standard.set(self.lastSyncDate, forKey: "kCloudStoreSyncLastSyncDate")
     }
     
+    //
+    //  同步方式
+    //  本地保存同步时间 lastSyncDate
+    //  远程和本地数据有 lastModifiedDate
+    //  获取远程和本地数据中 lastModifiedDate 在 lastSyncDate 后的数据
+    //  检测远程和本地共同修改的数据, 比较lastModifiedDate,   lastModifiedDate大的保留
+    //  远程数据保存到本地 lastModifiedDate 为当前时间
+    //  本地数据保存到远程 lastModifiedDate 为当前时间
+    //  lastSyncDate 设为当前时间
     @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
     public func startSync<T:iCloudSyncItem>(items:[T]) async throws {
         
         let moditifiedRemoteRecords = try await self.db.records(type: T.self,
                                                          predicate: NSPredicate(format: "lastModifiedDate >= %@", self.lastSyncDate as CVarArg))
-//        let moditifiedRemoteRecords = try await self.db.records(type: T.self)
-        
         let moditifiedLocalItems = items.filter { $0.lastModifiedDate.timeIntervalSince(self.lastSyncDate) > 0 }
         
         var remoteIdRecrds = moditifiedRemoteRecords.reduce([String:(CKRecord, Date)]()) { partialResult, record in
-            //            guard let idString = record["id"] as? String,
-            //               let date = record["lastModifiedDate"] as? Date else {
-            //                return partialResult
-//        }
             guard let idString = record["id"] as? String  else {
-               
                 return partialResult
               }
             let date = record["lastModifiedDate"] as? Date ?? Date()
@@ -139,7 +141,6 @@ public class iCloudStoreSync {
         }
         
         var localIdItems = moditifiedLocalItems.reduce([String:(iCloudSyncItem, Date)]()) { partialResult, item in
-            
             return partialResult.merging([item.recordId.recordName:(item, item.lastModifiedDate)]) { $0.1.timeIntervalSince($1.1) > 0 ? $0 : $1 }
         }
         
@@ -154,7 +155,6 @@ public class iCloudStoreSync {
                    remoteIdRecrds.removeValue(forKey: idString)
                }
            }
-            
         }
         
         
@@ -178,13 +178,15 @@ public class iCloudStoreSync {
     
     func saveAndUpdate(item: iCloudSyncItem) async throws {
         
-        var record = try? await self.db.record(for:item.recordId)
+        let record = try? await self.db.record(for:item.recordId)
         if let record = record {
             item.update(to: record)
+            record.setObject(Date() as __CKRecordObjCValue, forKey: "lastModifiedDate")
             try await self.db.save(record)
         }
         else {
             let record = item.generateRecord()
+            record.setObject(Date() as __CKRecordObjCValue, forKey: "lastModifiedDate")
             try await self.db.save(record)
         }
         

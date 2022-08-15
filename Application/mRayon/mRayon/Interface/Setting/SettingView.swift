@@ -44,8 +44,16 @@ struct SettingView: View {
                 Button {
                     Task {
                         do {
-                            let identities : [RDIdentity] = try await iCloudStoreSync.share.fetchItems()
-                            print(identities)
+                            let machines = RayonStore.shared.machineGroup.machines
+                            
+                            try await iCloudStoreSync.share.startSync(items: machines)
+                            
+                            
+                            let identity = RayonStore.shared.identityGroup.identities
+                            
+                            try await iCloudStoreSync.share.startSync(items: identity)
+                            
+                            iCloudStoreSync.share.finishSync()
                         }
                         catch let error {
                             print(error)
