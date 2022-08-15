@@ -66,6 +66,8 @@
 		50F64E5A27B3CB35008D52FB /* EditIdentitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F64E5827B3CB35008D52FB /* EditIdentitiesView.swift */; };
 		50F64E5F27B3D922008D52FB /* MachineCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F64E5D27B3D922008D52FB /* MachineCreateView.swift */; };
 		50FD878827D9CC3300EE3A5C /* PortForwardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */; };
+		ABD999D328A09F0700404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D228A09F0700404E61 /* CloudKit.framework */; };
+		ABD999D728A21E0D00404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D628A21E0D00404E61 /* DataSync */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -137,6 +139,7 @@
 		50F64E5827B3CB35008D52FB /* EditIdentitiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditIdentitiesView.swift; sourceTree = "<group>"; };
 		50F64E5D27B3D922008D52FB /* MachineCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineCreateView.swift; sourceTree = "<group>"; };
 		50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardManager.swift; sourceTree = "<group>"; };
+		ABD999D228A09F0700404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -146,9 +149,11 @@
 			files = (
 				501FF7A527CEFF2300380D59 /* SymbolPicker in Frameworks */,
 				505E326127D2602600054573 /* XTerminalUI in Frameworks */,
+				ABD999D728A21E0D00404E61 /* DataSync in Frameworks */,
 				5042072F287D953D00D62044 /* CodeEditorUI in Frameworks */,
 				505E326527D2625F00054573 /* MachineStatus in Frameworks */,
 				5068E44C27CE3AAE00F8B770 /* RayonModule in Frameworks */,
+				ABD999D328A09F0700404E61 /* CloudKit.framework in Frameworks */,
 				505E326B27D2642C00054573 /* MachineStatusView in Frameworks */,
 				50BBA54F27B8000900CE7BB1 /* Colorful in Frameworks */,
 			);
@@ -268,6 +273,7 @@
 		509F7F5027B2B4E900F28752 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				ABD999D228A09F0700404E61 /* CloudKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -411,6 +417,7 @@
 				505E326427D2625F00054573 /* MachineStatus */,
 				505E326A27D2642C00054573 /* MachineStatusView */,
 				5042072E287D953D00D62044 /* CodeEditorUI */,
+				ABD999D628A21E0D00404E61 /* DataSync */,
 			);
 			productName = "Rayon (macOS)";
 			productReference = 509F7F3C27B2AF7F00F28752 /* Rayon.app */;
@@ -758,6 +765,10 @@
 		50BBA54E27B8000900CE7BB1 /* Colorful */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Colorful;
+		};
+		ABD999D628A21E0D00404E61 /* DataSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DataSync;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

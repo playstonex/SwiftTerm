@@ -7,6 +7,128 @@
 
 import Foundation
 import NSRemoteShell
+import DataSync
+import CloudKit
+
+extension RDIdentity: iCloudSyncItem {
+    
+    
+    public var recordId: CKRecord.ID {
+        return CKRecord.ID(recordName:  self.id.uuidString)
+    }
+    
+    
+    public func update(to record:CKRecord) {
+        record.setValue(id.uuidString, forKey: "id")
+        record.setValue(username, forKey: "username")
+        record.setValue(password, forKey: "password")
+        record.setValue(privateKey, forKey: "privateKey")
+        record.setValue(publicKey, forKey: "publicKey")
+        record.setValue(lastRecentUsed, forKey: "lastRecentUsed")
+        record.setValue(comment, forKey: "comment")
+        record.setValue(group, forKey: "group")
+        record.setValue(authenticAutomatically, forKey: "authenticAutomatically")
+        record.setValue(lastModifiedDate, forKey: "lastModifiedDate")
+        record.setValue(isDeleted, forKey: "isDeleted")
+        
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(attachment) {
+            let attachmentString =  String(data: data, encoding: String.Encoding.utf8)
+            record.setValue(attachmentString, forKey: "attachment")
+        }
+        else {
+            record.setValue("{}", forKey: "attachment")
+        }
+    }
+    
+    public init(With record: CKRecord) {
+        self.id = UUID(uuidString: record["id"] as? String ?? "") ?? UUID()
+        self.username = record["username"] as? String ?? ""
+        self.password = record["password"] as? String ?? ""
+        self.privateKey = record["privateKey"] as? String ?? ""
+        self.publicKey = record["publicKey"] as? String ?? ""
+        self.lastRecentUsed = record["lastRecentUsed"] as? Date ?? Date()
+        self.comment = record["comment"] as? String ?? ""
+        self.group = record["group"] as? String ?? ""
+        self.authenticAutomatically = record["authenticAutomatically"] as? Bool ?? true
+        
+        let attachmentString = record["attachment"] as? String ?? "{}"
+        
+        if  let data = attachmentString.data(using: String.Encoding.utf8),
+            let newAttachment = try? JSONSerialization.jsonObject(with: data) as? [String:String] {
+            self.attachment = newAttachment
+        }
+        else {
+            self.attachment = [:]
+        }
+        self.lastModifiedDate = record["lastModifiedDate"] as? Date ?? Date()
+        self.isDeleted = record["isDeleted"] as? Bool ?? false
+    }
+    
+    public static func recordType() -> String {
+        return "RDIdentity"
+    }
+    
+    public static func saveToLocal(record:CKRecord) {
+        
+        let id = UUID(uuidString: record.recordID.recordName)
+        let identity = RayonStore.shared.identityGroup.identities.first {id == $0.id}
+        if var idt = identity {
+            idt.username = record["username"] as? String ?? ""
+            idt.password = record["password"] as? String ?? ""
+            idt.privateKey = record["privateKey"] as? String ?? ""
+            idt.publicKey = record["publicKey"] as? String ?? ""
+            idt.lastRecentUsed = record["lastRecentUsed"] as? Date ?? Date()
+            idt.comment = record["comment"] as? String ?? ""
+            idt.group = record["group"] as? String ?? ""
+            idt.authenticAutomatically = record["authenticAutomatically"] as? Bool ?? true
+            
+            let attachmentString = record["attachment"] as? String ?? "{}"
+            if  let data = attachmentString.data(using: String.Encoding.utf8),
+                let newAttachment = try? JSONSerialization.jsonObject(with: data) as? [String:String] {
+                idt.attachment = newAttachment
+            }
+            else {
+                idt.attachment = [:]
+            }
+            idt.lastModifiedDate = record["lastModifiedDate"] as? Date ?? Date()
+            idt.isDeleted = record["isDeleted"] as? Bool ?? false
+            
+            RayonStore.shared.identityGroup.insert(idt)
+        }
+        else {
+            let identify = RDIdentity(With: record)
+            RayonStore.shared.identityGroup.insert(identify)
+        }
+    }
+    
+    public func generateRecord() -> CKRecord {
+        let record = CKRecord(recordType: RDIdentity.recordType(),
+                              recordID:  CKRecord.ID(recordName: self.id.uuidString))
+        record.setValue(id.uuidString, forKey: "id")
+        record.setValue(username, forKey: "username")
+        record.setValue(password, forKey: "password")
+        record.setValue(privateKey, forKey: "privateKey")
+        record.setValue(publicKey, forKey: "publicKey")
+        record.setValue(lastRecentUsed, forKey: "lastRecentUsed")
+        record.setValue(comment, forKey: "comment")
+        record.setValue(group, forKey: "group")
+        record.setValue(authenticAutomatically, forKey: "authenticAutomatically")
+        record.setValue(lastModifiedDate, forKey: "lastModifiedDate")
+        record.setValue(isDeleted, forKey: "isDeleted")
+        
+        let encoder = JSONEncoder()
+        if let data = try? encoder.encode(attachment) {
+            let attachmentString =  String(data: data, encoding: String.Encoding.utf8)
+            record.setValue(attachmentString, forKey: "attachment")
+        }
+        else {
+            record.setValue("{}", forKey: "attachment")
+        }
+        
+        return record
+    }
+}
 
 public struct RDIdentity: Codable, Identifiable, Equatable {
     public init(
@@ -19,7 +141,9 @@ public struct RDIdentity: Codable, Identifiable, Equatable {
         comment: String = "",
         group: String = "",
         authenticAutomatically: Bool = true,
-        attachment: [String: String] = [:]
+        attachment: [String: String] = [:],
+        lastModifiedDate:Date = Date(),
+        isDeleted:Bool = false
     ) {
         self.id = id
         self.username = username
@@ -31,6 +155,8 @@ public struct RDIdentity: Codable, Identifiable, Equatable {
         self.group = group
         self.authenticAutomatically = authenticAutomatically
         self.attachment = attachment
+        self.lastModifiedDate = lastModifiedDate
+        self.isDeleted = isDeleted;
     }
 
     public var id = UUID()
@@ -49,6 +175,9 @@ public struct RDIdentity: Codable, Identifiable, Equatable {
 
     // reserved for future use
     public var attachment: [String: String]
+    
+    public var lastModifiedDate: Date
+    public var isDeleted: Bool
 
     public func shortDescription() -> String {
         guard username.count > 0 else {
