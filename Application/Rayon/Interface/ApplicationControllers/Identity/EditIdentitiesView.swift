@@ -17,6 +17,8 @@ struct EditIdentityManager: View {
     @State var publicKey: String = ""
     @State var comment: String = ""
     @State var group: String = ""
+    
+    @State var showPassword:Bool = false
 
     var onComplete: ((RDIdentity.ID?) -> Void)?
 
@@ -93,9 +95,29 @@ struct EditIdentityManager: View {
             }
 
             Group {
-                AlignedLabel("Password", icon: "lock.fill")
-                SecureField("Password (Optional)", text: $password)
-                    .disableAutocorrection(true)
+                HStack {
+                    AlignedLabel("Password", icon: "lock.fill")
+                    Spacer()
+                    Button {
+                        self.showPassword.toggle()
+                    } label: {
+                        Image(systemName: self.showPassword ? "eye.slash": "eye")
+                    }
+
+                }
+                
+                if self.showPassword {
+                    TextField("Password (Optional)", text: $password)
+                        .disableAutocorrection(true)
+                }
+                else {
+                    SecureField("Password (Optional)", text: $password)
+                        .disableAutocorrection(true)
+                }
+                
+                
+                
+                
                 Text("Password will be used to decrypt private key if the key is set.")
                     .font(.system(.footnote, design: .rounded))
                     .opacity(0.5)

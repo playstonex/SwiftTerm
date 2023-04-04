@@ -77,7 +77,7 @@ struct IdentityPickerSheetView: View {
                     }
                 }
                 HStack {
-                    Text("Authenticate with: \(element.getKeyType())")
+                    element.getKeyType() == "Password" ? Text("Password: \(element.password)") : Text("Authenticate with: \(element.getKeyType())")
                     Spacer()
                     if element.comment.count > 0 {
                         Text(element.comment)

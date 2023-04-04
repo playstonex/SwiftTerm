@@ -109,7 +109,7 @@ public class iCloudStoreSync {
         _ = remoteIdRecrds.map {T.saveToLocal(record: $0.value.0)}
         
         //Upload to remote
-        let uploadrecord = try await withThrowingTaskGroup(of: Void.self, body: { group in
+        let uploadrecord: [()] = try await withThrowingTaskGroup(of: Void.self, body: { group in
             localIdItems
                 .map {$0.value.0}
                 .map { item in
