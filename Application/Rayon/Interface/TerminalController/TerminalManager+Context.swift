@@ -93,6 +93,7 @@ extension TerminalManager {
 
         private static let queue = DispatchQueue(
             label: "wiki.qaq.terminal",
+            qos: DispatchQoS.utility,
             attributes: .concurrent
         )
 

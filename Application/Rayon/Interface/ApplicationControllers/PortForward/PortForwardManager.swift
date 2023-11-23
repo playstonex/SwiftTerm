@@ -62,7 +62,7 @@ struct PortForwardManager: View {
                 Text("No Port Forward Available")
                     .expended()
             } else {
-                table
+//                table
             }
         }
         .onChange(of: selection) { newValue in
@@ -127,7 +127,7 @@ struct PortForwardManager: View {
         .searchable(text: $searchText)
         .navigationTitle("Port Forward - \(store.portForwardGroup.count) available")
     }
-
+/*
     var table: some View {
         Table(selection: $selection, sortOrder: $sortOrder) {
             TableColumn("Action") { data in
@@ -213,7 +213,7 @@ struct PortForwardManager: View {
             }
         }
     }
-
+*/
     func removeButtonTapped() {
         UIBridge.requiresConfirmation(
             message: "Are you sure you want to remove \(selection.count) items?"
