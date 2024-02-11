@@ -7,6 +7,7 @@
 
 import RayonModule
 import SwiftUI
+import DataSync
 
 struct SettingView: View {
     @EnvironmentObject var store: RayonStore
@@ -14,6 +15,38 @@ struct SettingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
+                
+                Section {
+                    Button {
+                        Task {
+                            do {
+                                // try await  RayonStore.shared.uploadMathine()
+                                
+                                let machines = RayonStore.shared.machineGroup.machines
+                                
+                                try await iCloudStoreSync.share.startSync(items: machines)
+                                
+                                
+                                let identity = RayonStore.shared.identityGroup.identities
+                                
+                                try await iCloudStoreSync.share.startSync(items: identity)
+                                
+                                iCloudStoreSync.share.finishSync()
+                                
+                            }
+                            catch let error {
+                                print(error)
+                            }
+                        }
+                        
+                    } label: {
+                        Text("Sync")
+                    }
+
+                } footer: {
+                    Text("last sync at: \(iCloudStoreSync.share.syncDate.ISO8601Format())")
+                }
+                
                 Section {
                     Toggle("Reduced Effect", isOn: $store.reducedViewEffects)
                         .font(.system(.headline, design: .rounded))

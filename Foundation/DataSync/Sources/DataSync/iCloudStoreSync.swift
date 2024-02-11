@@ -35,6 +35,10 @@ public class iCloudStoreSync {
     let db = CKContainer(identifier: "iCloud.com.playstone.bigserver.cloud.store") .privateCloudDatabase
     
     var lastSyncDate : Date = Date(timeIntervalSince1970: 0)
+    
+    public var syncDate: Date {
+        return lastSyncDate;
+    }
     fileprivate  init() {
         dataSetup()
     }
@@ -109,7 +113,7 @@ public class iCloudStoreSync {
         _ = remoteIdRecrds.map {T.saveToLocal(record: $0.value.0)}
         
         //Upload to remote
-        let uploadrecord: [()] = try await withThrowingTaskGroup(of: Void.self, body: { group in
+        let uploadrecord: [()] = await withThrowingTaskGroup(of: Void.self, body: { group in
             localIdItems
                 .map {$0.value.0}
                 .map { item in

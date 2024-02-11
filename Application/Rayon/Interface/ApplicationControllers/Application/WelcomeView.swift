@@ -101,32 +101,7 @@ struct WelcomeView: View {
             Toggle("Record Command", isOn: $store.saveTemporarySession)
                 .font(.system(.headline, design: .rounded))
             
-            Button {
-                
-                Task {
-                    do {
-                        // try await  RayonStore.shared.uploadMathine()
-                        
-                        let machines = RayonStore.shared.machineGroup.machines
-                        
-                        try await iCloudStoreSync.share.startSync(items: machines)
-                        
-                        
-                        let identity = RayonStore.shared.identityGroup.identities
-                        
-                        try await iCloudStoreSync.share.startSync(items: identity)
-                        
-                        iCloudStoreSync.share.finishSync()
-                        
-                    }
-                    catch let error {
-                        print(error)
-                    }
-                }
-                
-            } label: {
-                Text("Sync")
-            }
+            
 
         }
         .sheet(isPresented: $openThanksView, onDismiss: nil) {

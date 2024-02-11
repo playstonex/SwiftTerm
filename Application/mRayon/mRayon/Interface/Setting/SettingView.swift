@@ -34,15 +34,6 @@ struct SettingView: View {
                 
                 Button {
                     Task {
-                        
-                    }
-                } label: {
-                    Label("Sync", systemImage: "arrow.counterclockwise.icloud")
-                }
-
-                
-                Button {
-                    Task {
                         do {
                             let machines = RayonStore.shared.machineGroup.machines
                             
@@ -61,9 +52,11 @@ struct SettingView: View {
                     }
                     
                 } label: {
-                    Label( "Fetch Info", systemImage:"arrow.counterclockwise.icloud")
+                    Label( "Sync", systemImage:"arrow.counterclockwise.icloud")
                 }
 
+            } footer: {
+                Text("last sync at: \(iCloudStoreSync.share.syncDate.ISO8601Format())")
             }
 
             Section {
