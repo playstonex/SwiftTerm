@@ -23,7 +23,7 @@ import UIKit
 
 @available(iOSApplicationExtension, unavailable)
 public enum SPIndicator {
-    #if os(iOS)
+    #if os(iOS) || os(visionOS)
 
         /**
          SPIndicator: Present alert with preset and custom haptic.

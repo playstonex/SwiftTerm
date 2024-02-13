@@ -21,7 +21,7 @@
 
 import UIKit
 
-#if os(iOS)
+#if os(iOS) || os(visionOS)
 
     /**
      SPIndicator: Main view. Can be customisable if need.
@@ -206,7 +206,7 @@ import UIKit
 
         open func present(duration: TimeInterval, haptic: SPIndicatorHaptic = .success, completion: (() -> Void)? = nil) {
             if presentWindow == nil {
-                presentWindow = UIApplication.shared.keyWindow
+//                presentWindow = UIWindowScene
             }
 
             guard let window = presentWindow else { return }
