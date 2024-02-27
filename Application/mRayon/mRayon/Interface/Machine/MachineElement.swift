@@ -18,69 +18,68 @@ struct MachineElementView: View {
 
     var body: some View {
         contentView
-            .overlay {
-                Menu {
-                    Section {
-                        Button {
-                            MonitorManager.shared.begin(for: machine)
-                        } label: {
-                            Label("Open Monitor", systemImage: "text.magnifyingglass")
-                        }
-                        Button {
-                            TerminalManager.shared.begin(for: machine)
-                        } label: {
-                            Label("Open Terminal", systemImage: "terminal")
-                        }
-                        Button {
-                            FileTransferManager.shared.begin(for: machine)
-                        } label: {
-                            Label("Open File Transfer", systemImage: "externaldrive.connected.to.line.below")
-                        }
+            .onTapGesture(count: 1, perform: {
+                TerminalManager.shared.begin(for: machine)
+            })
+            .contextMenu(menuItems: {
+                Section {
+                    Button {
+                        MonitorManager.shared.begin(for: machine)
+                    } label: {
+                        Label("Open Monitor", systemImage: "text.magnifyingglass")
                     }
-
-                    Section {
-                        Button {
-                            openEdit = true
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        Button {
-                            var newMachine = store.machineGroup[machine]
-                            newMachine.id = .init()
-                            store.machineGroup.insert(newMachine)
-                        } label: {
-                            Label("Duplicate", systemImage: "plus.square.on.square")
-                        }
+                    Button {
+                        TerminalManager.shared.begin(for: machine)
+                    } label: {
+                        Label("Open Terminal", systemImage: "terminal")
                     }
-
-                    Section {
-                        Button {
-                            let machine = store.machineGroup[machine]
-                            UIBridge.sendPasteboard(str: machine.getCommand())
-                        } label: {
-                            Label("Copy Command", systemImage: "doc.on.doc")
-                        }
+                    Button {
+                        FileTransferManager.shared.begin(for: machine)
+                    } label: {
+                        Label("Open File Transfer", systemImage: "externaldrive.connected.to.line.below")
                     }
-
-                    Section {
-                        Button {
-                            UIBridge.requiresConfirmation(
-                                message: "Are you sure you want to delete this machine?"
-                            ) { confirmed in
-                                if confirmed {
-                                    store.machineGroup.delete(machine)
-                                }
-                            }
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                } label: {
-                    Color.accentColor
-                        .opacity(0.0001)
                 }
-                .offset(x: 0, y: 4)
-            }
+
+                Section {
+                    Button {
+                        openEdit = true
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    Button {
+                        var newMachine = store.machineGroup[machine]
+                        newMachine.id = .init()
+                        store.machineGroup.insert(newMachine)
+                    } label: {
+                        Label("Duplicate", systemImage: "plus.square.on.square")
+                    }
+                }
+
+                Section {
+                    Button {
+                        let machine = store.machineGroup[machine]
+                        UIBridge.sendPasteboard(str: machine.getCommand())
+                    } label: {
+                        Label("Copy Command", systemImage: "doc.on.doc")
+                    }
+                }
+
+                Section {
+                    Button {
+                        UIBridge.requiresConfirmation(
+                            message: "Are you sure you want to delete this machine?"
+                        ) { confirmed in
+                            if confirmed {
+                                store.machineGroup.delete(machine)
+                            }
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            })
+        
+        
     }
 
     var contentView: some View {
@@ -170,14 +169,16 @@ struct MachineElementView: View {
             Divider()
             Text(machine.uuidString)
                 .textSelection(.enabled)
-                .font(.system(size: 8, weight: .light, design: .monospaced))
+                .font(.system(size: 10, weight: .light, design: .monospaced))
         }
         .animation(.interactiveSpring(), value: store.machineRedacted)
         .frame(maxWidth: .infinity)
         .padding()
         .background(
-            Color(UIColor.systemGray6)
+            
+            Color(bgColor())
                 .roundedCorner()
+            
         )
         .background(
             NavigationLink(isActive: $openEdit) {
@@ -186,6 +187,15 @@ struct MachineElementView: View {
                 Group {}
             }
         )
+    }
+    
+    
+    func bgColor() -> UIColor {
+#if os(visionOS)
+        return UIColor.systemGray2
+#else
+        return UIColor.systemGray6
+#endif
     }
 }
 

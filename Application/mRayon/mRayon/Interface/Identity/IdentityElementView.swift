@@ -28,7 +28,15 @@ struct IdentityElementView: View {
             .lastRecentUsed
             .formatted()
     }
-
+    
+    func bgColor() -> UIColor {
+#if os(visionOS)
+        return UIColor.systemGray2
+#else
+        return UIColor.systemGray6
+#endif
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -53,7 +61,7 @@ struct IdentityElementView: View {
         }
         .padding()
         .background(
-            Color(UIColor.systemGray6)
+            Color(bgColor())
                 .roundedCorner()
         )
         .background(
