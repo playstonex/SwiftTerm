@@ -16,56 +16,111 @@ struct MachineActionView: View {
     @State var openEdit: Bool = false
 
     var body: some View {
+        
+
         Group {
-            Button {
-                deleteButtonTapped()
-            } label: {
-                Image(systemName: "trash")
-                    .frame(width: 15)
-            }
-            .foregroundColor(.accentColor)
-            Button {
-                duplicateButtonTapped()
-            } label: {
-                Image(systemName: "plus.square.on.square")
-                    .frame(width: 15)
-            }
-            .foregroundColor(.accentColor)
-            Button {
-                openEdit = true
-            } label: {
-                Image(systemName: "pencil")
-                    .frame(width: 15)
-            }
-            .foregroundColor(.accentColor)
-            Button {
-                MenubarTool.shared.createRuncat(for: machine)
-            } label: {
-                Image(nsImage: NSImage(named: "cat_frame_0")!)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .padding(-2)
-                    .frame(width: 15)
-            }
-            .foregroundColor(.accentColor)
-            Button {
-                FileTransferManager.shared.begin(for: machine)
-            } label: {
-                Image(systemName: "externaldrive.connected.to.line.below.fill")
-                    .frame(width: 15)
-            }
-            .foregroundColor(.accentColor)
-            Button {
-                beingConnect()
-            } label: {
-                Image(systemName: "cable.connector.horizontal")
-                    .frame(width: 15)
-            }
-            .foregroundColor(.accentColor)
+            
+        
+            
+            Image(systemName: "pencil")
+                .frame(width: 15)
+                .onTapGesture {
+                    openEdit = true
+                }
+                .foregroundColor(.accentColor)
+//                .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+            
+            Image(systemName: "trash")
+                .frame(width: 15)
+                .onTapGesture {
+                    deleteButtonTapped()
+                }
+                .foregroundColor(.accentColor)
+//                .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+            Image(systemName: "plus.square.on.square")
+                .frame(width: 15)
+                .onTapGesture {
+                    duplicateButtonTapped()
+                }
+                .foregroundColor(.accentColor)
+//                .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+            Image(nsImage: NSImage(named: "cat_frame_0")!)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .padding(-2)
+                .frame(width: 15)
+                .onTapGesture {
+                    MenubarTool.shared.createRuncat(for: machine)
+                }
+                .foregroundColor(.accentColor)
+//                .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+            Image(systemName: "externaldrive.connected.to.line.below.fill")
+                .frame(width: 15)
+                .onTapGesture {
+                    FileTransferManager.shared.begin(for: machine)
+                }
+                .foregroundColor(.accentColor)
+//                .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+            Image(systemName: "cable.connector.horizontal")
+                .frame(width: 15)
+                .onTapGesture {
+                    beingConnect()
+                }
+                .foregroundColor(.accentColor)
+//                .padding(EdgeInsets(top: 0, leading: 4, bottom: 0, trailing: 4))
+            
+            
+            
+//            Button {
+//                deleteButtonTapped()
+//            } label: {
+//                Image(systemName: "trash")
+//                    .frame(width: 15)
+//            }
+//            .foregroundColor(.accentColor)
+//            Button {
+//                duplicateButtonTapped()
+//            } label: {
+//                Image(systemName: "plus.square.on.square")
+//                    .frame(width: 15)
+//            }
+//            .foregroundColor(.accentColor)
+//            Button {
+//                openEdit = true
+//            } label: {
+//                Image(systemName: "pencil")
+//                    .frame(width: 15)
+//            }
+//            .foregroundColor(.accentColor)
+//            Button {
+//                MenubarTool.shared.createRuncat(for: machine)
+//            } label: {
+//                Image(nsImage: NSImage(named: "cat_frame_0")!)
+//                    .resizable()
+//                    .aspectRatio(contentMode: .fit)
+//                    .padding(-2)
+//                    .frame(width: 15)
+//            }
+//            .foregroundColor(.accentColor)
+//            Button {
+//                FileTransferManager.shared.begin(for: machine)
+//            } label: {
+//                Image(systemName: "externaldrive.connected.to.line.below.fill")
+//                    .frame(width: 15)
+//            }
+//            .foregroundColor(.accentColor)
+//            Button {
+//                beingConnect()
+//            } label: {
+//                Image(systemName: "cable.connector.horizontal")
+//                    .frame(width: 15)
+//            }
+//            .foregroundColor(.accentColor)
         }
         .sheet(isPresented: $openEdit, onDismiss: nil) {
             MachineEditView(inEditWith: machine)
         }
+        .padding(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
     }
 
     func beingConnect() {
@@ -99,3 +154,5 @@ struct MachineActionView: View {
         }
     }
 }
+
+

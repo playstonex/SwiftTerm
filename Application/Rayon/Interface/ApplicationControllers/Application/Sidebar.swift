@@ -26,7 +26,7 @@ struct SidebarView: View {
             sftpSession
             if store.storeRecent { recent }
         }
-        .navigationTitle("Rayon")
+        .navigationTitle("GoodTerm")
         .frame(minWidth: 200)
     }
 

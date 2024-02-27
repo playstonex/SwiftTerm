@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "509F7F3B27B2AF7F00F28752"
-               BuildableName = "Rayon.app"
+               BuildableName = "GoodTerm.app"
                BlueprintName = "Rayon (macOS)"
                ReferencedContainer = "container:Rayon.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "509F7F3B27B2AF7F00F28752"
-            BuildableName = "Rayon.app"
+            BuildableName = "GoodTerm.app"
             BlueprintName = "Rayon (macOS)"
             ReferencedContainer = "container:Rayon.xcodeproj">
          </BuildableReference>
@@ -79,7 +79,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "509F7F3B27B2AF7F00F28752"
-            BuildableName = "Rayon.app"
+            BuildableName = "GoodTerm.app"
             BlueprintName = "Rayon (macOS)"
             ReferencedContainer = "container:Rayon.xcodeproj">
          </BuildableReference>

@@ -112,7 +112,7 @@
 		509F4E5027B9502500ADAF5C /* AgreementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgreementView.swift; sourceTree = "<group>"; };
 		509F7F2C27B2AF7E00F28752 /* RayonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RayonApp.swift; sourceTree = "<group>"; };
 		509F7F2F27B2AF7F00F28752 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		509F7F3C27B2AF7F00F28752 /* Rayon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rayon.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		509F7F3C27B2AF7F00F28752 /* GoodTerm.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GoodTerm.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		509F7F3F27B2AF7F00F28752 /* macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = macOS.entitlements; sourceTree = "<group>"; };
 		509F7F6D27B2C32900F28752 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		509F7F7427B2C95F00F28752 /* Sidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sidebar.swift; sourceTree = "<group>"; };
@@ -256,7 +256,7 @@
 		509F7F3527B2AF7F00F28752 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				509F7F3C27B2AF7F00F28752 /* Rayon.app */,
+				509F7F3C27B2AF7F00F28752 /* GoodTerm.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -420,7 +420,7 @@
 				ABD999D628A21E0D00404E61 /* DataSync */,
 			);
 			productName = "Rayon (macOS)";
-			productReference = 509F7F3C27B2AF7F00F28752 /* Rayon.app */;
+			productReference = 509F7F3C27B2AF7F00F28752 /* GoodTerm.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -674,7 +674,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
-				PRODUCT_NAME = Rayon;
+				PRODUCT_NAME = GoodTerm;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -708,7 +708,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				MARKETING_VERSION = 2.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
-				PRODUCT_NAME = Rayon;
+				PRODUCT_NAME = GoodTerm;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;

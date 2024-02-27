@@ -156,6 +156,7 @@ struct MachineManagerView: View {
                 .font(.system(.headline, design: .rounded))
                 LazyVGrid(columns: columns, alignment: .leading, spacing: itemSpacing) {
                     ForEach(searchResultFor(section: section)) { machine in
+//                        Text("Hi")
                         MachineView(machine: machine.id)
                             .overlay(
                                 VStack {
@@ -168,8 +169,8 @@ struct MachineManagerView: View {
                                 .padding(4)
                                 .opacity(hoverSelection == machine.id ? 1 : 0)
                             )
-                            .border(Color.gray, width: selection.contains(machine.id) ? 0.5 : 0)
-                            .border(Color.accentColor, width: hoverSelection == machine.id ? 0.5 : 0)
+//                            .border(Color.gray, width: selection.contains(machine.id) ? 0.5 : 0)
+//                            .border(Color.accentColor, width: hoverSelection == machine.id ? 0.5 : 0)
                             .onTapGesture {
                                 if selection.contains(machine.id) {
                                     selection = selection
