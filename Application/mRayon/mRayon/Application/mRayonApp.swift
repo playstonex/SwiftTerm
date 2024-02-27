@@ -43,13 +43,10 @@ struct mRayonApp: App {
                         }
                     }
                 }
-                .onChange(of: store.licenseAgreed, { oldValue, newValue in
-                    print(oldValue, newValue)
+                .onChange(of: store.licenseAgreed) { _ in
                     checkAgreement()
-                })
-//                .onChange(of: store.licenseAgreed) { _ in
-//                    checkAgreement()
-//                }
+                }
+                
         }
     }
 
