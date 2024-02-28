@@ -66,6 +66,71 @@
 		50D3AEFD27D063A30085F899 /* PickIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3AEFC27D063A30085F899 /* PickIdentityView.swift */; };
 		50D77BE727D2F0FB00177190 /* SettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D77BE627D2F0FB00177190 /* SettingView.swift */; };
 		50FD853A27D0445D00F6F01A /* EditSnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD853927D0445D00F6F01A /* EditSnippetView.swift */; };
+		ABB80C6F2B8EC0AD00FDD779 /* RealityKitContent in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C6E2B8EC0AD00FDD779 /* RealityKitContent */; };
+		ABB80C712B8EC0AD00FDD779 /* vRayonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB80C702B8EC0AD00FDD779 /* vRayonApp.swift */; };
+		ABB80C752B8EC0AF00FDD779 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ABB80C742B8EC0AF00FDD779 /* Assets.xcassets */; };
+		ABB80C782B8EC0AF00FDD779 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ABB80C772B8EC0AF00FDD779 /* Preview Assets.xcassets */; };
+		ABB80C7E2B8EC20800FDD779 /* CodeEditorUI in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C7D2B8EC20800FDD779 /* CodeEditorUI */; };
+		ABB80C802B8EC20800FDD779 /* Colorful in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C7F2B8EC20800FDD779 /* Colorful */; };
+		ABB80C822B8EC20800FDD779 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C812B8EC20800FDD779 /* DataSync */; };
+		ABB80C842B8EC20800FDD779 /* Keychain in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C832B8EC20800FDD779 /* Keychain */; };
+		ABB80C862B8EC20800FDD779 /* MachineStatus in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C852B8EC20800FDD779 /* MachineStatus */; };
+		ABB80C882B8EC20800FDD779 /* MachineStatusView in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C872B8EC20800FDD779 /* MachineStatusView */; };
+		ABB80C8A2B8EC20800FDD779 /* NSRemoteShell in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C892B8EC20800FDD779 /* NSRemoteShell */; };
+		ABB80C8C2B8EC20800FDD779 /* PropertyWrapper in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C8B2B8EC20800FDD779 /* PropertyWrapper */; };
+		ABB80C8E2B8EC20800FDD779 /* RayonModule in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C8D2B8EC20800FDD779 /* RayonModule */; };
+		ABB80C902B8EC20800FDD779 /* SPIndicator in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C8F2B8EC20800FDD779 /* SPIndicator */; };
+		ABB80C922B8EC20800FDD779 /* StripedTextTable in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C912B8EC20800FDD779 /* StripedTextTable */; };
+		ABB80C942B8EC20800FDD779 /* SymbolPicker in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C932B8EC20800FDD779 /* SymbolPicker */; };
+		ABB80C962B8EC20800FDD779 /* XMLCoder in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C952B8EC20800FDD779 /* XMLCoder */; };
+		ABB80C982B8EC20800FDD779 /* XTerminalUI in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C972B8EC20800FDD779 /* XTerminalUI */; };
+		ABB80C992B8EC28F00FDD779 /* LogRedirect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501B334127DF0DD100EB6261 /* LogRedirect.swift */; };
+		ABB80C9A2B8EC29900FDD779 /* PlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726C27CF269700149A43 /* PlaceholderView.swift */; };
+		ABB80C9B2B8EC29900FDD779 /* AgreementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1DF27D1ED5800C71C0F /* AgreementView.swift */; };
+		ABB80C9C2B8EC29900FDD779 /* StarLinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726E27CF382100149A43 /* StarLinkView.swift */; };
+		ABB80C9D2B8EC29900FDD779 /* LicenseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1DD27D1ECF300C71C0F /* LicenseView.swift */; };
+		ABB80C9E2B8EC29E00FDD779 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501FF78C27CEFADD00380D59 /* ContentView.swift */; };
+		ABB80C9F2B8EC29E00FDD779 /* TabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AEB27CF119500F60B51 /* TabsView.swift */; };
+		ABB80CA02B8EC29E00FDD779 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B0827CF15F000F60B51 /* WelcomeView.swift */; };
+		ABB80CA12B8EC29E00FDD779 /* SidebarView+Recent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5047BEA227DEDB77008887A7 /* SidebarView+Recent.swift */; };
+		ABB80CA22B8EC29E00FDD779 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AED27CF119F00F60B51 /* SidebarView.swift */; };
+		ABB80CA32B8EC2A200FDD779 /* MachineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726727CF1BC000149A43 /* MachineElement.swift */; };
+		ABB80CA42B8EC2A200FDD779 /* MachineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AFF27CF145F00F60B51 /* MachineView.swift */; };
+		ABB80CA52B8EC2A200FDD779 /* EditMachineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3AEFA27D05D6D0085F899 /* EditMachineView.swift */; };
+		ABB80CA62B8EC2A200FDD779 /* PickMachineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1D727D1A95400C71C0F /* PickMachineView.swift */; };
+		ABB80CA72B8EC2A700FDD779 /* SnippetElementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3AEF827D0582F0085F899 /* SnippetElementView.swift */; };
+		ABB80CA82B8EC2A700FDD779 /* SnippetExecuteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1D927D1B79A00C71C0F /* SnippetExecuteView.swift */; };
+		ABB80CA92B8EC2A700FDD779 /* SnippetExecuteContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1DB27D1D7DE00C71C0F /* SnippetExecuteContext.swift */; };
+		ABB80CAA2B8EC2A700FDD779 /* SnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B0127CF146400F60B51 /* SnippetView.swift */; };
+		ABB80CAB2B8EC2A700FDD779 /* EditSnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD853927D0445D00F6F01A /* EditSnippetView.swift */; };
+		ABB80CAC2B8EC2AC00FDD779 /* IdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B0627CF15B000F60B51 /* IdentityView.swift */; };
+		ABB80CAD2B8EC2AC00FDD779 /* PickIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3AEFC27D063A30085F899 /* PickIdentityView.swift */; };
+		ABB80CAE2B8EC2AC00FDD779 /* IdentityElementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D727227CF431000149A43 /* IdentityElementView.swift */; };
+		ABB80CAF2B8EC2AC00FDD779 /* EditIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D727027CF40CC00149A43 /* EditIdentityView.swift */; };
+		ABB80CB02B8EC2B000FDD779 /* PortForwardBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5047BEA027DED78A008887A7 /* PortForwardBackend.swift */; };
+		ABB80CB12B8EC2B000FDD779 /* PortForwardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B1427CF18D500F60B51 /* PortForwardView.swift */; };
+		ABB80CB22B8EC2B000FDD779 /* PortForwardElementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5047BE9A27DCCB76008887A7 /* PortForwardElementView.swift */; };
+		ABB80CB32B8EC2B000FDD779 /* EditPortForwardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5047BE9C27DCCC8B008887A7 /* EditPortForwardView.swift */; };
+		ABB80CB42B8EC2B300FDD779 /* MonitorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C527D09C8C00C71C0F /* MonitorManager.swift */; };
+		ABB80CB52B8EC2B300FDD779 /* MonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C727D09D1700C71C0F /* MonitorView.swift */; };
+		ABB80CB62B8EC2B300FDD779 /* MonitorContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C927D0A90100C71C0F /* MonitorContext.swift */; };
+		ABB80CB72B8EC2B700FDD779 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B1027CF18C100F60B51 /* TerminalView.swift */; };
+		ABB80CB82B8EC2B700FDD779 /* TerminalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B0E27CF18BD00F60B51 /* TerminalManager.swift */; };
+		ABB80CB92B8EC2B700FDD779 /* TerminalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */; };
+		ABB80CBA2B8EC2BB00FDD779 /* FileTransferContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51627E4B14800EF01C4 /* FileTransferContext.swift */; };
+		ABB80CBB2B8EC2BB00FDD779 /* FileTransferManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51427E4B14100EF01C4 /* FileTransferManager.swift */; };
+		ABB80CBC2B8EC2BB00FDD779 /* FileTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51827E4B14E00EF01C4 /* FileTransferView.swift */; };
+		ABB80CBD2B8EC2BF00FDD779 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501B334727DF16AA00EB6261 /* LogView.swift */; };
+		ABB80CBE2B8EC2BF00FDD779 /* SettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D77BE627D2F0FB00177190 /* SettingView.swift */; };
+		ABB80CBF2B8EC2C800FDD779 /* UIWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF627CF12E000F60B51 /* UIWindow.swift */; };
+		ABB80CC02B8EC2C800FDD779 /* UIViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1D527D1228900C71C0F /* UIViewController.swift */; };
+		ABB80CC12B8EC2C800FDD779 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726927CF1C0800149A43 /* View.swift */; };
+		ABB80CC22B8EC2C800FDD779 /* FilePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D727427CF43CE00149A43 /* FilePicker.swift */; };
+		ABB80CC32B8EC2C800FDD779 /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C227D087FB00C71C0F /* Util.swift */; };
+		ABB80CC42B8EC2CC00FDD779 /* DoubleConfirm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF127CF125200F60B51 /* DoubleConfirm.swift */; };
+		ABB80CC52B8EC2CC00FDD779 /* UIBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF227CF125200F60B51 /* UIBridge.swift */; };
+		ABB80CC62B8EC2CC00FDD779 /* PresentError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF027CF125200F60B51 /* PresentError.swift */; };
+		ABB80CC92B8EDB2B00FDD779 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABB80CC82B8EDB2B00FDD779 /* CloudKit.framework */; };
 		ABD999D528A09F3F00404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D428A09F3F00404E61 /* CloudKit.framework */; };
 		ABD999D928A21E1800404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D828A21E1800404E61 /* DataSync */; };
 /* End PBXBuildFile section */
@@ -137,6 +202,15 @@
 		50D3AEFC27D063A30085F899 /* PickIdentityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickIdentityView.swift; sourceTree = "<group>"; };
 		50D77BE627D2F0FB00177190 /* SettingView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingView.swift; sourceTree = "<group>"; };
 		50FD853927D0445D00F6F01A /* EditSnippetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditSnippetView.swift; sourceTree = "<group>"; };
+		ABB80C6A2B8EC0AD00FDD779 /* vRayon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vRayon.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ABB80C6D2B8EC0AD00FDD779 /* RealityKitContent */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = RealityKitContent; sourceTree = "<group>"; };
+		ABB80C702B8EC0AD00FDD779 /* vRayonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = vRayonApp.swift; sourceTree = "<group>"; };
+		ABB80C722B8EC0AD00FDD779 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		ABB80C742B8EC0AF00FDD779 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		ABB80C772B8EC0AF00FDD779 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		ABB80C792B8EC0AF00FDD779 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		ABB80CC72B8ED94E00FDD779 /* vRayon.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = vRayon.entitlements; sourceTree = "<group>"; };
+		ABB80CC82B8EDB2B00FDD779 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = Platforms/XROS.platform/Developer/SDKs/XROS1.0.sdk/System/Library/Frameworks/CloudKit.framework; sourceTree = DEVELOPER_DIR; };
 		ABD999D428A09F3F00404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		CCFD199B27EACC53005DF0A6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CCFD19A627EACC53005DF0A6 /* mRayonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mRayonApp.swift; sourceTree = "<group>"; };
@@ -166,6 +240,29 @@
 				501B334A27DF1B6F00EB6261 /* SymbolPicker in Frameworks */,
 				505E326927D2642700054573 /* MachineStatusView in Frameworks */,
 				501FF79B27CEFC6300380D59 /* RayonModule in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ABB80C672B8EC0AD00FDD779 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ABB80C922B8EC20800FDD779 /* StripedTextTable in Frameworks */,
+				ABB80C982B8EC20800FDD779 /* XTerminalUI in Frameworks */,
+				ABB80C7E2B8EC20800FDD779 /* CodeEditorUI in Frameworks */,
+				ABB80C962B8EC20800FDD779 /* XMLCoder in Frameworks */,
+				ABB80C6F2B8EC0AD00FDD779 /* RealityKitContent in Frameworks */,
+				ABB80C8A2B8EC20800FDD779 /* NSRemoteShell in Frameworks */,
+				ABB80C862B8EC20800FDD779 /* MachineStatus in Frameworks */,
+				ABB80C802B8EC20800FDD779 /* Colorful in Frameworks */,
+				ABB80C902B8EC20800FDD779 /* SPIndicator in Frameworks */,
+				ABB80C8C2B8EC20800FDD779 /* PropertyWrapper in Frameworks */,
+				ABB80C8E2B8EC20800FDD779 /* RayonModule in Frameworks */,
+				ABB80C882B8EC20800FDD779 /* MachineStatusView in Frameworks */,
+				ABB80C942B8EC20800FDD779 /* SymbolPicker in Frameworks */,
+				ABB80CC92B8EDB2B00FDD779 /* CloudKit.framework in Frameworks */,
+				ABB80C822B8EC20800FDD779 /* DataSync in Frameworks */,
+				ABB80C842B8EC20800FDD779 /* Keychain in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -199,6 +296,8 @@
 				501FF78927CEFADD00380D59 /* mRayon */,
 				CCFD199A27EACC52005DF0A6 /* wRayon */,
 				CCFD19A527EACC53005DF0A6 /* wRayon WatchKit Extension */,
+				ABB80C6B2B8EC0AD00FDD779 /* vRayon */,
+				ABB80C6C2B8EC0AD00FDD779 /* Packages */,
 				501FF78827CEFADD00380D59 /* Products */,
 				501FF79927CEFC6300380D59 /* Frameworks */,
 			);
@@ -208,6 +307,7 @@
 			isa = PBXGroup;
 			children = (
 				501FF78727CEFADD00380D59 /* mRayon.app */,
+				ABB80C6A2B8EC0AD00FDD779 /* vRayon.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -227,6 +327,7 @@
 		501FF79927CEFC6300380D59 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				ABB80CC82B8EDB2B00FDD779 /* CloudKit.framework */,
 				ABD999D428A09F3F00404E61 /* CloudKit.framework */,
 			);
 			name = Frameworks;
@@ -370,6 +471,35 @@
 			path = Setting;
 			sourceTree = "<group>";
 		};
+		ABB80C6B2B8EC0AD00FDD779 /* vRayon */ = {
+			isa = PBXGroup;
+			children = (
+				ABB80CC72B8ED94E00FDD779 /* vRayon.entitlements */,
+				ABB80C702B8EC0AD00FDD779 /* vRayonApp.swift */,
+				ABB80C722B8EC0AD00FDD779 /* ContentView.swift */,
+				ABB80C742B8EC0AF00FDD779 /* Assets.xcassets */,
+				ABB80C792B8EC0AF00FDD779 /* Info.plist */,
+				ABB80C762B8EC0AF00FDD779 /* Preview Content */,
+			);
+			path = vRayon;
+			sourceTree = "<group>";
+		};
+		ABB80C6C2B8EC0AD00FDD779 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				ABB80C6D2B8EC0AD00FDD779 /* RealityKitContent */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		ABB80C762B8EC0AF00FDD779 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				ABB80C772B8EC0AF00FDD779 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
 		CCFD199A27EACC52005DF0A6 /* wRayon */ = {
 			isa = PBXGroup;
 			children = (
@@ -435,6 +565,40 @@
 			productReference = 501FF78727CEFADD00380D59 /* mRayon.app */;
 			productType = "com.apple.product-type.application";
 		};
+		ABB80C692B8EC0AD00FDD779 /* vRayon */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ABB80C7A2B8EC0AF00FDD779 /* Build configuration list for PBXNativeTarget "vRayon" */;
+			buildPhases = (
+				ABB80C662B8EC0AD00FDD779 /* Sources */,
+				ABB80C672B8EC0AD00FDD779 /* Frameworks */,
+				ABB80C682B8EC0AD00FDD779 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = vRayon;
+			packageProductDependencies = (
+				ABB80C6E2B8EC0AD00FDD779 /* RealityKitContent */,
+				ABB80C7D2B8EC20800FDD779 /* CodeEditorUI */,
+				ABB80C7F2B8EC20800FDD779 /* Colorful */,
+				ABB80C812B8EC20800FDD779 /* DataSync */,
+				ABB80C832B8EC20800FDD779 /* Keychain */,
+				ABB80C852B8EC20800FDD779 /* MachineStatus */,
+				ABB80C872B8EC20800FDD779 /* MachineStatusView */,
+				ABB80C892B8EC20800FDD779 /* NSRemoteShell */,
+				ABB80C8B2B8EC20800FDD779 /* PropertyWrapper */,
+				ABB80C8D2B8EC20800FDD779 /* RayonModule */,
+				ABB80C8F2B8EC20800FDD779 /* SPIndicator */,
+				ABB80C912B8EC20800FDD779 /* StripedTextTable */,
+				ABB80C932B8EC20800FDD779 /* SymbolPicker */,
+				ABB80C952B8EC20800FDD779 /* XMLCoder */,
+				ABB80C972B8EC20800FDD779 /* XTerminalUI */,
+			);
+			productName = vRayon;
+			productReference = ABB80C6A2B8EC0AD00FDD779 /* vRayon.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -442,11 +606,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1330;
+				LastSwiftUpdateCheck = 1520;
 				LastUpgradeCheck = 1320;
 				TargetAttributes = {
 					501FF78627CEFADD00380D59 = {
 						CreatedOnToolsVersion = 13.2.1;
+					};
+					ABB80C692B8EC0AD00FDD779 = {
+						CreatedOnToolsVersion = 15.2;
 					};
 				};
 			};
@@ -464,6 +631,7 @@
 			projectRoot = "";
 			targets = (
 				501FF78627CEFADD00380D59 /* mRayon */,
+				ABB80C692B8EC0AD00FDD779 /* vRayon */,
 			);
 		};
 /* End PBXProject section */
@@ -476,6 +644,15 @@
 				5082A1D427D0E10000C71C0F /* LICENSE in Resources */,
 				501FF78F27CEFADD00380D59 /* Assets.xcassets in Resources */,
 				5082A1D327D0E10000C71C0F /* EULA in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ABB80C682B8EC0AD00FDD779 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ABB80C782B8EC0AF00FDD779 /* Preview Assets.xcassets in Resources */,
+				ABB80C752B8EC0AF00FDD779 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -533,6 +710,60 @@
 				5082A1CC27D0AC0900C71C0F /* TerminalContext.swift in Sources */,
 				500D727127CF40CC00149A43 /* EditIdentityView.swift in Sources */,
 				5082A1E027D1ED5800C71C0F /* AgreementView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ABB80C662B8EC0AD00FDD779 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ABB80CA42B8EC2A200FDD779 /* MachineView.swift in Sources */,
+				ABB80CAC2B8EC2AC00FDD779 /* IdentityView.swift in Sources */,
+				ABB80CB22B8EC2B000FDD779 /* PortForwardElementView.swift in Sources */,
+				ABB80C992B8EC28F00FDD779 /* LogRedirect.swift in Sources */,
+				ABB80CC62B8EC2CC00FDD779 /* PresentError.swift in Sources */,
+				ABB80CB72B8EC2B700FDD779 /* TerminalView.swift in Sources */,
+				ABB80CAD2B8EC2AC00FDD779 /* PickIdentityView.swift in Sources */,
+				ABB80CAF2B8EC2AC00FDD779 /* EditIdentityView.swift in Sources */,
+				ABB80CBF2B8EC2C800FDD779 /* UIWindow.swift in Sources */,
+				ABB80CB62B8EC2B300FDD779 /* MonitorContext.swift in Sources */,
+				ABB80C9C2B8EC29900FDD779 /* StarLinkView.swift in Sources */,
+				ABB80CA82B8EC2A700FDD779 /* SnippetExecuteView.swift in Sources */,
+				ABB80CC32B8EC2C800FDD779 /* Util.swift in Sources */,
+				ABB80CC02B8EC2C800FDD779 /* UIViewController.swift in Sources */,
+				ABB80CC22B8EC2C800FDD779 /* FilePicker.swift in Sources */,
+				ABB80CAB2B8EC2A700FDD779 /* EditSnippetView.swift in Sources */,
+				ABB80CC42B8EC2CC00FDD779 /* DoubleConfirm.swift in Sources */,
+				ABB80CA32B8EC2A200FDD779 /* MachineElement.swift in Sources */,
+				ABB80CB12B8EC2B000FDD779 /* PortForwardView.swift in Sources */,
+				ABB80CA12B8EC29E00FDD779 /* SidebarView+Recent.swift in Sources */,
+				ABB80CBA2B8EC2BB00FDD779 /* FileTransferContext.swift in Sources */,
+				ABB80C9E2B8EC29E00FDD779 /* ContentView.swift in Sources */,
+				ABB80CB52B8EC2B300FDD779 /* MonitorView.swift in Sources */,
+				ABB80CB82B8EC2B700FDD779 /* TerminalManager.swift in Sources */,
+				ABB80CAE2B8EC2AC00FDD779 /* IdentityElementView.swift in Sources */,
+				ABB80CA92B8EC2A700FDD779 /* SnippetExecuteContext.swift in Sources */,
+				ABB80CB32B8EC2B000FDD779 /* EditPortForwardView.swift in Sources */,
+				ABB80CBE2B8EC2BF00FDD779 /* SettingView.swift in Sources */,
+				ABB80C9B2B8EC29900FDD779 /* AgreementView.swift in Sources */,
+				ABB80CA02B8EC29E00FDD779 /* WelcomeView.swift in Sources */,
+				ABB80CC12B8EC2C800FDD779 /* View.swift in Sources */,
+				ABB80CA62B8EC2A200FDD779 /* PickMachineView.swift in Sources */,
+				ABB80C712B8EC0AD00FDD779 /* vRayonApp.swift in Sources */,
+				ABB80CBC2B8EC2BB00FDD779 /* FileTransferView.swift in Sources */,
+				ABB80CA22B8EC29E00FDD779 /* SidebarView.swift in Sources */,
+				ABB80CB92B8EC2B700FDD779 /* TerminalContext.swift in Sources */,
+				ABB80CB02B8EC2B000FDD779 /* PortForwardBackend.swift in Sources */,
+				ABB80CBB2B8EC2BB00FDD779 /* FileTransferManager.swift in Sources */,
+				ABB80CA72B8EC2A700FDD779 /* SnippetElementView.swift in Sources */,
+				ABB80CC52B8EC2CC00FDD779 /* UIBridge.swift in Sources */,
+				ABB80C9D2B8EC29900FDD779 /* LicenseView.swift in Sources */,
+				ABB80C9F2B8EC29E00FDD779 /* TabsView.swift in Sources */,
+				ABB80CA52B8EC2A200FDD779 /* EditMachineView.swift in Sources */,
+				ABB80CB42B8EC2B300FDD779 /* MonitorManager.swift in Sources */,
+				ABB80CBD2B8EC2BF00FDD779 /* LogView.swift in Sources */,
+				ABB80CAA2B8EC2A700FDD779 /* SnippetView.swift in Sources */,
+				ABB80C9A2B8EC29900FDD779 /* PlaceholderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -703,13 +934,13 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "QAQ Wiki macOS Wildcard";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -751,13 +982,88 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "QAQ Wiki macOS Wildcard";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xros xrsimulator";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		ABB80C7B2B8EC0AF00FDD779 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 60;
+				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
+				DEVELOPMENT_TEAM = 7PCD2KB89F;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(TARGET_NAME)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = GoodTerm;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 2.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 1.0;
+			};
+			name = Debug;
+		};
+		ABB80C7C2B8EC0AF00FDD779 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 60;
+				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
+				DEVELOPMENT_TEAM = 7PCD2KB89F;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "$(TARGET_NAME)/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = GoodTerm;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 2.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = xros;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 1.0;
 			};
 			name = Release;
 		};
@@ -778,6 +1084,15 @@
 			buildConfigurations = (
 				501FF79627CEFADD00380D59 /* Debug */,
 				501FF79727CEFADD00380D59 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ABB80C7A2B8EC0AF00FDD779 /* Build configuration list for PBXNativeTarget "vRayon" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ABB80C7B2B8EC0AF00FDD779 /* Debug */,
+				ABB80C7C2B8EC0AF00FDD779 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -820,6 +1135,66 @@
 		505E326827D2642700054573 /* MachineStatusView */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MachineStatusView;
+		};
+		ABB80C6E2B8EC0AD00FDD779 /* RealityKitContent */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RealityKitContent;
+		};
+		ABB80C7D2B8EC20800FDD779 /* CodeEditorUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CodeEditorUI;
+		};
+		ABB80C7F2B8EC20800FDD779 /* Colorful */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Colorful;
+		};
+		ABB80C812B8EC20800FDD779 /* DataSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DataSync;
+		};
+		ABB80C832B8EC20800FDD779 /* Keychain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Keychain;
+		};
+		ABB80C852B8EC20800FDD779 /* MachineStatus */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MachineStatus;
+		};
+		ABB80C872B8EC20800FDD779 /* MachineStatusView */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MachineStatusView;
+		};
+		ABB80C892B8EC20800FDD779 /* NSRemoteShell */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NSRemoteShell;
+		};
+		ABB80C8B2B8EC20800FDD779 /* PropertyWrapper */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PropertyWrapper;
+		};
+		ABB80C8D2B8EC20800FDD779 /* RayonModule */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RayonModule;
+		};
+		ABB80C8F2B8EC20800FDD779 /* SPIndicator */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SPIndicator;
+		};
+		ABB80C912B8EC20800FDD779 /* StripedTextTable */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StripedTextTable;
+		};
+		ABB80C932B8EC20800FDD779 /* SymbolPicker */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SymbolPicker;
+		};
+		ABB80C952B8EC20800FDD779 /* XMLCoder */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = XMLCoder;
+		};
+		ABB80C972B8EC20800FDD779 /* XTerminalUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = XTerminalUI;
 		};
 		ABD999D828A21E1800404E61 /* DataSync */ = {
 			isa = XCSwiftPackageProductDependency;

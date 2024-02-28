@@ -32,7 +32,7 @@ public struct SymbolPicker: View {
     }()
 
     private static var gridDimension: CGFloat {
-        #if os(iOS) || os(tvOS)
+        #if os(iOS) || os(tvOS)  || os(visionOS)
             return 64
         #elseif os(macOS)
             return 30
@@ -42,7 +42,7 @@ public struct SymbolPicker: View {
     }
 
     private static var symbolSize: CGFloat {
-        #if os(iOS) || os(tvOS)
+        #if os(iOS) || os(tvOS) || os(visionOS)
             return 24
         #elseif os(macOS)
             return 14
@@ -52,7 +52,7 @@ public struct SymbolPicker: View {
     }
 
     private static var symbolCornerRadius: CGFloat {
-        #if os(iOS) || os(tvOS)
+        #if os(iOS) || os(tvOS) || os(visionOS)
             return 8
         #elseif os(macOS)
             return 4
@@ -77,7 +77,7 @@ public struct SymbolPicker: View {
 
     @ViewBuilder
     private var searchableSymbolGrid: some View {
-        #if os(iOS) || os(tvOS)
+        #if os(iOS) || os(tvOS) || os(visionOS)
             if #available(iOS 15.0, *) {
                 symbolGrid
                     .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
@@ -107,7 +107,7 @@ public struct SymbolPicker: View {
     }
 
     internal func dynamicColor(light: PlatformColor, dark: PlatformColor) -> Color {
-        #if os(iOS) || os(tvOS)
+        #if os(iOS) || os(tvOS) || os(visionOS)
             let color = PlatformColor { $0.userInterfaceStyle == .dark ? dark : light }
             if #available(iOS 15.0, *) {
                 return Color(uiColor: color)
