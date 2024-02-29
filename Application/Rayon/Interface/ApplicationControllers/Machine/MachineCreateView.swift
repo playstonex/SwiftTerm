@@ -62,7 +62,7 @@ struct MachineCreateView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Create Server", systemImage: "plus.viewfinder")
                 .font(.system(.title, design: .rounded))
-            Text("Rayon is a lobby boy that helps you to manage your servers.")
+            Text("GoodTerm is a lobby boy that helps you to manage your servers.")
             Divider()
             Text("Accepted Connection: Secure Shell")
             Text("By entering your server address, we will guide you through the server creation process.")

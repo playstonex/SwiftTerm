@@ -121,7 +121,7 @@ struct MachineEditView: View {
 
     var sheetFoot: some View {
         Group {
-            Text("Editing with RayonID: \(inEditWith.uuidString)")
+            Text("Editing with GoodTermID: \(inEditWith.uuidString)")
                 .font(.system(.footnote, design: .monospaced))
         }
     }

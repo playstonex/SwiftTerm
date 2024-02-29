@@ -18,17 +18,6 @@ struct SettingView: View {
 
     var body: some View {
         List {
-            Section {
-                Button {
-                    UIBridge.open(url: URL(string: "https://github.com/Lakr233/Rayon")!)
-                } label: {
-                    Label("Get Source", systemImage: "chevron.left.forwardslash.chevron.right")
-                }
-            } header: {
-                Label("App", systemImage: "arrow.right")
-            } footer: {
-                Text("Rayon is open sourced at GitHub, any pull request are welcome!")
-            }
             
             Section {
                 
@@ -55,6 +44,8 @@ struct SettingView: View {
                     Label( "Sync", systemImage:"arrow.counterclockwise.icloud")
                 }
 
+            } header: {
+                Label("Data sync", systemImage: "arrow.right")
             } footer: {
                 Text("last sync at: \(iCloudStoreSync.share.syncDate.ISO8601Format())")
             }
@@ -116,6 +107,12 @@ struct SettingView: View {
             }
 
             Section {
+                NavigationLink {
+                    Thanks()
+                } label: {
+                    Text("Thanks")
+                }
+
                 NavigationLink {
                     LicenseView()
                 } label: {

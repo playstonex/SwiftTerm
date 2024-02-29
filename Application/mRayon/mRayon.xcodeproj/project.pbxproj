@@ -131,6 +131,7 @@
 		ABB80CC52B8EC2CC00FDD779 /* UIBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF227CF125200F60B51 /* UIBridge.swift */; };
 		ABB80CC62B8EC2CC00FDD779 /* PresentError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF027CF125200F60B51 /* PresentError.swift */; };
 		ABB80CC92B8EDB2B00FDD779 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABB80CC82B8EDB2B00FDD779 /* CloudKit.framework */; };
+		ABBE62902B90B45A00B347B9 /* Thanks.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABBE628F2B90B45A00B347B9 /* Thanks.swift */; };
 		ABD999D528A09F3F00404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D428A09F3F00404E61 /* CloudKit.framework */; };
 		ABD999D928A21E1800404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D828A21E1800404E61 /* DataSync */; };
 /* End PBXBuildFile section */
@@ -211,6 +212,7 @@
 		ABB80C792B8EC0AF00FDD779 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		ABB80CC72B8ED94E00FDD779 /* vRayon.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = vRayon.entitlements; sourceTree = "<group>"; };
 		ABB80CC82B8EDB2B00FDD779 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = Platforms/XROS.platform/Developer/SDKs/XROS1.0.sdk/System/Library/Frameworks/CloudKit.framework; sourceTree = DEVELOPER_DIR; };
+		ABBE628F2B90B45A00B347B9 /* Thanks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thanks.swift; sourceTree = "<group>"; };
 		ABD999D428A09F3F00404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		CCFD199B27EACC53005DF0A6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CCFD19A627EACC53005DF0A6 /* mRayonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mRayonApp.swift; sourceTree = "<group>"; };
@@ -467,6 +469,7 @@
 			children = (
 				50D77BE627D2F0FB00177190 /* SettingView.swift */,
 				501B334727DF16AA00EB6261 /* LogView.swift */,
+				ABBE628F2B90B45A00B347B9 /* Thanks.swift */,
 			);
 			path = Setting;
 			sourceTree = "<group>";
@@ -679,6 +682,7 @@
 				5082A1D827D1A95400C71C0F /* PickMachineView.swift in Sources */,
 				5082A1D627D1228900C71C0F /* UIViewController.swift in Sources */,
 				50C90AEE27CF119F00F60B51 /* SidebarView.swift in Sources */,
+				ABBE62902B90B45A00B347B9 /* Thanks.swift in Sources */,
 				50D3AEFB27D05D6D0085F899 /* EditMachineView.swift in Sources */,
 				5047BE9B27DCCB76008887A7 /* PortForwardElementView.swift in Sources */,
 				500D726A27CF1C0800149A43 /* View.swift in Sources */,

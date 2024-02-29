@@ -33,7 +33,7 @@ struct SidebarView: View {
             if store.storeRecent { recent }
         }
         .listStyle(SidebarListStyle())
-        .navigationTitle("Rayon")
+        .navigationTitle("GoodTerm")
     }
 
     var app: some View {

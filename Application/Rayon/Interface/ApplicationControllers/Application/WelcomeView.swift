@@ -34,7 +34,7 @@ struct WelcomeView: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Image("Avatar")
+            Image("icon")
                 .antialiased(true)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -107,7 +107,7 @@ struct WelcomeView: View {
         .sheet(isPresented: $openThanksView, onDismiss: nil) {
             ThanksView()
         }
-        .navigationTitle("Rayon")
+        .navigationTitle("GoodTerm")
         .padding()
         .expended()
         .background(
