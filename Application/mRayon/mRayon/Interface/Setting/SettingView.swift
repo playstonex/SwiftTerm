@@ -108,7 +108,7 @@ struct SettingView: View {
 
             Section {
                 NavigationLink {
-                    Thanks()
+                    ThanksView()
                 } label: {
                     Text("Thanks")
                 }

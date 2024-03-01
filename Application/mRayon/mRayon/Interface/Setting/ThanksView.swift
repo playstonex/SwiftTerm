@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct Thanks: View {
+struct ThanksView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 10) {
@@ -29,5 +29,5 @@ struct Thanks: View {
 }
 
 #Preview {
-    Thanks()
+    ThanksView()
 }
