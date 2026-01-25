@@ -23,12 +23,12 @@ func createPreview(creation: () -> AnyView) -> some View {
     Group {
         NavigationStack {
             creation()
-                .environment(RayonStore.shared)
+                .environmentObject(RayonStore.shared)
         }
         .previewDevice(PreviewDevice(rawValue: "iPod touch (7th generation)"))
         NavigationStack {
             creation()
-                .environment(RayonStore.shared)
+                .environmentObject(RayonStore.shared)
         }
         .previewDevice(PreviewDevice(rawValue: "iPad mini (6th generation)"))
         .previewInterfaceOrientation(.landscapeLeft)
