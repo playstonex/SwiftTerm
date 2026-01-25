@@ -16,6 +16,14 @@ struct SidebarView: View {
 
     var body: some View {
         List {
+            Text("GoodTerm")
+                .font(.headline)
+                .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 8)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 0, trailing: 16))
+
             NavigationLink {
                 WelcomeView().requiresFrame()
             } label: {
@@ -26,8 +34,9 @@ struct SidebarView: View {
             sftpSession
             if store.storeRecent { recent }
         }
-        .navigationTitle("GoodTerm")
-        .frame(minWidth: 200)
+        .listStyle(.sidebar)
+        .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
+        .navigationTitle("")
     }
 
     var manager: some View {

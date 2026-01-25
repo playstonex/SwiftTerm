@@ -197,7 +197,12 @@ public class RayonStore: ObservableObject {
     }
 
     @UserDefaultsWrapper(key: "wiki.qaq.rayon.maxRecentRecordCount", defaultValue: 8)
-    public var maxRecentRecordCount: Int
+    private var UDMaxRecentRecordCount: Int
+
+    public var maxRecentRecordCount: Int {
+        get { UDMaxRecentRecordCount }
+        set { UDMaxRecentRecordCount = newValue }
+    }
 
     @Published public var recentRecord: [RecentConnection] = [] {
         didSet {
@@ -209,7 +214,7 @@ public class RayonStore: ObservableObject {
     }
 
     @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalFontSize", defaultValue: 14)
-    public var UDTerminalFontSize: Int
+    private var UDTerminalFontSize: Int
 
     @Published public var terminalFontSize: Int = 14 {
         didSet {

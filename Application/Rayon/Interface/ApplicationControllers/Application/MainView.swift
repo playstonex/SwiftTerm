@@ -16,10 +16,13 @@ struct MainView: View {
     @State var openLicenseAgreementView: Bool = false
 
     var body: some View {
-        NavigationView {
+        NavigationSplitView {
             SidebarView()
+                .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
+        } detail: {
             WelcomeView().requiresFrame()
         }
+        .navigationSplitViewStyle(.balanced)
         .onAppear {
             openLicenseIfNeeded()
         }
@@ -40,17 +43,7 @@ struct MainView: View {
                         .opacity(store.globalProgressInPresent ? 1 : 0)
                 )
                 .ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.5), value: store.globalProgressInPresent)
         )
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    UIBridge.toggleSidebar()
-                } label: {
-                    Label("Toggle Sidebar", systemImage: "sidebar.leading")
-                }
-            }
-        }
     }
 
     func openLicenseIfNeeded() {
