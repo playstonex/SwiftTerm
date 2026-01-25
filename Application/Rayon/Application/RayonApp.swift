@@ -37,7 +37,6 @@ struct RayonApp: App {
                     nil
                 )
         }
-        .windowToolbarStyle(.unifiedCompact)
         .commands {
             SidebarCommands()
         }
@@ -61,6 +60,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             repeats: true
         )
         CFRunLoopAddTimer(CFRunLoopGetMain(), timer, .commonModes)
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Configure window titlebar to be transparent
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            if let window = NSApp.windows.first {
+                window.titlebarAppearsTransparent = true
+                window.titleVisibility = .hidden
+                window.styleMask.insert(.fullSizeContentView)
+            }
+        }
     }
 
     func applicationShouldTerminate(_: NSApplication) -> NSApplication.TerminateReply {

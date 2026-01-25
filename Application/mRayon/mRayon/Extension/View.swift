@@ -17,34 +17,18 @@ extension View {
     }
 }
 
-struct NavigationLazyView<Content: View>: View {
-    let build: () -> Content
-    init(_ build: @autoclosure @escaping () -> Content) {
-        self.build = build
-    }
-
-    var body: Content {
-        build()
-    }
-}
-
 import RayonModule
 
 func createPreview(creation: () -> AnyView) -> some View {
     Group {
-        NavigationView {
+        NavigationStack {
             creation()
-                .environmentObject(RayonStore.shared)
+                .environment(RayonStore.shared)
         }
         .previewDevice(PreviewDevice(rawValue: "iPod touch (7th generation)"))
-        .navigationViewStyle(StackNavigationViewStyle())
-        NavigationView {
-            NavigationLink(isActive: .constant(true)) {
-                creation()
-                    .environmentObject(RayonStore.shared)
-            } label: {
-                Label("Preview Layout", systemImage: "arrow.right")
-            }
+        NavigationStack {
+            creation()
+                .environment(RayonStore.shared)
         }
         .previewDevice(PreviewDevice(rawValue: "iPad mini (6th generation)"))
         .previewInterfaceOrientation(.landscapeLeft)

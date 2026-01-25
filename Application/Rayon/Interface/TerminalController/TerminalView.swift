@@ -14,13 +14,23 @@ struct TerminalView: View {
 
     @StateObject var store = RayonStore.shared
     @State var interfaceToken = UUID()
+    @State var backgroundColor: Color = .black
 
     var body: some View {
         Group {
             if context.interfaceToken == interfaceToken {
-                context.termInterface
-                    .padding(4)
-                    .onChange(of: store.terminalFontSize) { newValue in
+                GeometryReader { geometry in
+                    ZStack {
+                        backgroundColor
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .offset(x: 0, y: 0)
+
+                        context.termInterface
+                            .padding(4)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: store.terminalFontSize) { newValue in
                         context.termInterface.setTerminalFontSize(with: newValue)
                     }
                     .onChange(of: store.terminalThemeName) { _ in
@@ -30,6 +40,10 @@ struct TerminalView: View {
                     }
                     .onAppear {
                         context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
+                        // Set initial background color
+                        if let color = Color(hex: store.terminalTheme.background) {
+                            backgroundColor = color
+                        }
                         // Delay theme application to ensure WebView is ready
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                             self.applyTheme()
@@ -129,6 +143,12 @@ struct TerminalView: View {
     func applyTheme() {
         let theme = store.terminalTheme
         debugPrint("Applying terminal theme: \(theme.name)")
+
+        // Update background color state
+        if let color = Color(hex: theme.background) {
+            backgroundColor = color
+        }
+
         context.termInterface.setTerminalTheme(
             foreground: theme.foreground,
             background: theme.background,
@@ -150,5 +170,24 @@ struct TerminalView: View {
             brightCyan: theme.brightCyan,
             brightWhite: theme.brightWhite
         )
+    }
+}
+
+extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else {
+            return nil
+        }
+
+        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
+        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
+        let b = Double(rgb & 0x0000FF) / 255.0
+
+        self.init(red: r, green: g, blue: b)
     }
 }

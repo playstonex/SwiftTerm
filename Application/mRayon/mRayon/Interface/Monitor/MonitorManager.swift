@@ -5,6 +5,7 @@
 //  Created by Lakr Aream on 2022/3/3.
 //
 
+import Combine
 import Foundation
 import NSRemoteShell
 import RayonModule
