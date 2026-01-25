@@ -17,13 +17,17 @@ struct TerminalView: View {
     @State var backgroundColor: Color = .black
 
     var body: some View {
-        ZStack {
-            backgroundColor.ignoresSafeArea()
-
+        Group {
             if context.interfaceToken == interfaceToken {
-                GeometryReader { _ in
-                    context.termInterface
-                        .padding(4)
+                GeometryReader { geometry in
+                    ZStack {
+                        backgroundColor
+                            .frame(width: geometry.size.width, height: geometry.size.height)
+                            .offset(x: 0, y: 0)
+
+                        context.termInterface
+                            .padding(4)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onChange(of: store.terminalFontSize) { newValue in

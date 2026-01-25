@@ -36,7 +36,6 @@ struct SidebarView: View {
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 200, ideal: 250, max: 400)
-        .navigationTitle("")
     }
 
     var manager: some View {
