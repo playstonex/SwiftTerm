@@ -71,8 +71,23 @@ struct SettingView: View {
                     in: 5 ... 30,
                     step: 1
                 ) { _ in }
+                Picker("Theme", selection: $store.themePreference) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
             } header: {
                 Label("Interface", systemImage: "arrow.right")
+            }
+
+            Section {
+                Picker("Terminal Theme", selection: $store.terminalThemeName) {
+                    ForEach(TerminalTheme.allThemes, id: \.name) { theme in
+                        Text(theme.name).tag(theme.name)
+                    }
+                }
+            } header: {
+                Label("Terminal", systemImage: "arrow.right")
             }
 
             Section {

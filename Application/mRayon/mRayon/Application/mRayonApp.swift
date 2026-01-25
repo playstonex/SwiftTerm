@@ -29,6 +29,11 @@ struct mRayonApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
+                .preferredColorScheme(
+                    store.themePreference == "dark" ? .dark :
+                    store.themePreference == "light" ? .light :
+                    nil
+                )
                 .onAppear {
                     // optimize later on flight exp
                     let editor = SCodeEditor()
@@ -46,7 +51,7 @@ struct mRayonApp: App {
                 .onChange(of: store.licenseAgreed) { _ in
                     checkAgreement()
                 }
-                
+
         }
     }
 

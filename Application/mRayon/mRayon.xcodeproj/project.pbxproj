@@ -916,7 +916,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 61;
+				CURRENT_PROJECT_VERSION = 68;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_PREVIEWS = YES;
@@ -925,8 +925,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = GoodTerm;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "We are using Face ID to check your ownership of your devices before performing sensitive operation.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Playstone All rights reserved.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Check your ownership of your devices before performing sensitive operation.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Playstone, Inc All rights reserved.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
@@ -964,7 +964,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 61;
+				CURRENT_PROJECT_VERSION = 68;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_PREVIEWS = YES;
@@ -973,8 +973,8 @@
 				INFOPLIST_KEY_CFBundleDisplayName = GoodTerm;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "We are using Face ID to check your ownership of your devices before performing sensitive operation.";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Playstone All rights reserved.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "Check your ownership of your devices before performing sensitive operation.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Playstone, Inc All rights reserved.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "Launch Screen.storyboard";
@@ -1012,7 +1012,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 61;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
 				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_PREVIEWS = YES;
@@ -1050,7 +1050,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 61;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
 				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_PREVIEWS = YES;

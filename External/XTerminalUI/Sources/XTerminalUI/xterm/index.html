@@ -7,11 +7,59 @@
     <title>Solid App</title>
     <script type="module" crossorigin src="./assets/index.c572b01f.js"></script>
     <link rel="stylesheet" href="./assets/index.12cbc7e7.css">
+    <script>
+      // Global function to set terminal theme
+      // This will be called from Swift
+
+      // Store pending theme if terminal is not ready
+      var pendingTheme = null;
+
+      window.setTerminalTheme = function(theme) {
+        // Try to find the terminal object
+        var terminal = window.M || window.term || window.terminal;
+
+        if (terminal && terminal.options) {
+          try {
+            terminal.options.theme = theme;
+            terminal.refresh(0, terminal.rows - 1);
+            pendingTheme = null;
+          } catch (e) {
+            console.error('Error setting theme:', e);
+            pendingTheme = theme;
+          }
+        } else {
+          pendingTheme = theme;
+          // Retry after delay
+          setTimeout(function() {
+            var terminal = window.M || window.term || window.terminal;
+            if (pendingTheme && terminal && terminal.options) {
+              window.setTerminalTheme(pendingTheme);
+            }
+          }, 500);
+        }
+      };
+
+      // Watch for terminal to be ready and apply any pending theme
+      var checkInterval = setInterval(function() {
+        var terminal = window.M || window.term || window.terminal;
+        if (terminal && terminal.options) {
+          clearInterval(checkInterval);
+          if (pendingTheme) {
+            window.setTerminalTheme(pendingTheme);
+          }
+        }
+      }, 100);
+
+      // Stop checking after 10 seconds
+      setTimeout(function() {
+        clearInterval(checkInterval);
+      }, 10000);
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
 
-    
+
   </body>
 </html>

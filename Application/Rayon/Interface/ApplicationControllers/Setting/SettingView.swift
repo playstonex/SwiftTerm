@@ -60,6 +60,14 @@ struct SettingView: View {
                         .font(.system(.headline, design: .rounded))
                     Text("This option will save several most recent used machine.")
                         .font(.system(.subheadline, design: .rounded))
+                    Picker("Theme", selection: $store.themePreference) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }
+                    .font(.system(.headline, design: .rounded))
+                    Text("Choose the app appearance.")
+                        .font(.system(.subheadline, design: .rounded))
                 } header: {
                     Text("Application")
                         .font(.system(.headline, design: .rounded))
@@ -83,6 +91,21 @@ struct SettingView: View {
                         .font(.system(.subheadline, design: .rounded))
                 } header: {
                     Text("Connection")
+                        .font(.system(.headline, design: .rounded))
+                } footer: {
+                    Divider()
+                }
+                Section {
+                    Picker("Terminal Theme", selection: $store.terminalThemeName) {
+                        ForEach(TerminalTheme.allThemes, id: \.name) { theme in
+                            Text(theme.name).tag(theme.name)
+                        }
+                    }
+                    .font(.system(.headline, design: .rounded))
+                    Text("Choose terminal color theme.")
+                        .font(.system(.subheadline, design: .rounded))
+                } header: {
+                    Text("Terminal")
                         .font(.system(.headline, design: .rounded))
                 } footer: {
                     Divider()

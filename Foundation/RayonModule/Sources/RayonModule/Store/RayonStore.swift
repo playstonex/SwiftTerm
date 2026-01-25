@@ -217,6 +217,28 @@ public class RayonStore: ObservableObject {
         }
     }
 
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.themePreference", defaultValue: "system")
+    private var UDThemePreference: String
+
+    @Published public var themePreference: String = "system" {
+        didSet {
+            UDThemePreference = themePreference
+        }
+    }
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalThemeName", defaultValue: "Default")
+    private var UDTerminalThemeName: String
+
+    @Published public var terminalThemeName: String = "Default" {
+        didSet {
+            UDTerminalThemeName = terminalThemeName
+        }
+    }
+
+    public var terminalTheme: TerminalTheme {
+        TerminalTheme.allThemes.first { $0.name == terminalThemeName } ?? .default
+    }
+
     @Published public var snippetGroup: RDSnippetGroup = .init() {
         didSet {
             storeEncryptedDefault(

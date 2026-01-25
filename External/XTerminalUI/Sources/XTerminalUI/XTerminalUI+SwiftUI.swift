@@ -48,7 +48,51 @@ import SwiftUI
         public func setTerminalFontSize(with size: Int) {
             correspondingView.setTerminalFontSize(with: size)
         }
-        
+
+        public func setTerminalTheme(
+            foreground: String,
+            background: String,
+            cursor: String,
+            black: String,
+            red: String,
+            green: String,
+            yellow: String,
+            blue: String,
+            magenta: String,
+            cyan: String,
+            white: String,
+            brightBlack: String,
+            brightRed: String,
+            brightGreen: String,
+            brightYellow: String,
+            brightBlue: String,
+            brightMagenta: String,
+            brightCyan: String,
+            brightWhite: String
+        ) {
+            correspondingView.setTerminalTheme(
+                foreground: foreground,
+                background: background,
+                cursor: cursor,
+                black: black,
+                red: red,
+                green: green,
+                yellow: yellow,
+                blue: blue,
+                magenta: magenta,
+                cyan: cyan,
+                white: white,
+                brightBlack: brightBlack,
+                brightRed: brightRed,
+                brightGreen: brightGreen,
+                brightYellow: brightYellow,
+                brightBlue: brightBlue,
+                brightMagenta: brightMagenta,
+                brightCyan: brightCyan,
+                brightWhite: brightWhite
+            )
+        }
+
         public func write(_ str: String) {
             correspondingView.write(str)
         }
@@ -96,9 +140,53 @@ import SwiftUI
             correspondingView.setupSizeChain(callback: callback)
             return self
         }
-        
+
         public func setTerminalFontSize(with size: Int) {
             correspondingView.setTerminalFontSize(with: size)
+        }
+
+        public func setTerminalTheme(
+            foreground: String,
+            background: String,
+            cursor: String,
+            black: String,
+            red: String,
+            green: String,
+            yellow: String,
+            blue: String,
+            magenta: String,
+            cyan: String,
+            white: String,
+            brightBlack: String,
+            brightRed: String,
+            brightGreen: String,
+            brightYellow: String,
+            brightBlue: String,
+            brightMagenta: String,
+            brightCyan: String,
+            brightWhite: String
+        ) {
+            correspondingView.setTerminalTheme(
+                foreground: foreground,
+                background: background,
+                cursor: cursor,
+                black: black,
+                red: red,
+                green: green,
+                yellow: yellow,
+                blue: blue,
+                magenta: magenta,
+                cyan: cyan,
+                white: white,
+                brightBlack: brightBlack,
+                brightRed: brightRed,
+                brightGreen: brightGreen,
+                brightYellow: brightYellow,
+                brightBlue: brightBlue,
+                brightMagenta: brightMagenta,
+                brightCyan: brightCyan,
+                brightWhite: brightWhite
+            )
         }
 
         public func write(_ str: String) {
