@@ -54,6 +54,50 @@
             associatedCore.setTerminalFontSize(with: size)
         }
 
+        public func setTerminalTheme(
+            foreground: String,
+            background: String,
+            cursor: String,
+            black: String,
+            red: String,
+            green: String,
+            yellow: String,
+            blue: String,
+            magenta: String,
+            cyan: String,
+            white: String,
+            brightBlack: String,
+            brightRed: String,
+            brightGreen: String,
+            brightYellow: String,
+            brightBlue: String,
+            brightMagenta: String,
+            brightCyan: String,
+            brightWhite: String
+        ) {
+            associatedCore.setTerminalTheme(
+                foreground: foreground,
+                background: background,
+                cursor: cursor,
+                black: black,
+                red: red,
+                green: green,
+                yellow: yellow,
+                blue: blue,
+                magenta: magenta,
+                cyan: cyan,
+                white: white,
+                brightBlack: brightBlack,
+                brightRed: brightRed,
+                brightGreen: brightGreen,
+                brightYellow: brightYellow,
+                brightBlue: brightBlue,
+                brightMagenta: brightMagenta,
+                brightCyan: brightCyan,
+                brightWhite: brightWhite
+            )
+        }
+
         public func requestTerminalSize() -> CGSize {
             associatedCore.requestTerminalSize()
         }

@@ -31,6 +31,11 @@ struct RayonApp: App {
         WindowGroup {
             MainView()
                 .environmentObject(store)
+                .preferredColorScheme(
+                    store.themePreference == "dark" ? .dark :
+                    store.themePreference == "light" ? .light :
+                    nil
+                )
         }
         .windowToolbarStyle(.unifiedCompact)
         .commands {

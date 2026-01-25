@@ -38,9 +38,18 @@ struct TerminalView: View {
                             }
                             .onAppear {
                                 context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
+                                // Delay theme application to ensure WebView is ready
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                    self.applyTheme()
+                                }
                             }
                             .onChange(of: store.terminalFontSize) { newValue in
                                 context.termInterface.setTerminalFontSize(with: newValue)
+                            }
+                            .onChange(of: store.terminalThemeName) { _ in
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                    self.applyTheme()
+                                }
                             }
                             .padding(r.size.width > 600 ? 8 : 2)
                         if !context.destroyedSession {
@@ -244,5 +253,31 @@ struct TerminalView: View {
                 }
             }
         }
+    }
+
+    func applyTheme() {
+        let theme = store.terminalTheme
+        debugPrint("Applying terminal theme: \(theme.name)")
+        context.termInterface.setTerminalTheme(
+            foreground: theme.foreground,
+            background: theme.background,
+            cursor: theme.cursor,
+            black: theme.black,
+            red: theme.red,
+            green: theme.green,
+            yellow: theme.yellow,
+            blue: theme.blue,
+            magenta: theme.magenta,
+            cyan: theme.cyan,
+            white: theme.white,
+            brightBlack: theme.brightBlack,
+            brightRed: theme.brightRed,
+            brightGreen: theme.brightGreen,
+            brightYellow: theme.brightYellow,
+            brightBlue: theme.brightBlue,
+            brightMagenta: theme.brightMagenta,
+            brightCyan: theme.brightCyan,
+            brightWhite: theme.brightWhite
+        )
     }
 }

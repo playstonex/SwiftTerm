@@ -32,10 +32,32 @@ protocol XTerminal {
     func setupSizeChain(callback: ((CGSize) -> Void)?) -> Self
 
     func write(_ str: String)
-    
+
     func requestTerminalSize() -> CGSize
-    
+
     func setTerminalFontSize(with size: Int)
+
+    func setTerminalTheme(
+        foreground: String,
+        background: String,
+        cursor: String,
+        black: String,
+        red: String,
+        green: String,
+        yellow: String,
+        blue: String,
+        magenta: String,
+        cyan: String,
+        white: String,
+        brightBlack: String,
+        brightRed: String,
+        brightGreen: String,
+        brightYellow: String,
+        brightBlue: String,
+        brightMagenta: String,
+        brightCyan: String,
+        brightWhite: String
+    )
 }
 
 class XTerminalCore: XTerminal {
@@ -185,6 +207,66 @@ class XTerminalCore: XTerminal {
             self.associatedWebView.evaluateJavascriptWithRetry(javascript: script)
             let fit = "window.fit()"
             self.associatedWebView.evaluateJavascriptWithRetry(javascript: fit)
+        }
+    }
+
+    func setTerminalTheme(
+        foreground: String,
+        background: String,
+        cursor: String,
+        black: String,
+        red: String,
+        green: String,
+        yellow: String,
+        blue: String,
+        magenta: String,
+        cyan: String,
+        white: String,
+        brightBlack: String,
+        brightRed: String,
+        brightGreen: String,
+        brightYellow: String,
+        brightBlue: String,
+        brightMagenta: String,
+        brightCyan: String,
+        brightWhite: String
+    ) {
+        DispatchQueue.global().async {
+            // wait for the webview to load
+            let begin = Date()
+            while true {
+                if self.associatedWebDelegate.navigateCompleted { break }
+                if Date().timeIntervalSince(begin) > 5 { break }
+                usleep(1000)
+            }
+
+            // Call the global setTerminalTheme function
+            let script = """
+            if (typeof window.setTerminalTheme === 'function') {
+                window.setTerminalTheme({
+                    foreground: '\(foreground)',
+                    background: '\(background)',
+                    cursor: '\(cursor)',
+                    black: '\(black)',
+                    red: '\(red)',
+                    green: '\(green)',
+                    yellow: '\(yellow)',
+                    blue: '\(blue)',
+                    magenta: '\(magenta)',
+                    cyan: '\(cyan)',
+                    white: '\(white)',
+                    brightBlack: '\(brightBlack)',
+                    brightRed: '\(brightRed)',
+                    brightGreen: '\(brightGreen)',
+                    brightYellow: '\(brightYellow)',
+                    brightBlue: '\(brightBlue)',
+                    brightMagenta: '\(brightMagenta)',
+                    brightCyan: '\(brightCyan)',
+                    brightWhite: '\(brightWhite)'
+                });
+            }
+            """
+            self.associatedWebView.evaluateJavascriptWithRetry(javascript: script)
         }
     }
     
