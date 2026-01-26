@@ -37,6 +37,8 @@ protocol XTerminal {
 
     func setTerminalFontSize(with size: Int)
 
+    func setTerminalFontName(with name: String)
+
     func setTerminalTheme(
         foreground: String,
         background: String,
@@ -207,6 +209,33 @@ class XTerminalCore: XTerminal {
             self.associatedWebView.evaluateJavascriptWithRetry(javascript: script)
             let fit = "window.fit()"
             self.associatedWebView.evaluateJavascriptWithRetry(javascript: fit)
+        }
+    }
+
+    func setTerminalFontName(with name: String) {
+        DispatchQueue.global().async {
+            // wait for the webview to load
+            let begin = Date()
+            while true {
+                if self.associatedWebDelegate.navigateCompleted { break }
+                if Date().timeIntervalSince(begin) > 5 { break }
+                usleep(1000)
+            }
+
+            // Escape the font name for JavaScript (handle quotes and special characters)
+            let escapedName = name
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+
+            // Call the global setTerminalFont function
+            let script = """
+            if (typeof window.setTerminalFont === 'function') {
+                window.setTerminalFont('\(escapedName)');
+            }
+            """
+            debugPrint("Setting terminal font to: \(name)")
+            self.associatedWebView.evaluateJavascriptWithRetry(javascript: script)
         }
     }
 

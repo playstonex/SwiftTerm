@@ -86,6 +86,19 @@ struct SettingView: View {
                         Text(theme.name).tag(theme.name)
                     }
                 }
+                Picker("Terminal Font", selection: $store.terminalFontName) {
+                    Text("Menlo").tag("Menlo")
+                    Text("Monaco").tag("Monaco")
+                    Text("SF Mono").tag("SF Mono")
+                    Text("FiraCode Nerd Font Mono").tag("FiraCode Nerd Font Mono")
+                    Text("Maple Mono NF CN").tag("Maple Mono NF CN")
+                    Text("Cascadia Code NF").tag("Cascadia Code NF")
+                    Text("Cascadia Mono NF").tag("Cascadia Mono NF")
+                    Text("Hack Nerd Font Mono").tag("Hack Nerd Font Mono")
+                    Text("Inconsolata Nerd Font Mono").tag("Inconsolata Nerd Font Mono")
+                    Text("JetBrains Mono").tag("JetBrains Mono")
+                    Text("Source Code Pro").tag("Source Code Pro")
+                }
             } header: {
                 Label("Terminal", systemImage: "arrow.right")
             }

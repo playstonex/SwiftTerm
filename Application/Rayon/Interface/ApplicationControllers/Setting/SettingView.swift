@@ -104,6 +104,22 @@ struct SettingView: View {
                     .font(.system(.headline, design: .rounded))
                     Text("Choose terminal color theme.")
                         .font(.system(.subheadline, design: .rounded))
+                    Picker("Terminal Font", selection: $store.terminalFontName) {
+                        Text("Menlo").tag("Menlo")
+                        Text("Monaco").tag("Monaco")
+                        Text("SF Mono").tag("SF Mono")
+                        Text("FiraCode Nerd Font Mono").tag("FiraCode Nerd Font Mono")
+                        Text("Maple Mono NF CN").tag("Maple Mono NF CN")
+                        Text("Cascadia Code NF").tag("Cascadia Code NF")
+                        Text("Cascadia Mono NF").tag("Cascadia Mono NF")
+                        Text("Hack Nerd Font Mono").tag("Hack Nerd Font Mono")
+                        Text("Inconsolata Nerd Font Mono").tag("Inconsolata Nerd Font Mono")
+                        Text("JetBrains Mono").tag("JetBrains Mono")
+                        Text("Source Code Pro").tag("Source Code Pro")
+                    }
+                    .font(.system(.headline, design: .rounded))
+                    Text("Choose terminal font family.")
+                        .font(.system(.subheadline, design: .rounded))
                 } header: {
                     Text("Terminal")
                         .font(.system(.headline, design: .rounded))

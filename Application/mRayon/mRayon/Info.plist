@@ -9,6 +9,37 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>CascadiaCodeNF.ttf</string>
+		<string>CascadiaMonoNF.ttf</string>
+		<string>FiraCodeNerdFontMono-Bold.ttf</string>
+		<string>FiraCodeNerdFontMono-Light.ttf</string>
+		<string>FiraCodeNerdFontMono-Medium.ttf</string>
+		<string>FiraCodeNerdFontMono-Regular.ttf</string>
+		<string>FiraCodeNerdFontMono-Retina.ttf</string>
+		<string>FiraCodeNerdFontMono-SemiBold.ttf</string>
+		<string>HackNerdFontMono-Bold.ttf</string>
+		<string>HackNerdFontMono-Regular.ttf</string>
+		<string>InconsolataNerdFontMono-Bold.ttf</string>
+		<string>InconsolataNerdFontMono-Regular.ttf</string>
+		<string>JetBrainsMono-Bold.ttf</string>
+		<string>JetBrainsMono-ExtraBold.ttf</string>
+		<string>JetBrainsMono-ExtraLight.ttf</string>
+		<string>JetBrainsMono-Light.ttf</string>
+		<string>JetBrainsMono-Medium.ttf</string>
+		<string>JetBrainsMono-Regular.ttf</string>
+		<string>JetBrainsMono-SemiBold.ttf</string>
+		<string>JetBrainsMono-Thin.ttf</string>
+		<string>MapleMono-NF-CN-Bold.ttf</string>
+		<string>MapleMono-NF-CN-ExtraBold.ttf</string>
+		<string>MapleMono-NF-CN-ExtraLight.ttf</string>
+		<string>MapleMono-NF-CN-Light.ttf</string>
+		<string>MapleMono-NF-CN-Medium.ttf</string>
+		<string>MapleMono-NF-CN-Regular.ttf</string>
+		<string>MapleMono-NF-CN-SemiBold.ttf</string>
+		<string>MapleMono-NF-CN-Thin.ttf</string>
+	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchScreen</key>

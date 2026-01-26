@@ -27,6 +27,7 @@
         _associatedThread = [[NSThread alloc] initWithTarget:self
                                                     selector:@selector(associatedThreadHandler)
                                                       object:NULL];
+        _associatedThread.qualityOfService = NSQualityOfServiceUserInitiated;
         NSString *threadName = [[NSString alloc] initWithFormat:@"wiki.qaq.shell.%p", parent];
         [_associatedThread setName:threadName];
         NSLog(@"opening thread %@", threadName);

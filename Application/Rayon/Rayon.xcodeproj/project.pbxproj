@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 55;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -142,6 +142,10 @@
 		ABD999D228A09F0700404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		AB0DC3092F26A50C00B4F3DB /* fonts */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = fonts; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		509F7F3927B2AF7F00F28752 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -247,6 +251,7 @@
 			children = (
 				509F7F2C27B2AF7E00F28752 /* RayonApp.swift */,
 				509F7F2F27B2AF7F00F28752 /* Assets.xcassets */,
+				AB0DC3092F26A50C00B4F3DB /* fonts */,
 				5082A1CD27D0E0F300C71C0F /* EULA */,
 				5082A1CE27D0E0F300C71C0F /* LICENSE */,
 			);
@@ -407,6 +412,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AB0DC3092F26A50C00B4F3DB /* fonts */,
 			);
 			name = "Rayon (macOS)";
 			packageProductDependencies = (

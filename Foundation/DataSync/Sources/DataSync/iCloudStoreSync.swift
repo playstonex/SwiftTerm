@@ -29,17 +29,21 @@ public protocol iCloudSyncItem : Codable {
 
 
 public class iCloudStoreSync {
-    
+
     public static let share = iCloudStoreSync()
-    
-    let db = CKContainer(identifier: "iCloud.com.playstone.bigserver.cloud.store") .privateCloudDatabase
-    
+
+    private let db: CKDatabase?
+
     var lastSyncDate : Date = Date(timeIntervalSince1970: 0)
     
     public var syncDate: Date {
         return lastSyncDate;
     }
     fileprivate  init() {
+        // Safely initialize CloudKit database
+        // Note: This will be nil if CloudKit entitlements are not properly configured
+        let container = CKContainer(identifier: "iCloud.com.playstone.bigserver.cloud.store")
+        db = container.privateCloudDatabase
         dataSetup()
     }
     
@@ -50,11 +54,14 @@ public class iCloudStoreSync {
     }
     
     public func upload(item: iCloudSyncItem) async throws {
-        
+        guard let database = db else {
+            throw NSError(domain: "iCloudStoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "CloudKit is not available. Please check your app entitlements."])
+        }
+
         let record = item.generateRecord()
-        
+
         do {
-            try await db.save(record)
+            try await database.save(record)
         }
         catch let error {
             throw error
@@ -78,8 +85,11 @@ public class iCloudStoreSync {
     //  lastSyncDate 设为当前时间
     @available(macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0, *)
     public func startSync<T:iCloudSyncItem>(items:[T]) async throws {
-        
-        let moditifiedRemoteRecords = try await self.db.records(type: T.self,
+        guard let database = db else {
+            throw NSError(domain: "iCloudStoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "CloudKit is not available. Please check your app entitlements."])
+        }
+
+        let moditifiedRemoteRecords = try await database.records(type: T.self,
                                                          predicate: NSPredicate(format: "lastModifiedDate >= %@", self.lastSyncDate as CVarArg))
         let moditifiedLocalItems = items.filter { $0.lastModifiedDate.timeIntervalSince(self.lastSyncDate) > 0 }
         
@@ -128,18 +138,21 @@ public class iCloudStoreSync {
     
     
     func saveAndUpdate(item: iCloudSyncItem) async throws {
-        
-        let record = try? await self.db.record(for:item.recordId)
+        guard let database = db else {
+            throw NSError(domain: "iCloudStoreSync", code: -1, userInfo: [NSLocalizedDescriptionKey: "CloudKit is not available. Please check your app entitlements."])
+        }
+
+        let record = try? await database.record(for:item.recordId)
         if let record = record {
             item.update(to: record)
             record.setObject(Date() as __CKRecordObjCValue, forKey: "lastModifiedDate")
-            try await self.db.save(record)
+            try await database.save(record)
         }
         else {
             let record = item.generateRecord()
             record.setObject(Date() as __CKRecordObjCValue, forKey: "lastModifiedDate")
-            try await self.db.save(record)
+            try await database.save(record)
         }
-        
+
     }
 }

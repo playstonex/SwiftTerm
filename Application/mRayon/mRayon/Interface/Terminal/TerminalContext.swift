@@ -102,7 +102,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         command = nil
         remoteType = .machine
         title = machine.name
-        DispatchQueue.global().async {
+        DispatchQueue.global(qos: .userInitiated).async {
             self.processBootstrap()
         }
     }
@@ -118,7 +118,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         self.command = command
         title = command.command
         remoteType = .machine
-        DispatchQueue.global().async {
+        DispatchQueue.global(qos: .userInitiated).async {
             self.processBootstrap()
         }
     }

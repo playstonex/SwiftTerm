@@ -28,6 +28,16 @@ public class RayonStore: ObservableObject {
         disableConformation = UDDisableConformation
         monitorInterval = UDMonitorInterval
         terminalFontSize = UDTerminalFontSize
+        // Load theme preferences from UserDefaults
+        themePreference = UDThemePreference
+        terminalThemeName = UDTerminalThemeName
+        // Migrate old font name if needed
+        var fontName = UDTerminalFontName
+        if fontName == "MapleMono NF CN" {
+            fontName = "Maple Mono NF CN"
+            UDTerminalFontName = fontName
+        }
+        terminalFontName = fontName
         if timeout <= 0 { timeout = 5 }
 
         if let read = readEncryptedDefault(
@@ -216,6 +226,9 @@ public class RayonStore: ObservableObject {
     @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalFontSize", defaultValue: 14)
     private var UDTerminalFontSize: Int
 
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalFontName", defaultValue: "Menlo")
+    private var UDTerminalFontName: String
+
     @Published public var terminalFontSize: Int = 14 {
         didSet {
             UDTerminalFontSize = terminalFontSize
@@ -237,6 +250,12 @@ public class RayonStore: ObservableObject {
     @Published public var terminalThemeName: String = "Default" {
         didSet {
             UDTerminalThemeName = terminalThemeName
+        }
+    }
+
+    @Published public var terminalFontName: String = "Menlo" {
+        didSet {
+            UDTerminalFontName = terminalFontName
         }
     }
 

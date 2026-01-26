@@ -74,7 +74,7 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
         self.machine = machine
         self.identity = identity
         currentDir = machine.fileTransferLoginPath
-        DispatchQueue.global().async {
+        DispatchQueue.global(qos: .userInitiated).async {
             self.processBootstrap()
         }
     }
@@ -112,7 +112,7 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
                 .topMostViewController?
                 .present(next: host)
         }
-        DispatchQueue.global().async {
+        DispatchQueue.global(qos: .userInitiated).async {
             self.callConnect()
         }
     }

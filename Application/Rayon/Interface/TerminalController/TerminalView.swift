@@ -33,6 +33,11 @@ struct TerminalView: View {
                 .onChange(of: store.terminalFontSize) { newValue in
                         context.termInterface.setTerminalFontSize(with: newValue)
                     }
+                    .onChange(of: store.terminalFontName) { newValue in
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            self.applyFont()
+                        }
+                    }
                     .onChange(of: store.terminalThemeName) { _ in
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             self.applyTheme()
@@ -40,6 +45,7 @@ struct TerminalView: View {
                     }
                     .onAppear {
                         context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
+                        context.termInterface.setTerminalFontName(with: store.terminalFontName)
                         // Set initial background color
                         if let color = Color(hex: store.terminalTheme.background) {
                             backgroundColor = color
@@ -47,6 +53,7 @@ struct TerminalView: View {
                         // Delay theme application to ensure WebView is ready
                         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                             self.applyTheme()
+                            self.applyFont()
                         }
                     }
             } else {
@@ -170,6 +177,13 @@ struct TerminalView: View {
             brightCyan: theme.brightCyan,
             brightWhite: theme.brightWhite
         )
+    }
+
+    func applyFont() {
+        let fontName = store.terminalFontName
+        debugPrint("Applying terminal font: \(fontName)")
+
+        context.termInterface.setTerminalFontName(with: fontName)
     }
 }
 

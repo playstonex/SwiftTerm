@@ -72,7 +72,7 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
         self.machine = machine
         self.identity = identity
         currentDir = machine.fileTransferLoginPath
-        DispatchQueue.global().async {
+        DispatchQueue.global(qos: .userInitiated).async {
             self.processBootstrap()
         }
     }
@@ -95,7 +95,7 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
     }
 
     func processBootstrap() {
-        DispatchQueue.global().async {
+        DispatchQueue.global(qos: .userInitiated).async {
             self.callConnect()
         }
     }

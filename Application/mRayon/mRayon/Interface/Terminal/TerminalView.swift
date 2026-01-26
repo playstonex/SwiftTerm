@@ -7,6 +7,7 @@
 
 import RayonModule
 import SwiftUI
+import UIKit
 import XTerminalUI
 
 struct TerminalView: View {
@@ -19,44 +20,174 @@ struct TerminalView: View {
     @State var openControlKeyPopover: Bool = false
     @State var controlKey: String = ""
 
+    @State var accessoryBarOffset: CGSize = .zero
+    @State var isDraggingAccessoryBar: Bool = false
+    @State var lastDragOffset: CGSize = .zero
+
     @StateObject var store = RayonStore.shared
 
     @Environment(\.presentationMode) var presentationMode
 
+    // Helper function to create Color from hex string
+    private func ColorFromHex(_ hex: String) -> Color {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+
+        let length = hexSanitized.count
+        var r: CGFloat = 0.0
+        var g: CGFloat = 0.0
+        var b: CGFloat = 0.0
+        var a: CGFloat = 1.0
+
+        if length == 6 {
+            r = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+            g = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+            b = CGFloat(rgb & 0x0000FF) / 255.0
+        } else if length == 8 {
+            r = CGFloat((rgb & 0xFF000000) >> 24) / 255.0
+            g = CGFloat((rgb & 0x00FF0000) >> 16) / 255.0
+            b = CGFloat((rgb & 0x0000FF00) >> 8) / 255.0
+            a = CGFloat(rgb & 0x000000FF) / 255.0
+        }
+
+        return Color(red: r, green: g, blue: b, opacity: a)
+    }
+
     var body: some View {
         Group {
             if context.interfaceToken == interfaceToken {
-                GeometryReader { r in
-                    VStack {
-                        context.termInterface
-                            .onChange(of: r.size) { _ in
-                                guard context.interfaceToken == interfaceToken else {
-                                    debugPrint("interface token mismatch")
-                                    return
-                                }
-                                updateTerminalSize()
+            GeometryReader { r in
+                ZStack(alignment: .bottom) {
+                    // Background fills entire view including safe area (chin)
+                    ColorFromHex(store.terminalTheme.background)
+                        .ignoresSafeArea()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    // Terminal fills the entire view
+                    context.termInterface
+                        .onChange(of: r.size) { _ in
+                            guard context.interfaceToken == interfaceToken else {
+                                debugPrint("interface token mismatch")
+                                return
                             }
-                            .onAppear {
-                                context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
-                                // Delay theme application to ensure WebView is ready
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                    self.applyTheme()
-                                }
+                            updateTerminalSize()
+                        }
+                        .onAppear {
+                            context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
+                            context.termInterface.setTerminalFontName(with: store.terminalFontName)
+                            // Delay theme application to ensure WebView is ready
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                self.applyTheme()
+                                self.applyFont()
                             }
-                            .onChange(of: store.terminalFontSize) { newValue in
-                                context.termInterface.setTerminalFontSize(with: newValue)
+                        }
+                        .onChange(of: store.terminalFontSize) { newValue in
+                            context.termInterface.setTerminalFontSize(with: newValue)
+                        }
+                        .onChange(of: store.terminalFontName) { newValue in
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                self.applyFont()
                             }
-                            .onChange(of: store.terminalThemeName) { _ in
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                    self.applyTheme()
-                                }
+                        }
+                        .onChange(of: store.terminalThemeName) { _ in
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                self.applyTheme()
                             }
-                            .padding(r.size.width > 600 ? 8 : 2)
-                        if !context.destroyedSession {
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    // Floating accessory bar at the bottom
+                    if !context.destroyedSession {
+                        VStack {
+                            Spacer()
                             buttonGroup
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(10)
+                                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: -4)
+                                .offset(accessoryBarOffset)
+                                .animation(isDraggingAccessoryBar ? .interactiveSpring() : .spring(response: 0.3, dampingFraction: 0.7), value: accessoryBarOffset)
+                                .gesture(
+                                    DragGesture()
+                                        .onChanged { value in
+                                            isDraggingAccessoryBar = true
+                                            // Calculate cumulative offset from last position
+                                            let newOffset = CGSize(
+                                                width: lastDragOffset.width + value.translation.width,
+                                                height: lastDragOffset.height + value.translation.height
+                                            )
+                                            accessoryBarOffset = newOffset
+                                        }
+                                        .onEnded { value in
+                                            isDraggingAccessoryBar = false
+
+                                            // Get screen size and safe area
+                                            let screenSize = UIScreen.main.bounds.size
+                                            let window = UIApplication.shared.connectedScenes
+                                                .compactMap { $0 as? UIWindowScene }
+                                                .first?.windows.first
+                                            let safeAreaInsets = window?.safeAreaInsets ?? .zero
+
+                                            // Safe area already includes navbar and status bar
+                                            let topSafeArea = safeAreaInsets.top
+                                            let bottomSafeArea = safeAreaInsets.bottom
+                                            let sidePadding: CGFloat = 8 // Match the .padding(.horizontal, 8)
+
+                                            // Approximate accessory bar size
+                                            let barWidth: CGFloat = screenSize.width - (sidePadding * 2)
+                                            let barHeight: CGFloat = 50 // Approximate with padding
+
+                                            let snapThreshold: CGFloat = 80
+                                            var targetOffset = CGSize.zero
+
+                                            // Get current position
+                                            let currentX = lastDragOffset.width + value.translation.width
+                                            let currentY = lastDragOffset.height + value.translation.height
+
+                                            // Determine horizontal snap
+                                            if abs(currentX) < snapThreshold {
+                                                // Keep near center
+                                                targetOffset.width = 0
+                                            } else if currentX < 0 {
+                                                // Snap to left edge (account for padding)
+                                                let maxLeftOffset = -(screenSize.width / 2) + sidePadding + (barWidth / 2)
+                                                targetOffset.width = maxLeftOffset
+                                            } else {
+                                                // Snap to right edge (account for padding)
+                                                let maxRightOffset = (screenSize.width / 2) - sidePadding - (barWidth / 2)
+                                                targetOffset.width = maxRightOffset
+                                            }
+
+                                            // Determine vertical snap
+                                            let availableHeight = screenSize.height - topSafeArea - bottomSafeArea
+                                            let maxY = availableHeight / 2 - barHeight - 8 // 8 is bottom padding
+
+                                            if abs(currentY) < snapThreshold {
+                                                // Keep near bottom (default position)
+                                                targetOffset.height = 0
+                                            } else if currentY < 0 {
+                                                // Snap to top (below navbar)
+                                                let minY = -(availableHeight / 2) + (barHeight / 2) + 8
+                                                targetOffset.height = minY
+                                            } else {
+                                                // Snap to bottom
+                                                targetOffset.height = maxY
+                                            }
+
+                                            // Update last offset and animate to snap position
+                                            lastDragOffset = targetOffset
+                                            accessoryBarOffset = targetOffset
+                                        }
+                                )
+                                .padding(.bottom, 8)
                         }
                     }
                 }
+            }
             } else {
                 PlaceholderView("Terminal Transfer To Another Window", img: .emptyWindow)
             }
@@ -68,102 +199,105 @@ struct TerminalView: View {
         }
         .navigationTitle(context.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(context.navigationTitle)
+                    .font(.headline)
+                    .foregroundColor(ColorFromHex(store.terminalTheme.foreground))
+            }
+        }
+        .onChange(of: store.terminalThemeName) { _ in
+            // Force toolbar update when theme changes
+        }
     }
-
     var buttonGroup: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 5) {
-                Group {
-                    if context.closed {
-                        makeKeyboardFloatingButton("arrow.counterclockwise", disableWhenClosed: false) {
-                            DispatchQueue.global().async {
-                                context.putInformation("[i] Reconnect will use the information you provide previously,")
-                                context.putInformation("    if the machine was edited, create a new terminal.")
-                                context.processBootstrap()
-                            }
-                        }
-                    }
-                    makeKeyboardFloatingButton("trash", disableWhenClosed: false) {
-                        if context.closed {
-                            presentationMode.wrappedValue.dismiss()
-                            TerminalManager.shared.end(for: context.id)
-                        } else {
-                            UIBridge.requiresConfirmation(
-                                message: "Are you sure you want to close this session?"
-                            ) { yes in
-                                if yes { context.processShutdown() }
-                            }
-                        }
-                    }
-                    .foregroundColor(.red)
-                    makeKeyboardFloatingButton("doc.on.clipboard") {
-                        guard let str = UIPasteboard.general.string else {
-                            UIBridge.presentError(with: "Empty Pasteboard")
-                            return
-                        }
-                        UIBridge.requiresConfirmation(
-                            message: "Are you sure you want to paste following string?\n\n\(str)"
-                        ) { yes in
-                            if yes { self.safeWrite(str) }
-                        }
-                    }
-                }
-                Divider().frame(height: 20)
-                Group {
-                    makeKeyboardFloatingButton("arrow.right.to.line.compact") {
-                        safeWriteBase64("CQ==")
-                    }
-                    makeKeyboardFloatingButton("control") {
-                        openControlKeyPopover = true
-                    }
-                    .popover(isPresented: $openControlKeyPopover) {
-                        HStack(spacing: 2) {
-                            Text("Ctrl + ")
-                            TextField("Key To Send", text: $controlKey)
-                                .disableAutocorrection(true)
-                                .onChange(of: controlKey) { newValue in
-                                    guard let f = newValue.uppercased().last else {
-                                        if !controlKey.isEmpty { controlKey = "" }
-                                        return
-                                    }
-                                    if controlKey != String(f) {
-                                        controlKey = String(f)
-                                    }
-                                }
-                                .onSubmit {
-                                    sendCtrl()
-                                }
-                            Button {
-                                sendCtrl()
-                            } label: {
-                                Image(systemName: "return")
-                            }
-                        }
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .padding()
-                        .frame(width: 200, height: 40)
-                    }
-                    makeKeyboardFloatingButton("escape") {
-                        safeWriteBase64("Gw==")
-                    }
-                }
-                Divider().frame(height: 20)
-                Group {
-                    makeKeyboardFloatingButton("arrow.left.circle.fill") {
-                        safeWriteBase64("G1tE")
-                    }
-                    makeKeyboardFloatingButton("arrow.right.circle.fill") {
-                        safeWriteBase64("G1tD")
-                    }
-                    makeKeyboardFloatingButton("arrow.up.circle.fill") {
-                        safeWriteBase64("G1tB")
-                    }
-                    makeKeyboardFloatingButton("arrow.down.circle.fill") {
-                        safeWriteBase64("G1tC")
+        HStack(spacing: 1) {
+            if context.closed {
+                makeKeyButton("arrow.counterclockwise") {
+                    DispatchQueue.global().async {
+                        context.putInformation("[i] Reconnect will use the information you provide previously,")
+                        context.putInformation("    if the machine was edited, create a new terminal.")
+                        context.processBootstrap()
                     }
                 }
             }
-            .padding()
+            makeKeyButton("trash") {
+                if context.closed {
+                    presentationMode.wrappedValue.dismiss()
+                    TerminalManager.shared.end(for: context.id)
+                } else {
+                    UIBridge.requiresConfirmation(
+                        message: "Are you sure you want to close this session?"
+                    ) { yes in
+                        if yes { context.processShutdown() }
+                    }
+                }
+            }
+            makeKeyButton("doc.on.clipboard") {
+                guard let str = UIPasteboard.general.string else {
+                    UIBridge.presentError(with: "Empty Pasteboard")
+                    return
+                }
+                UIBridge.requiresConfirmation(
+                    message: "Are you sure you want to paste following string?\n\n\(str)"
+                ) { yes in
+                    if yes { self.safeWrite(str) }
+                }
+            }
+
+            Divider().frame(width: 1, height: 20).background(Color.gray.opacity(0.3))
+
+            makeKeyButton("arrow.right.to.line.compact") {
+                safeWriteBase64("CQ==")
+            }
+            makeKeyButton("control") {
+                openControlKeyPopover = true
+            }
+            .popover(isPresented: $openControlKeyPopover) {
+                HStack(spacing: 2) {
+                    Text("Ctrl + ")
+                    TextField("Key To Send", text: $controlKey)
+                        .disableAutocorrection(true)
+                        .onChange(of: controlKey) { newValue in
+                            guard let f = newValue.uppercased().last else {
+                                if !controlKey.isEmpty { controlKey = "" }
+                                return
+                            }
+                            if controlKey != String(f) {
+                                controlKey = String(f)
+                            }
+                        }
+                        .onSubmit {
+                            sendCtrl()
+                        }
+                    Button {
+                        sendCtrl()
+                    } label: {
+                        Image(systemName: "return")
+                    }
+                }
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .padding()
+                .frame(width: 200, height: 40)
+            }
+            makeKeyButton("escape") {
+                safeWriteBase64("Gw==")
+            }
+
+            Divider().frame(width: 1, height: 20).background(Color.gray.opacity(0.3))
+
+            makeKeyButton("arrow.left.circle.fill") {
+                safeWriteBase64("G1tE")
+            }
+            makeKeyButton("arrow.right.circle.fill") {
+                safeWriteBase64("G1tD")
+            }
+            makeKeyButton("arrow.up.circle.fill") {
+                safeWriteBase64("G1tB")
+            }
+            makeKeyButton("arrow.down.circle.fill") {
+                safeWriteBase64("G1tC")
+            }
         }
     }
 
@@ -218,18 +352,16 @@ struct TerminalView: View {
         context.insertBuffer(str)
     }
 
-    func makeKeyboardFloatingButton(_ image: String, disableWhenClosed: Bool = true, block: @escaping () -> Void) -> some View {
-        Button {
-            if context.closed, disableWhenClosed { return }
-            block()
-        } label: {
-            Image(systemName: image)
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .frame(width: 20, height: 20)
+    func makeKeyButton(_ imageName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: imageName)
+                .font(.system(size: 16, weight: .medium))
+                .frame(width: 32, height: 28)
+                .foregroundColor(.primary)
         }
-        .buttonStyle(.bordered)
-        .animation(.spring(), value: context.interfaceDisabled)
-        .disabled(disableWhenClosed && context.interfaceDisabled)
+        .buttonStyle(PlainButtonStyle())
+        .background(Color(uiColor: .systemGray5))
+        .cornerRadius(4)
     }
 
     func updateTerminalSize() {
@@ -279,5 +411,11 @@ struct TerminalView: View {
             brightCyan: theme.brightCyan,
             brightWhite: theme.brightWhite
         )
+    }
+
+    func applyFont() {
+        let fontName = store.terminalFontName
+        debugPrint("Applying terminal font: \(fontName)")
+        context.termInterface.setTerminalFontName(with: fontName)
     }
 }

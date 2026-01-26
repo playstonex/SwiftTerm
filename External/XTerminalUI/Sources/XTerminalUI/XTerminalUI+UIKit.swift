@@ -54,6 +54,10 @@
             associatedCore.setTerminalFontSize(with: size)
         }
 
+        public func setTerminalFontName(with name: String) {
+            associatedCore.setTerminalFontName(with: name)
+        }
+
         public func setTerminalTheme(
             foreground: String,
             background: String,
@@ -96,6 +100,21 @@
                 brightCyan: brightCyan,
                 brightWhite: brightWhite
             )
+            // Set the view's and WebView's background color to match the terminal theme
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                let bgColor = UIColor(hex: background)
+                self.backgroundColor = bgColor
+                let webView = self.associatedCore.associatedWebView
+                webView.isOpaque = true
+                webView.backgroundColor = bgColor
+                webView.scrollView.backgroundColor = bgColor
+
+                // For iOS 15+, also set underPageBackgroundColor
+                if #available(iOS 15.0, *) {
+                    webView.underPageBackgroundColor = bgColor
+                }
+            }
         }
 
         public func requestTerminalSize() -> CGSize {
@@ -117,6 +136,37 @@
             bottomAnchor.constraint(equalTo: superview.bottomAnchor, constant: 0).isActive = true
             leadingAnchor.constraint(equalTo: superview.leadingAnchor, constant: 0).isActive = true
             trailingAnchor.constraint(equalTo: superview.trailingAnchor, constant: 0).isActive = true
+        }
+    }
+
+    extension UIColor {
+        /// Initialize a UIColor from a hex string (e.g., "#1e1e1e" or "1e1e1e")
+        convenience init(hex: String) {
+            var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+            hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+            var rgb: UInt64 = 0
+
+            Scanner(string: hexSanitized).scanHexInt64(&rgb)
+
+            let length = hexSanitized.count
+            var r: CGFloat = 0.0
+            var g: CGFloat = 0.0
+            var b: CGFloat = 0.0
+            var a: CGFloat = 1.0
+
+            if length == 6 {
+                r = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+                g = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+                b = CGFloat(rgb & 0x0000FF) / 255.0
+            } else if length == 8 {
+                r = CGFloat((rgb & 0xFF000000) >> 24) / 255.0
+                g = CGFloat((rgb & 0x00FF0000) >> 16) / 255.0
+                b = CGFloat((rgb & 0x0000FF00) >> 8) / 255.0
+                a = CGFloat(rgb & 0x000000FF) / 255.0
+            }
+
+            self.init(red: r, green: g, blue: b, alpha: a)
         }
     }
 #endif

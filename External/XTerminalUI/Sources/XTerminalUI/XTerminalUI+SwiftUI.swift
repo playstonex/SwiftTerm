@@ -49,6 +49,10 @@ import SwiftUI
             correspondingView.setTerminalFontSize(with: size)
         }
 
+        public func setTerminalFontName(with name: String) {
+            correspondingView.setTerminalFontName(with: name)
+        }
+
         public func setTerminalTheme(
             foreground: String,
             background: String,
@@ -143,6 +147,10 @@ import SwiftUI
 
         public func setTerminalFontSize(with size: Int) {
             correspondingView.setTerminalFontSize(with: size)
+        }
+
+        public func setTerminalFontName(with name: String) {
+            correspondingView.setTerminalFontName(with: name)
         }
 
         public func setTerminalTheme(

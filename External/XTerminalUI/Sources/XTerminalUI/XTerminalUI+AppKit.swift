@@ -56,6 +56,10 @@ import Foundation
             associatedCore.setTerminalFontSize(with: size)
         }
 
+        public func setTerminalFontName(with name: String) {
+            associatedCore.setTerminalFontName(with: name)
+        }
+
         public func setTerminalTheme(
             foreground: String,
             background: String,

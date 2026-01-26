@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <title>Solid App</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000000;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
     <script type="module" crossorigin src="./assets/index.c572b01f.js"></script>
     <link rel="stylesheet" href="./assets/index.12cbc7e7.css">
     <script>
@@ -15,6 +26,11 @@
       var pendingTheme = null;
 
       window.setTerminalTheme = function(theme) {
+        // Set body background to match theme
+        if (theme && theme.background) {
+          document.body.style.backgroundColor = theme.background;
+        }
+
         // Try to find the terminal object
         var terminal = window.M || window.term || window.terminal;
 
@@ -39,6 +55,33 @@
         }
       };
 
+      // Store pending font if terminal is not ready
+      var pendingFont = null;
+
+      window.setTerminalFont = function(fontName) {
+        // Try to find the terminal object
+        var terminal = window.M || window.term || window.terminal;
+
+        if (terminal && terminal.options) {
+          try {
+            // Set font family with fallback to monospace
+            terminal.options.fontFamily = '"' + fontName + '", monospace';
+            pendingFont = null;
+          } catch (e) {
+            pendingFont = fontName;
+          }
+        } else {
+          pendingFont = fontName;
+          // Retry after delay
+          setTimeout(function() {
+            var terminal = window.M || window.term || window.terminal;
+            if (pendingFont && terminal && terminal.options) {
+              window.setTerminalFont(pendingFont);
+            }
+          }, 500);
+        }
+      };
+
       // Watch for terminal to be ready and apply any pending theme
       var checkInterval = setInterval(function() {
         var terminal = window.M || window.term || window.terminal;
@@ -46,6 +89,9 @@
           clearInterval(checkInterval);
           if (pendingTheme) {
             window.setTerminalTheme(pendingTheme);
+          }
+          if (pendingFont) {
+            window.setTerminalFont(pendingFont);
           }
         }
       }, 100);
