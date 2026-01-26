@@ -66,62 +66,38 @@
 		50D3AEFD27D063A30085F899 /* PickIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3AEFC27D063A30085F899 /* PickIdentityView.swift */; };
 		50D77BE727D2F0FB00177190 /* SettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D77BE627D2F0FB00177190 /* SettingView.swift */; };
 		50FD853A27D0445D00F6F01A /* EditSnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD853927D0445D00F6F01A /* EditSnippetView.swift */; };
-		AB0DC3DB2F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D52F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf */; };
-		AB0DC3DC2F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C82F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf */; };
-		AB0DC3DD2F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D02F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf */; };
-		AB0DC3DE2F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C32F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf */; };
-		AB0DC3DF2F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C92F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf */; };
-		AB0DC3E02F2711B700B4F3DB /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CE2F2711B700B4F3DB /* JetBrainsMono-Medium.ttf */; };
-		AB0DC3E12F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D92F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf */; };
-		AB0DC3E22F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C12F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf */; };
-		AB0DC3E32F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C72F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf */; };
-		AB0DC3E42F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C22F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf */; };
-		AB0DC3E52F2711B700B4F3DB /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CF2F2711B700B4F3DB /* JetBrainsMono-Regular.ttf */; };
-		AB0DC3E62F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D22F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf */; };
-		AB0DC3E72F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D72F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf */; };
-		AB0DC3E82F2711B700B4F3DB /* CascadiaCodeNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3BE2F2711B700B4F3DB /* CascadiaCodeNF.ttf */; };
-		AB0DC3E92F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D62F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf */; };
-		AB0DC3EA2F2711B700B4F3DB /* JetBrainsMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CD2F2711B700B4F3DB /* JetBrainsMono-Light.ttf */; };
-		AB0DC3EB2F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CB2F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf */; };
-		AB0DC3EC2F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D32F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf */; };
-		AB0DC3ED2F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C42F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf */; };
-		AB0DC3EE2F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D42F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf */; };
-		AB0DC3EF2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CC2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf */; };
-		AB0DC3F02F2711B700B4F3DB /* CascadiaMonoNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3BF2F2711B700B4F3DB /* CascadiaMonoNF.ttf */; };
-		AB0DC3F12F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C02F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf */; };
-		AB0DC3F22F2711B700B4F3DB /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CA2F2711B700B4F3DB /* JetBrainsMono-Bold.ttf */; };
-		AB0DC3F32F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C52F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf */; };
-		AB0DC3F42F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C62F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf */; };
-		AB0DC3F52F2711B700B4F3DB /* JetBrainsMono-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D12F2711B700B4F3DB /* JetBrainsMono-Thin.ttf */; };
-		AB0DC3F62F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D82F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf */; };
-		AB0DC3F72F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D52F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf */; };
-		AB0DC3F82F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C82F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf */; };
-		AB0DC3F92F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D02F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf */; };
-		AB0DC3FA2F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C32F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf */; };
-		AB0DC3FB2F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C92F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf */; };
-		AB0DC3FC2F2711B700B4F3DB /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CE2F2711B700B4F3DB /* JetBrainsMono-Medium.ttf */; };
-		AB0DC3FD2F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D92F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf */; };
-		AB0DC3FE2F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C12F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf */; };
-		AB0DC3FF2F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C72F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf */; };
-		AB0DC4002F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C22F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf */; };
-		AB0DC4012F2711B700B4F3DB /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CF2F2711B700B4F3DB /* JetBrainsMono-Regular.ttf */; };
-		AB0DC4022F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D22F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf */; };
-		AB0DC4032F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D72F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf */; };
-		AB0DC4042F2711B700B4F3DB /* CascadiaCodeNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3BE2F2711B700B4F3DB /* CascadiaCodeNF.ttf */; };
-		AB0DC4052F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D62F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf */; };
-		AB0DC4062F2711B700B4F3DB /* JetBrainsMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CD2F2711B700B4F3DB /* JetBrainsMono-Light.ttf */; };
-		AB0DC4072F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CB2F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf */; };
-		AB0DC4082F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D32F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf */; };
-		AB0DC4092F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C42F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf */; };
-		AB0DC40A2F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D42F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf */; };
-		AB0DC40B2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CC2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf */; };
-		AB0DC40C2F2711B700B4F3DB /* CascadiaMonoNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3BF2F2711B700B4F3DB /* CascadiaMonoNF.ttf */; };
-		AB0DC40D2F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C02F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf */; };
-		AB0DC40E2F2711B700B4F3DB /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3CA2F2711B700B4F3DB /* JetBrainsMono-Bold.ttf */; };
-		AB0DC40F2F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C52F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf */; };
-		AB0DC4102F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3C62F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf */; };
-		AB0DC4112F2711B700B4F3DB /* JetBrainsMono-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D12F2711B700B4F3DB /* JetBrainsMono-Thin.ttf */; };
-		AB0DC4122F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB0DC3D82F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf */; };
+		AB47C2FE2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2FA2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf */; };
+		AB47C2FF2F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F12F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf */; };
+		AB47C3002F282AAC00C7AA60 /* CascadiaCodeNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */; };
+		AB47C3012F282AAC00C7AA60 /* JetBrainsMono-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2FB2F282AAC00C7AA60 /* JetBrainsMono-Thin.ttf */; };
+		AB47C3022F282AAC00C7AA60 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F42F282AAC00C7AA60 /* JetBrainsMono-Bold.ttf */; };
+		AB47C3032F282AAC00C7AA60 /* JetBrainsMono-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F62F282AAC00C7AA60 /* JetBrainsMono-ExtraLight.ttf */; };
+		AB47C3042F282AAC00C7AA60 /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F92F282AAC00C7AA60 /* JetBrainsMono-Regular.ttf */; };
+		AB47C3052F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2EF2F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf */; };
+		AB47C3062F282AAC00C7AA60 /* InconsolataNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F22F282AAC00C7AA60 /* InconsolataNerdFontMono-Bold.ttf */; };
+		AB47C3072F282AAC00C7AA60 /* InconsolataNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F32F282AAC00C7AA60 /* InconsolataNerdFontMono-Regular.ttf */; };
+		AB47C3082F282AAC00C7AA60 /* MapleMono-NF-CN-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2FC2F282AAC00C7AA60 /* MapleMono-NF-CN-Regular.ttf */; };
+		AB47C3092F282AAC00C7AA60 /* JetBrainsMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F72F282AAC00C7AA60 /* JetBrainsMono-Light.ttf */; };
+		AB47C30A2F282AAC00C7AA60 /* HackNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F02F282AAC00C7AA60 /* HackNerdFontMono-Bold.ttf */; };
+		AB47C30B2F282AAC00C7AA60 /* JetBrainsMono-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F52F282AAC00C7AA60 /* JetBrainsMono-ExtraBold.ttf */; };
+		AB47C30C2F282AAC00C7AA60 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F82F282AAC00C7AA60 /* JetBrainsMono-Medium.ttf */; };
+		AB47C30D2F282AAC00C7AA60 /* CascadiaMonoNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2EE2F282AAC00C7AA60 /* CascadiaMonoNF.ttf */; };
+		AB47C30E2F282AF500C7AA60 /* JetBrainsMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F42F282AAC00C7AA60 /* JetBrainsMono-Bold.ttf */; };
+		AB47C30F2F282AF500C7AA60 /* HackNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F12F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf */; };
+		AB47C3102F282AF500C7AA60 /* InconsolataNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F32F282AAC00C7AA60 /* InconsolataNerdFontMono-Regular.ttf */; };
+		AB47C3112F282AF500C7AA60 /* JetBrainsMono-Thin.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2FB2F282AAC00C7AA60 /* JetBrainsMono-Thin.ttf */; };
+		AB47C3122F282AF500C7AA60 /* HackNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F02F282AAC00C7AA60 /* HackNerdFontMono-Bold.ttf */; };
+		AB47C3132F282AF500C7AA60 /* JetBrainsMono-Light.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F72F282AAC00C7AA60 /* JetBrainsMono-Light.ttf */; };
+		AB47C3142F282AF500C7AA60 /* JetBrainsMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F92F282AAC00C7AA60 /* JetBrainsMono-Regular.ttf */; };
+		AB47C3152F282AF500C7AA60 /* FiraCodeNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2EF2F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf */; };
+		AB47C3162F282AF500C7AA60 /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2FA2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf */; };
+		AB47C3172F282AF500C7AA60 /* MapleMono-NF-CN-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2FC2F282AAC00C7AA60 /* MapleMono-NF-CN-Regular.ttf */; };
+		AB47C3182F282AF500C7AA60 /* InconsolataNerdFontMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F22F282AAC00C7AA60 /* InconsolataNerdFontMono-Bold.ttf */; };
+		AB47C3192F282AF500C7AA60 /* JetBrainsMono-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F62F282AAC00C7AA60 /* JetBrainsMono-ExtraLight.ttf */; };
+		AB47C31A2F282AF500C7AA60 /* JetBrainsMono-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F52F282AAC00C7AA60 /* JetBrainsMono-ExtraBold.ttf */; };
+		AB47C31B2F282AF500C7AA60 /* JetBrainsMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F82F282AAC00C7AA60 /* JetBrainsMono-Medium.ttf */; };
+		AB47C31C2F282AF500C7AA60 /* CascadiaMonoNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2EE2F282AAC00C7AA60 /* CascadiaMonoNF.ttf */; };
+		AB47C31D2F282AF500C7AA60 /* CascadiaCodeNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */; };
 		ABB80C6F2B8EC0AD00FDD779 /* RealityKitContent in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C6E2B8EC0AD00FDD779 /* RealityKitContent */; };
 		ABB80C712B8EC0AD00FDD779 /* vRayonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB80C702B8EC0AD00FDD779 /* vRayonApp.swift */; };
 		ABB80C752B8EC0AF00FDD779 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ABB80C742B8EC0AF00FDD779 /* Assets.xcassets */; };
@@ -261,34 +237,22 @@
 		50D3AEFC27D063A30085F899 /* PickIdentityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickIdentityView.swift; sourceTree = "<group>"; };
 		50D77BE627D2F0FB00177190 /* SettingView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingView.swift; sourceTree = "<group>"; };
 		50FD853927D0445D00F6F01A /* EditSnippetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditSnippetView.swift; sourceTree = "<group>"; };
-		AB0DC3BE2F2711B700B4F3DB /* CascadiaCodeNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaCodeNF.ttf; sourceTree = "<group>"; };
-		AB0DC3BF2F2711B700B4F3DB /* CascadiaMonoNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaMonoNF.ttf; sourceTree = "<group>"; };
-		AB0DC3C02F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
-		AB0DC3C12F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Light.ttf"; sourceTree = "<group>"; };
-		AB0DC3C22F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Medium.ttf"; sourceTree = "<group>"; };
-		AB0DC3C32F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
-		AB0DC3C42F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Retina.ttf"; sourceTree = "<group>"; };
-		AB0DC3C52F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-SemiBold.ttf"; sourceTree = "<group>"; };
-		AB0DC3C62F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "HackNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
-		AB0DC3C72F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "HackNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
-		AB0DC3C82F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "InconsolataNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
-		AB0DC3C92F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "InconsolataNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
-		AB0DC3CA2F2711B700B4F3DB /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
-		AB0DC3CB2F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-ExtraBold.ttf"; sourceTree = "<group>"; };
-		AB0DC3CC2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-ExtraLight.ttf"; sourceTree = "<group>"; };
-		AB0DC3CD2F2711B700B4F3DB /* JetBrainsMono-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Light.ttf"; sourceTree = "<group>"; };
-		AB0DC3CE2F2711B700B4F3DB /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
-		AB0DC3CF2F2711B700B4F3DB /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Regular.ttf"; sourceTree = "<group>"; };
-		AB0DC3D02F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-SemiBold.ttf"; sourceTree = "<group>"; };
-		AB0DC3D12F2711B700B4F3DB /* JetBrainsMono-Thin.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Thin.ttf"; sourceTree = "<group>"; };
-		AB0DC3D22F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-Bold.ttf"; sourceTree = "<group>"; };
-		AB0DC3D32F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-ExtraBold.ttf"; sourceTree = "<group>"; };
-		AB0DC3D42F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-ExtraLight.ttf"; sourceTree = "<group>"; };
-		AB0DC3D52F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-Light.ttf"; sourceTree = "<group>"; };
-		AB0DC3D62F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-Medium.ttf"; sourceTree = "<group>"; };
-		AB0DC3D72F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-Regular.ttf"; sourceTree = "<group>"; };
-		AB0DC3D82F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-SemiBold.ttf"; sourceTree = "<group>"; };
-		AB0DC3D92F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-Thin.ttf"; sourceTree = "<group>"; };
+		AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaCodeNF.ttf; sourceTree = "<group>"; };
+		AB47C2EE2F282AAC00C7AA60 /* CascadiaMonoNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaMonoNF.ttf; sourceTree = "<group>"; };
+		AB47C2EF2F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
+		AB47C2F02F282AAC00C7AA60 /* HackNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "HackNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
+		AB47C2F12F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "HackNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
+		AB47C2F22F282AAC00C7AA60 /* InconsolataNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "InconsolataNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
+		AB47C2F32F282AAC00C7AA60 /* InconsolataNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "InconsolataNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
+		AB47C2F42F282AAC00C7AA60 /* JetBrainsMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Bold.ttf"; sourceTree = "<group>"; };
+		AB47C2F52F282AAC00C7AA60 /* JetBrainsMono-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-ExtraBold.ttf"; sourceTree = "<group>"; };
+		AB47C2F62F282AAC00C7AA60 /* JetBrainsMono-ExtraLight.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-ExtraLight.ttf"; sourceTree = "<group>"; };
+		AB47C2F72F282AAC00C7AA60 /* JetBrainsMono-Light.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Light.ttf"; sourceTree = "<group>"; };
+		AB47C2F82F282AAC00C7AA60 /* JetBrainsMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Medium.ttf"; sourceTree = "<group>"; };
+		AB47C2F92F282AAC00C7AA60 /* JetBrainsMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Regular.ttf"; sourceTree = "<group>"; };
+		AB47C2FA2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-SemiBold.ttf"; sourceTree = "<group>"; };
+		AB47C2FB2F282AAC00C7AA60 /* JetBrainsMono-Thin.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "JetBrainsMono-Thin.ttf"; sourceTree = "<group>"; };
+		AB47C2FC2F282AAC00C7AA60 /* MapleMono-NF-CN-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "MapleMono-NF-CN-Regular.ttf"; sourceTree = "<group>"; };
 		ABB80C6A2B8EC0AD00FDD779 /* vRayon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = vRayon.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ABB80C6D2B8EC0AD00FDD779 /* RealityKitContent */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = RealityKitContent; sourceTree = "<group>"; };
 		ABB80C702B8EC0AD00FDD779 /* vRayonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = vRayonApp.swift; sourceTree = "<group>"; };
@@ -406,7 +370,6 @@
 			children = (
 				5082A1E127D1F92D00C71C0F /* Info.plist */,
 				501FF79827CEFAFA00380D59 /* mRayon.entitlements */,
-				AB0DC3DA2F2711B700B4F3DB /* fonts */,
 				50C90AFA27CF12FB00F60B51 /* Application */,
 				50C90AF927CF12F400F60B51 /* Interface */,
 				50C90AF827CF12F000F60B51 /* Extension */,
@@ -477,6 +440,7 @@
 		50C90AFA27CF12FB00F60B51 /* Application */ = {
 			isa = PBXGroup;
 			children = (
+				AB47C2FD2F282AAC00C7AA60 /* fonts */,
 				501FF78A27CEFADD00380D59 /* mRayonApp.swift */,
 				501B334127DF0DD100EB6261 /* LogRedirect.swift */,
 				501FF78E27CEFADD00380D59 /* Assets.xcassets */,
@@ -563,40 +527,29 @@
 			path = Setting;
 			sourceTree = "<group>";
 		};
-		AB0DC3DA2F2711B700B4F3DB /* fonts */ = {
+		AB47C2FD2F282AAC00C7AA60 /* fonts */ = {
 			isa = PBXGroup;
 			children = (
-				AB0DC3BE2F2711B700B4F3DB /* CascadiaCodeNF.ttf */,
-				AB0DC3BF2F2711B700B4F3DB /* CascadiaMonoNF.ttf */,
-				AB0DC3C02F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf */,
-				AB0DC3C12F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf */,
-				AB0DC3C22F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf */,
-				AB0DC3C32F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf */,
-				AB0DC3C42F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf */,
-				AB0DC3C52F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf */,
-				AB0DC3C62F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf */,
-				AB0DC3C72F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf */,
-				AB0DC3C82F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf */,
-				AB0DC3C92F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf */,
-				AB0DC3CA2F2711B700B4F3DB /* JetBrainsMono-Bold.ttf */,
-				AB0DC3CB2F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf */,
-				AB0DC3CC2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf */,
-				AB0DC3CD2F2711B700B4F3DB /* JetBrainsMono-Light.ttf */,
-				AB0DC3CE2F2711B700B4F3DB /* JetBrainsMono-Medium.ttf */,
-				AB0DC3CF2F2711B700B4F3DB /* JetBrainsMono-Regular.ttf */,
-				AB0DC3D02F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf */,
-				AB0DC3D12F2711B700B4F3DB /* JetBrainsMono-Thin.ttf */,
-				AB0DC3D22F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf */,
-				AB0DC3D32F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf */,
-				AB0DC3D42F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf */,
-				AB0DC3D52F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf */,
-				AB0DC3D62F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf */,
-				AB0DC3D72F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf */,
-				AB0DC3D82F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf */,
-				AB0DC3D92F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf */,
+				AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */,
+				AB47C2EE2F282AAC00C7AA60 /* CascadiaMonoNF.ttf */,
+				AB47C2EF2F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf */,
+				AB47C2F02F282AAC00C7AA60 /* HackNerdFontMono-Bold.ttf */,
+				AB47C2F12F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf */,
+				AB47C2F22F282AAC00C7AA60 /* InconsolataNerdFontMono-Bold.ttf */,
+				AB47C2F32F282AAC00C7AA60 /* InconsolataNerdFontMono-Regular.ttf */,
+				AB47C2F42F282AAC00C7AA60 /* JetBrainsMono-Bold.ttf */,
+				AB47C2F52F282AAC00C7AA60 /* JetBrainsMono-ExtraBold.ttf */,
+				AB47C2F62F282AAC00C7AA60 /* JetBrainsMono-ExtraLight.ttf */,
+				AB47C2F72F282AAC00C7AA60 /* JetBrainsMono-Light.ttf */,
+				AB47C2F82F282AAC00C7AA60 /* JetBrainsMono-Medium.ttf */,
+				AB47C2F92F282AAC00C7AA60 /* JetBrainsMono-Regular.ttf */,
+				AB47C2FA2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf */,
+				AB47C2FB2F282AAC00C7AA60 /* JetBrainsMono-Thin.ttf */,
+				AB47C2FC2F282AAC00C7AA60 /* MapleMono-NF-CN-Regular.ttf */,
 			);
-			path = fonts;
-			sourceTree = "<group>";
+			name = fonts;
+			path = mRayon/fonts;
+			sourceTree = SOURCE_ROOT;
 		};
 		ABB80C6B2B8EC0AD00FDD779 /* vRayon */ = {
 			isa = PBXGroup;
@@ -734,7 +687,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1520;
-				LastUpgradeCheck = 1320;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					501FF78627CEFADD00380D59 = {
 						CreatedOnToolsVersion = 13.2.1;
@@ -768,37 +721,25 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB47C2FE2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf in Resources */,
+				AB47C2FF2F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf in Resources */,
+				AB47C3002F282AAC00C7AA60 /* CascadiaCodeNF.ttf in Resources */,
+				AB47C3012F282AAC00C7AA60 /* JetBrainsMono-Thin.ttf in Resources */,
+				AB47C3022F282AAC00C7AA60 /* JetBrainsMono-Bold.ttf in Resources */,
+				AB47C3032F282AAC00C7AA60 /* JetBrainsMono-ExtraLight.ttf in Resources */,
+				AB47C3042F282AAC00C7AA60 /* JetBrainsMono-Regular.ttf in Resources */,
+				AB47C3052F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
+				AB47C3062F282AAC00C7AA60 /* InconsolataNerdFontMono-Bold.ttf in Resources */,
+				AB47C3072F282AAC00C7AA60 /* InconsolataNerdFontMono-Regular.ttf in Resources */,
+				AB47C3082F282AAC00C7AA60 /* MapleMono-NF-CN-Regular.ttf in Resources */,
+				AB47C3092F282AAC00C7AA60 /* JetBrainsMono-Light.ttf in Resources */,
+				AB47C30A2F282AAC00C7AA60 /* HackNerdFontMono-Bold.ttf in Resources */,
+				AB47C30B2F282AAC00C7AA60 /* JetBrainsMono-ExtraBold.ttf in Resources */,
+				AB47C30C2F282AAC00C7AA60 /* JetBrainsMono-Medium.ttf in Resources */,
+				AB47C30D2F282AAC00C7AA60 /* CascadiaMonoNF.ttf in Resources */,
 				5082A1D427D0E10000C71C0F /* LICENSE in Resources */,
 				501FF78F27CEFADD00380D59 /* Assets.xcassets in Resources */,
 				ABBE62932B917F2400B347B9 /* Launch Screen.storyboard in Resources */,
-				AB0DC3DB2F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf in Resources */,
-				AB0DC3DC2F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf in Resources */,
-				AB0DC3DD2F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf in Resources */,
-				AB0DC3DE2F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
-				AB0DC3DF2F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf in Resources */,
-				AB0DC3E02F2711B700B4F3DB /* JetBrainsMono-Medium.ttf in Resources */,
-				AB0DC3E12F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf in Resources */,
-				AB0DC3E22F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf in Resources */,
-				AB0DC3E32F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf in Resources */,
-				AB0DC3E42F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf in Resources */,
-				AB0DC3E52F2711B700B4F3DB /* JetBrainsMono-Regular.ttf in Resources */,
-				AB0DC3E62F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf in Resources */,
-				AB0DC3E72F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf in Resources */,
-				AB0DC3E82F2711B700B4F3DB /* CascadiaCodeNF.ttf in Resources */,
-				AB0DC3E92F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf in Resources */,
-				AB0DC3EA2F2711B700B4F3DB /* JetBrainsMono-Light.ttf in Resources */,
-				AB0DC3EB2F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf in Resources */,
-				AB0DC3EC2F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf in Resources */,
-				AB0DC3ED2F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf in Resources */,
-				AB0DC3EE2F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf in Resources */,
-				AB0DC3EF2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf in Resources */,
-				AB0DC3F02F2711B700B4F3DB /* CascadiaMonoNF.ttf in Resources */,
-				AB0DC3F12F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
-				AB0DC3F22F2711B700B4F3DB /* JetBrainsMono-Bold.ttf in Resources */,
-				AB0DC3F32F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf in Resources */,
-				AB0DC3F42F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf in Resources */,
-				AB0DC3F52F2711B700B4F3DB /* JetBrainsMono-Thin.ttf in Resources */,
-				AB0DC3F62F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf in Resources */,
 				5082A1D327D0E10000C71C0F /* EULA in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -809,34 +750,22 @@
 			files = (
 				ABB80C782B8EC0AF00FDD779 /* Preview Assets.xcassets in Resources */,
 				ABB80C752B8EC0AF00FDD779 /* Assets.xcassets in Resources */,
-				AB0DC3F72F2711B700B4F3DB /* MapleMono-NF-CN-Light.ttf in Resources */,
-				AB0DC3F82F2711B700B4F3DB /* InconsolataNerdFontMono-Bold.ttf in Resources */,
-				AB0DC3F92F2711B700B4F3DB /* JetBrainsMono-SemiBold.ttf in Resources */,
-				AB0DC3FA2F2711B700B4F3DB /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
-				AB0DC3FB2F2711B700B4F3DB /* InconsolataNerdFontMono-Regular.ttf in Resources */,
-				AB0DC3FC2F2711B700B4F3DB /* JetBrainsMono-Medium.ttf in Resources */,
-				AB0DC3FD2F2711B700B4F3DB /* MapleMono-NF-CN-Thin.ttf in Resources */,
-				AB0DC3FE2F2711B700B4F3DB /* FiraCodeNerdFontMono-Light.ttf in Resources */,
-				AB0DC3FF2F2711B700B4F3DB /* HackNerdFontMono-Regular.ttf in Resources */,
-				AB0DC4002F2711B700B4F3DB /* FiraCodeNerdFontMono-Medium.ttf in Resources */,
-				AB0DC4012F2711B700B4F3DB /* JetBrainsMono-Regular.ttf in Resources */,
-				AB0DC4022F2711B700B4F3DB /* MapleMono-NF-CN-Bold.ttf in Resources */,
-				AB0DC4032F2711B700B4F3DB /* MapleMono-NF-CN-Regular.ttf in Resources */,
-				AB0DC4042F2711B700B4F3DB /* CascadiaCodeNF.ttf in Resources */,
-				AB0DC4052F2711B700B4F3DB /* MapleMono-NF-CN-Medium.ttf in Resources */,
-				AB0DC4062F2711B700B4F3DB /* JetBrainsMono-Light.ttf in Resources */,
-				AB0DC4072F2711B700B4F3DB /* JetBrainsMono-ExtraBold.ttf in Resources */,
-				AB0DC4082F2711B700B4F3DB /* MapleMono-NF-CN-ExtraBold.ttf in Resources */,
-				AB0DC4092F2711B700B4F3DB /* FiraCodeNerdFontMono-Retina.ttf in Resources */,
-				AB0DC40A2F2711B700B4F3DB /* MapleMono-NF-CN-ExtraLight.ttf in Resources */,
-				AB0DC40B2F2711B700B4F3DB /* JetBrainsMono-ExtraLight.ttf in Resources */,
-				AB0DC40C2F2711B700B4F3DB /* CascadiaMonoNF.ttf in Resources */,
-				AB0DC40D2F2711B700B4F3DB /* FiraCodeNerdFontMono-Bold.ttf in Resources */,
-				AB0DC40E2F2711B700B4F3DB /* JetBrainsMono-Bold.ttf in Resources */,
-				AB0DC40F2F2711B700B4F3DB /* FiraCodeNerdFontMono-SemiBold.ttf in Resources */,
-				AB0DC4102F2711B700B4F3DB /* HackNerdFontMono-Bold.ttf in Resources */,
-				AB0DC4112F2711B700B4F3DB /* JetBrainsMono-Thin.ttf in Resources */,
-				AB0DC4122F2711B700B4F3DB /* MapleMono-NF-CN-SemiBold.ttf in Resources */,
+				AB47C30E2F282AF500C7AA60 /* JetBrainsMono-Bold.ttf in Resources */,
+				AB47C30F2F282AF500C7AA60 /* HackNerdFontMono-Regular.ttf in Resources */,
+				AB47C3102F282AF500C7AA60 /* InconsolataNerdFontMono-Regular.ttf in Resources */,
+				AB47C3112F282AF500C7AA60 /* JetBrainsMono-Thin.ttf in Resources */,
+				AB47C3122F282AF500C7AA60 /* HackNerdFontMono-Bold.ttf in Resources */,
+				AB47C3132F282AF500C7AA60 /* JetBrainsMono-Light.ttf in Resources */,
+				AB47C3142F282AF500C7AA60 /* JetBrainsMono-Regular.ttf in Resources */,
+				AB47C3152F282AF500C7AA60 /* FiraCodeNerdFontMono-Regular.ttf in Resources */,
+				AB47C3162F282AF500C7AA60 /* JetBrainsMono-SemiBold.ttf in Resources */,
+				AB47C3172F282AF500C7AA60 /* MapleMono-NF-CN-Regular.ttf in Resources */,
+				AB47C3182F282AF500C7AA60 /* InconsolataNerdFontMono-Bold.ttf in Resources */,
+				AB47C3192F282AF500C7AA60 /* JetBrainsMono-ExtraLight.ttf in Resources */,
+				AB47C31A2F282AF500C7AA60 /* JetBrainsMono-ExtraBold.ttf in Resources */,
+				AB47C31B2F282AF500C7AA60 /* JetBrainsMono-Medium.ttf in Resources */,
+				AB47C31C2F282AF500C7AA60 /* CascadiaMonoNF.ttf in Resources */,
+				AB47C31D2F282AF500C7AA60 /* CascadiaCodeNF.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -960,6 +889,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
@@ -990,8 +920,8 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -1014,8 +944,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = NO;
 				SDKROOT = iphoneos;
-				STRIP_INSTALLED_PRODUCT = NO;
-				STRIP_SWIFT_SYMBOLS = NO;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				WATCHOS_DEPLOYMENT_TARGET = 8.0;
@@ -1026,6 +955,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
@@ -1056,8 +986,8 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -1073,8 +1003,7 @@
 				MTL_FAST_MATH = YES;
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = NO;
 				SDKROOT = iphoneos;
-				STRIP_INSTALLED_PRODUCT = NO;
-				STRIP_SWIFT_SYMBOLS = NO;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
@@ -1093,9 +1022,13 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 68;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 7PCD2KB89F;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = mRayon/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = GoodTerm;
@@ -1141,9 +1074,13 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 68;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
-				DEVELOPMENT_TEAM = 7PCD2KB89F;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = mRayon/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = GoodTerm;
@@ -1189,8 +1126,8 @@
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 69;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
-				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -1227,8 +1164,8 @@
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 69;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
-				DEVELOPMENT_TEAM = 7PCD2KB89F;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
