@@ -159,6 +159,7 @@ struct SidebarView: View {
                 ForEach(terminalManager.terminals) { context in
                     NavigationLink {
                         AssistantDetailView(context: context)
+                            .id(context.id)
                     } label: {
                         Label(context.navigationTitle, systemImage: "terminal")
                     }
@@ -190,6 +191,7 @@ struct SidebarView: View {
                 ForEach(transferBackend.transfers) { context in
                     NavigationLink {
                         FileTransferView(context: context)
+                            .id(context.id)
                     } label: {
                         Label(context.navigationTitle, systemImage: "externaldrive.connected.to.line.below")
                     }

@@ -34,7 +34,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     private var title: String = "" {
         didSet {
-            mainActor {
+            DispatchQueue.main.async {
                 self.navigationSubtitle = self.title
             }
         }
@@ -67,6 +67,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     private var _dataBuffer: String = ""
+    private var _inputAccumulator: String = ""  // Accumulate user input for history
     private var bufferAccessLock = NSLock()
 
     @Published var inputHistory: [String] = []
@@ -76,6 +77,57 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         bufferAccessLock.lock()
         defer { bufferAccessLock.unlock() }
         let copy = _dataBuffer
+
+        // Debug: Log what we're getting
+        if !copy.isEmpty {
+            debugPrint("[getBuffer] Buffer content: '\(copy)' (hex: \(copy.data(using: .utf8)?.map { String(format: "%02x", $0) }.joined() ?? "nil"))")
+        }
+
+        // Accumulate input for history tracking
+        _inputAccumulator += copy
+
+        // Check if accumulator contains a complete command (ends with \r or \n)
+        let hasReturn = _inputAccumulator.contains("\r")
+        let hasNewline = _inputAccumulator.contains("\n")
+
+        if hasReturn || hasNewline {
+            let separator = hasReturn ? "\r" : "\n"
+            let lines = _inputAccumulator.components(separatedBy: separator)
+            debugPrint("[getBuffer] Found \(lines.count) lines in accumulator")
+
+            for (index, line) in lines.enumerated() {
+                debugPrint("[getBuffer] Line \(index): '\(line)'")
+
+                // Process non-empty lines
+                if !line.isEmpty {
+                    let command = line.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+                    if !command.isEmpty {
+                        debugPrint("[getBuffer] ✓ Adding to history: '\(command)'")
+                        addToHistory(command)
+                    }
+                }
+            }
+
+            // Keep only incomplete input (if input doesn't end with separator)
+            if hasReturn && !_inputAccumulator.hasSuffix("\r") {
+                let parts = _inputAccumulator.components(separatedBy: "\r")
+                if let lastPart = parts.last {
+                    _inputAccumulator = lastPart
+                } else {
+                    _inputAccumulator = ""
+                }
+            } else if hasNewline && !_inputAccumulator.hasSuffix("\n") {
+                let parts = _inputAccumulator.components(separatedBy: "\n")
+                if let lastPart = parts.last {
+                    _inputAccumulator = lastPart
+                } else {
+                    _inputAccumulator = ""
+                }
+            } else {
+                _inputAccumulator = ""
+            }
+        }
+
         _dataBuffer = ""
         return copy
     }
@@ -85,13 +137,14 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         defer { bufferAccessLock.unlock() }
         guard !closed else { return }
         _dataBuffer += str
+        debugPrint("[insertBuffer] Added to buffer: \(str.prefix(50))")
         shell.explicitRequestStatusPickup()
     }
 
     func addToHistory(_ command: String) {
-        let trimmed = command.trimmingCharacters(in: .newlines)
+        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        mainActor { [self] in
+        DispatchQueue.main.async { [self] in
             // Avoid duplicates
             if inputHistory.last != trimmed {
                 inputHistory.append(trimmed)
@@ -105,7 +158,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     var continueDecision: Bool = true {
         didSet {
-            mainActor {
+            DispatchQueue.main.async {
                 self.interfaceDisabled = !self.continueDecision
             }
         }
@@ -158,12 +211,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     func processBootstrap() {
         defer {
-            mainActor { self.processShutdown(exitFromShell: true) }
+            DispatchQueue.main.async { self.processShutdown(exitFromShell: true) }
         }
 
         termInterface.setTerminalFontSize(with: RayonStore.shared.terminalFontSize)
 
-        mainActor {
+        DispatchQueue.main.async {
             guard self.firstConnect else {
                 return
             }
@@ -250,7 +303,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
             return
         }
 
-        mainActor {
+        DispatchQueue.main.async {
             guard self.remoteType == .machine else {
                 return
             }

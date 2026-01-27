@@ -61,13 +61,13 @@ class AssistantManager: ObservableObject {
     }
 
     func setCurrentContext(_ context: TerminalManager.Context) {
-        mainActor { [self] in
+        DispatchQueue.main.async { [self] in
             currentTerminalContext = context
         }
     }
 
     func clearCurrentContext() {
-        mainActor { [self] in
+        DispatchQueue.main.async { [self] in
             currentTerminalContext = nil
             isVisible = false
         }

@@ -25,7 +25,7 @@ struct TerminalView: View {
     @State var lastDragOffset: CGSize = .zero
 
     @StateObject var store = RayonStore.shared
-    @StateObject var assistantManager = AssistantManager.shared
+    @ObservedObject var assistantManager = AssistantManager.shared
 
     @Environment(\.presentationMode) var presentationMode
 
@@ -193,10 +193,13 @@ struct TerminalView: View {
                 PlaceholderView("Terminal Transfer To Another Window", img: .emptyWindow)
             }
         }
+        .id(context.id) // Force view refresh for different contexts
         .disabled(context.destroyedSession)
         .onAppear {
-            debugPrint("set interface token \(interfaceToken)")
-            context.interfaceToken = interfaceToken
+            debugPrint("[iOS TerminalView] appeared for context: \(context.machine.name)")
+            DispatchQueue.main.async {
+                context.interfaceToken = interfaceToken
+            }
         }
         .navigationTitle(context.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)

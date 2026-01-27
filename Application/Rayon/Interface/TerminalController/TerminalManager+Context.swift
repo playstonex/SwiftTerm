@@ -26,7 +26,7 @@ extension TerminalManager {
 
         private var title: String = "" {
             didSet {
-                mainActor {
+                DispatchQueue.main.async {
                     self.navigationSubtitle = self.title
                 }
             }
@@ -59,6 +59,7 @@ extension TerminalManager {
         }
 
         private var _dataBuffer: String = ""
+        private var _inputAccumulator: String = ""  // Accumulate user input for history
         private var bufferAccessLock = NSLock()
 
         @Published var inputHistory: [String] = []
@@ -68,6 +69,57 @@ extension TerminalManager {
             bufferAccessLock.lock()
             defer { bufferAccessLock.unlock() }
             let copy = _dataBuffer
+
+            // Debug: Log what we're getting
+            if !copy.isEmpty {
+                debugPrint("[getBuffer] Buffer content: '\(copy)' (hex: \(copy.data(using: .utf8)?.map { String(format: "%02x", $0) }.joined() ?? "nil"))")
+            }
+
+            // Accumulate input for history tracking
+            _inputAccumulator += copy
+
+            // Check if accumulator contains a complete command (ends with \r or \n)
+            let hasReturn = _inputAccumulator.contains("\r")
+            let hasNewline = _inputAccumulator.contains("\n")
+
+            if hasReturn || hasNewline {
+                let separator = hasReturn ? "\r" : "\n"
+                let lines = _inputAccumulator.components(separatedBy: separator)
+                debugPrint("[getBuffer] Found \(lines.count) lines in accumulator")
+
+                for (index, line) in lines.enumerated() {
+                    debugPrint("[getBuffer] Line \(index): '\(line)'")
+
+                    // Process non-empty lines
+                    if !line.isEmpty {
+                        let command = line.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+                        if !command.isEmpty {
+                            debugPrint("[getBuffer] ✓ Adding to history: '\(command)'")
+                            addToHistory(command)
+                        }
+                    }
+                }
+
+                // Keep only incomplete input (if input doesn't end with separator)
+                if hasReturn && !_inputAccumulator.hasSuffix("\r") {
+                    let parts = _inputAccumulator.components(separatedBy: "\r")
+                    if let lastPart = parts.last {
+                        _inputAccumulator = lastPart
+                    } else {
+                        _inputAccumulator = ""
+                    }
+                } else if hasNewline && !_inputAccumulator.hasSuffix("\n") {
+                    let parts = _inputAccumulator.components(separatedBy: "\n")
+                    if let lastPart = parts.last {
+                        _inputAccumulator = lastPart
+                    } else {
+                        _inputAccumulator = ""
+                    }
+                } else {
+                    _inputAccumulator = ""
+                }
+            }
+
             _dataBuffer = ""
             return copy
         }
@@ -77,18 +129,21 @@ extension TerminalManager {
             defer { bufferAccessLock.unlock() }
             guard !closed else { return }
             _dataBuffer += str
+            debugPrint("[insertBuffer] Added to buffer: \(str.prefix(50))")
             Context.queue.async { [weak self] in
                 self?.shell.explicitRequestStatusPickup()
             }
         }
 
         func addToHistory(_ command: String) {
-            let trimmed = command.trimmingCharacters(in: .newlines)
+            let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
-            mainActor { [self] in
+            debugPrint("[History] Adding command: \(trimmed)")
+            DispatchQueue.main.async { [self] in
                 // Avoid duplicates
                 if inputHistory.last != trimmed {
                     inputHistory.append(trimmed)
+                    debugPrint("[History] Total count: \(inputHistory.count)")
                     // Keep history size limited
                     if inputHistory.count > maxHistorySize {
                         inputHistory.removeFirst()
@@ -99,7 +154,7 @@ extension TerminalManager {
 
         var continueDecision: Bool = true {
             didSet {
-                mainActor {
+                DispatchQueue.main.async {
                     self.interfaceDisabled = !self.continueDecision
                 }
             }
@@ -158,7 +213,7 @@ extension TerminalManager {
 
         func processBootstrap() {
             defer {
-                mainActor { self.processShutdown(exitFromShell: true) }
+                DispatchQueue.main.async { self.processShutdown(exitFromShell: true) }
             }
 
             setupShellData()
@@ -230,7 +285,7 @@ extension TerminalManager {
                 return
             }
 
-            mainActor {
+            DispatchQueue.main.async {
                 guard self.remoteType == .machine else {
                     return
                 }

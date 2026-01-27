@@ -11,7 +11,7 @@ import XTerminalUI
 
 struct TerminalView: View {
     @StateObject var context: TerminalManager.Context
-    @StateObject var assistantManager = AssistantManager.shared
+    @ObservedObject var assistantManager = AssistantManager.shared
 
     @StateObject var store = RayonStore.shared
     @State var interfaceToken = UUID()
@@ -61,9 +61,12 @@ struct TerminalView: View {
                 Text("Terminal Transfer To Another Window")
             }
         }
+        .id(context.id) // Force view refresh for different contexts
         .onAppear {
             debugPrint("set interface token \(interfaceToken)")
-            context.interfaceToken = interfaceToken
+            DispatchQueue.main.async {
+                context.interfaceToken = interfaceToken
+            }
         }
         .toolbar {
             ToolbarItem {

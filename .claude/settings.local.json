@@ -16,7 +16,8 @@
       "Bash(xcrun simctl boot:*)",
       "Bash(xcrun:*)",
       "Bash(git stash push:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(./Workflow/Scripts/fmt.sh:*)"
     ]
   }
 }
