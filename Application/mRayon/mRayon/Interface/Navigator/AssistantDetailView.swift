@@ -126,8 +126,8 @@ struct TerminalHistoryView: View {
 
             Divider()
 
-            // Display combined history
-            if systemHistory.isEmpty && context.inputHistory.isEmpty {
+            // Display history
+            if systemHistory.isEmpty {
                 VStack(spacing: 12) {
                     Spacer()
                     Image(systemName: "clock.arrow.circlepath")
@@ -153,37 +153,15 @@ struct TerminalHistoryView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 4) {
-                        // System history
-                        if !systemHistory.isEmpty {
-                            ForEach(Array(systemHistory.enumerated()), id: \.offset) { index, command in
-                                HistoryRow(
-                                    index: index + 1,
-                                    command: command,
-                                    isSystemHistory: true,
-                                    action: {
-                                        context.insertBuffer(command + "\n")
-                                    }
-                                )
-                            }
-
-                            if !context.inputHistory.isEmpty {
-                                Divider()
-                                    .padding(.vertical, 8)
-                            }
-                        }
-
-                        // Session history
-                        if !context.inputHistory.isEmpty {
-                            ForEach(Array(context.inputHistory.enumerated()), id: \.offset) { index, command in
-                                HistoryRow(
-                                    index: systemHistory.count + index + 1,
-                                    command: command,
-                                    isSystemHistory: false,
-                                    action: {
-                                        context.insertBuffer(command + "\n")
-                                    }
-                                )
-                            }
+                        ForEach(Array(systemHistory.enumerated()), id: \.offset) { index, command in
+                            HistoryRow(
+                                index: index + 1,
+                                command: command,
+                                isSystemHistory: true,
+                                action: {
+                                    context.insertBuffer(command + "\n")
+                                }
+                            )
                         }
                     }
                     .padding(.horizontal)

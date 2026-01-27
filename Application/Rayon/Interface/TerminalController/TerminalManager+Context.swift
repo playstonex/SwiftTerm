@@ -59,58 +59,12 @@ extension TerminalManager {
         }
 
         private var _dataBuffer: String = ""
-        private var _inputAccumulator: String = ""  // Accumulate user input for history
         private var bufferAccessLock = NSLock()
-
-        @Published var inputHistory: [String] = []
-        private let maxHistorySize = 100
 
         func getBuffer() -> String {
             bufferAccessLock.lock()
             defer { bufferAccessLock.unlock() }
             let copy = _dataBuffer
-
-            // Accumulate input for history tracking
-            _inputAccumulator += copy
-
-            // Check if accumulator contains a complete command (ends with \r or \n)
-            let hasReturn = _inputAccumulator.contains("\r")
-            let hasNewline = _inputAccumulator.contains("\n")
-
-            if hasReturn || hasNewline {
-                let separator = hasReturn ? "\r" : "\n"
-                let lines = _inputAccumulator.components(separatedBy: separator)
-
-                for (_, line) in lines.enumerated() {
-                    // Process non-empty lines
-                    if !line.isEmpty {
-                        let command = line.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-                        if !command.isEmpty {
-                            addToHistory(command)
-                        }
-                    }
-                }
-
-                // Keep only incomplete input (if input doesn't end with separator)
-                if hasReturn && !_inputAccumulator.hasSuffix("\r") {
-                    let parts = _inputAccumulator.components(separatedBy: "\r")
-                    if let lastPart = parts.last {
-                        _inputAccumulator = lastPart
-                    } else {
-                        _inputAccumulator = ""
-                    }
-                } else if hasNewline && !_inputAccumulator.hasSuffix("\n") {
-                    let parts = _inputAccumulator.components(separatedBy: "\n")
-                    if let lastPart = parts.last {
-                        _inputAccumulator = lastPart
-                    } else {
-                        _inputAccumulator = ""
-                    }
-                } else {
-                    _inputAccumulator = ""
-                }
-            }
-
             _dataBuffer = ""
             return copy
         }
@@ -122,21 +76,6 @@ extension TerminalManager {
             _dataBuffer += str
             Context.queue.async { [weak self] in
                 self?.shell.explicitRequestStatusPickup()
-            }
-        }
-
-        func addToHistory(_ command: String) {
-            let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { return }
-            DispatchQueue.main.async { [self] in
-                // Avoid duplicates
-                if inputHistory.last != trimmed {
-                    inputHistory.append(trimmed)
-                    // Keep history size limited
-                    if inputHistory.count > maxHistorySize {
-                        inputHistory.removeFirst()
-                    }
-                }
             }
         }
 
