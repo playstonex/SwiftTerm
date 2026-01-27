@@ -15,7 +15,8 @@
       "Bash(du:*)",
       "Bash(xcrun simctl boot:*)",
       "Bash(xcrun:*)",
-      "Bash(git stash push:*)"
+      "Bash(git stash push:*)",
+      "Bash(python3:*)"
     ]
   }
 }

@@ -10,17 +10,20 @@ import SwiftUI
 
 struct SidebarView: View {
     @EnvironmentObject var store: RayonStore
+    @StateObject var assistantManager = AssistantManager.shared
 
     @StateObject var monitorManager = MonitorManager.shared
     @StateObject var terminalManager = TerminalManager.shared
     @StateObject var forwardBackend = PortForwardBackend.shared
     @StateObject var transferBackend = FileTransferManager.shared
 
+    @Namespace private var detailNamespace
+
     var body: some View {
         NavigationSplitView {
             sidebar
         } detail: {
-            JustWelcomeView()
+            detailContent
         }
     }
 
@@ -35,6 +38,12 @@ struct SidebarView: View {
         }
         .listStyle(SidebarListStyle())
         .navigationTitle("GoodTerm")
+    }
+
+    var detailContent: some View {
+        NavigationStack {
+            JustWelcomeView()
+        }
     }
 
     var app: some View {
@@ -149,7 +158,7 @@ struct SidebarView: View {
             } else {
                 ForEach(terminalManager.terminals) { context in
                     NavigationLink {
-                        TerminalView(context: context)
+                        AssistantDetailView(context: context)
                     } label: {
                         Label(context.navigationTitle, systemImage: "terminal")
                     }

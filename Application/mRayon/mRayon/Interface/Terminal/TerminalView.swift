@@ -25,6 +25,7 @@ struct TerminalView: View {
     @State var lastDragOffset: CGSize = .zero
 
     @StateObject var store = RayonStore.shared
+    @StateObject var assistantManager = AssistantManager.shared
 
     @Environment(\.presentationMode) var presentationMode
 
@@ -204,6 +205,13 @@ struct TerminalView: View {
                 Text(context.navigationTitle)
                     .font(.headline)
                     .foregroundColor(ColorFromHex(store.terminalTheme.foreground))
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    assistantManager.toggle()
+                } label: {
+                    Image(systemName: "sidebar.right")
+                }
             }
         }
         .onChange(of: store.terminalThemeName) { _ in

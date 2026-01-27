@@ -69,6 +69,9 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
     private var _dataBuffer: String = ""
     private var bufferAccessLock = NSLock()
 
+    @Published var inputHistory: [String] = []
+    private let maxHistorySize = 100
+
     func getBuffer() -> String {
         bufferAccessLock.lock()
         defer { bufferAccessLock.unlock() }
@@ -83,6 +86,21 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         guard !closed else { return }
         _dataBuffer += str
         shell.explicitRequestStatusPickup()
+    }
+
+    func addToHistory(_ command: String) {
+        let trimmed = command.trimmingCharacters(in: .newlines)
+        guard !trimmed.isEmpty else { return }
+        mainActor { [self] in
+            // Avoid duplicates
+            if inputHistory.last != trimmed {
+                inputHistory.append(trimmed)
+                // Keep history size limited
+                if inputHistory.count > maxHistorySize {
+                    inputHistory.removeFirst()
+                }
+            }
+        }
     }
 
     var continueDecision: Bool = true {
