@@ -11,6 +11,7 @@ import XTerminalUI
 
 struct TerminalView: View {
     @StateObject var context: TerminalManager.Context
+    @StateObject var assistantManager = AssistantManager.shared
 
     @StateObject var store = RayonStore.shared
     @State var interfaceToken = UUID()
@@ -84,6 +85,13 @@ struct TerminalView: View {
             ToolbarItem { // divider
                 Button {} label: { HStack { Divider().frame(height: 15) } }
                     .disabled(true)
+            }
+            ToolbarItem {
+                Button {
+                    assistantManager.toggle()
+                } label: {
+                    Image(systemName: "sidebar.right")
+                }
             }
             ToolbarItem {
                 Button {

@@ -87,7 +87,7 @@ struct SidebarView: View {
             } else {
                 ForEach(terminalManager.sessionContexts) { context in
                     NavigationLink {
-                        TerminalView(context: context).requiresFrame()
+                        AssistantDetailView(context: context).requiresFrame()
                     } label: {
                         if context.remoteType == .machine {
                             Label(context.machine.name, systemImage: "terminal")

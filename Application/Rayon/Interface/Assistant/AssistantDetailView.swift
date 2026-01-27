@@ -1,6 +1,6 @@
 //
 //  AssistantDetailView.swift
-//  mRayon
+//  Rayon (macOS)
 //
 //  Created by Claude on 2026/1/27.
 //
@@ -10,9 +10,10 @@ import MachineStatusView
 import NSRemoteShell
 import RayonModule
 import SwiftUI
+import XTerminalUI
 
 struct AssistantDetailView: View {
-    @StateObject var context: TerminalContext
+    @StateObject var context: TerminalManager.Context
     @StateObject var assistantManager = AssistantManager.shared
 
     var body: some View {
@@ -41,7 +42,7 @@ struct AssistantDetailView: View {
 
 // MARK: - Assistant Inspector View
 struct AssistantInspectorView: View {
-    @StateObject var context: TerminalContext
+    @StateObject var context: TerminalManager.Context
     @StateObject var assistantManager = AssistantManager.shared
 
     var body: some View {
@@ -57,7 +58,7 @@ struct AssistantInspectorView: View {
             .labelsHidden()
             .padding(.horizontal)
             .padding(.vertical, 12)
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
+            .background(Color(NSColor.controlBackgroundColor))
 
             Divider()
 
@@ -75,11 +76,11 @@ struct AssistantInspectorView: View {
                 }
             }
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .background(Color(NSColor.textBackgroundColor))
         .overlay(
             // Separator on the left
             Rectangle()
-                .fill(Color(uiColor: .separator))
+                .fill(Color(NSColor.separatorColor))
                 .frame(width: 0.5),
             alignment: .leading
         )
@@ -88,57 +89,55 @@ struct AssistantInspectorView: View {
 
 // MARK: - History Segment
 struct TerminalHistoryView: View {
-    @StateObject var context: TerminalContext
+    @StateObject var context: TerminalManager.Context
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                if context.inputHistory.isEmpty {
-                    Text("No command history yet")
-                        .foregroundColor(.secondary)
-                        .padding()
-                } else {
-                    ForEach(Array(context.inputHistory.enumerated()), id: \.offset) { index, command in
-                        HStack(alignment: .top) {
-                            Text("\(index + 1)")
-                                .foregroundColor(.secondary)
-                                .font(.system(.caption, design: .monospaced))
-                                .frame(width: 40, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 8) {
+            if context.inputHistory.isEmpty {
+                Text("No command history yet")
+                    .foregroundColor(.secondary)
+                    .padding()
+            } else {
+                ForEach(Array(context.inputHistory.enumerated()), id: \.offset) { index, command in
+                    HStack(alignment: .top) {
+                        Text("\(index + 1)")
+                            .foregroundColor(.secondary)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(width: 40, alignment: .trailing)
 
-                            Text(command)
-                                .font(.system(.body, design: .monospaced))
-                                .textSelection(.enabled)
+                        Text(command)
+                            .font(.system(.body, design: .monospaced))
+                            .textSelection(.enabled)
 
-                            Spacer()
+                        Spacer()
 
-                            Button(action: {
-                                context.insertBuffer(command)
-                            }) {
-                                Image(systemName: "arrow.up.doc")
-                                    .foregroundColor(.accentColor)
-                            }
-                            .buttonStyle(PlainButtonStyle())
+                        Button(action: {
+                            context.insertBuffer(command)
+                        }) {
+                            Image(systemName: "arrow.up.doc")
+                                .foregroundColor(.accentColor)
                         }
-                        .padding(.horizontal)
-                        .padding(.vertical, 4)
+                        .buttonStyle(PlainButtonStyle())
                     }
+                    .padding(.horizontal)
+                    .padding(.vertical, 4)
                 }
             }
-            .padding(.vertical)
         }
+        .padding(.vertical)
     }
 }
 
 // MARK: - Status Segment
 struct AssistantStatusView: View {
-    @StateObject var context: TerminalContext
+    @StateObject var context: TerminalManager.Context
     @State private var isMonitoring = false
     @State private var serverStatus: ServerStatus = .init()
 
     var body: some View {
         Group {
             if isMonitoring {
-                // Display server status directly without MonitorView's toolbar
+                // Display server status directly
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
                         ServerStatusViews.createBaseStatusView(withContext: serverStatus)
@@ -221,7 +220,7 @@ struct AssistantStatusView: View {
 
 // MARK: - AI Segment
 struct AssistantAIView: View {
-    @StateObject var context: TerminalContext
+    @StateObject var context: TerminalManager.Context
 
     var body: some View {
         ScrollView {
@@ -246,7 +245,7 @@ struct AssistantAIView: View {
                     Label("System optimization tips", systemImage: "checkmark.circle.fill")
                 }
                 .padding()
-                .background(Color(uiColor: .secondarySystemGroupedBackground))
+                .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(10)
 
                 Text("Coming soon")

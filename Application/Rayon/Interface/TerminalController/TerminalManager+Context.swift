@@ -61,6 +61,9 @@ extension TerminalManager {
         private var _dataBuffer: String = ""
         private var bufferAccessLock = NSLock()
 
+        @Published var inputHistory: [String] = []
+        private let maxHistorySize = 100
+
         func getBuffer() -> String {
             bufferAccessLock.lock()
             defer { bufferAccessLock.unlock() }
@@ -76,6 +79,21 @@ extension TerminalManager {
             _dataBuffer += str
             Context.queue.async { [weak self] in
                 self?.shell.explicitRequestStatusPickup()
+            }
+        }
+
+        func addToHistory(_ command: String) {
+            let trimmed = command.trimmingCharacters(in: .newlines)
+            guard !trimmed.isEmpty else { return }
+            mainActor { [self] in
+                // Avoid duplicates
+                if inputHistory.last != trimmed {
+                    inputHistory.append(trimmed)
+                    // Keep history size limited
+                    if inputHistory.count > maxHistorySize {
+                        inputHistory.removeFirst()
+                    }
+                }
             }
         }
 
