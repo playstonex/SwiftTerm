@@ -78,11 +78,6 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         defer { bufferAccessLock.unlock() }
         let copy = _dataBuffer
 
-        // Debug: Log what we're getting
-        if !copy.isEmpty {
-            debugPrint("[getBuffer] Buffer content: '\(copy)' (hex: \(copy.data(using: .utf8)?.map { String(format: "%02x", $0) }.joined() ?? "nil"))")
-        }
-
         // Accumulate input for history tracking
         _inputAccumulator += copy
 
@@ -93,16 +88,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         if hasReturn || hasNewline {
             let separator = hasReturn ? "\r" : "\n"
             let lines = _inputAccumulator.components(separatedBy: separator)
-            debugPrint("[getBuffer] Found \(lines.count) lines in accumulator")
 
-            for (index, line) in lines.enumerated() {
-                debugPrint("[getBuffer] Line \(index): '\(line)'")
-
+            for (_, line) in lines.enumerated() {
                 // Process non-empty lines
                 if !line.isEmpty {
                     let command = line.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
                     if !command.isEmpty {
-                        debugPrint("[getBuffer] ✓ Adding to history: '\(command)'")
                         addToHistory(command)
                     }
                 }
@@ -137,7 +128,6 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         defer { bufferAccessLock.unlock() }
         guard !closed else { return }
         _dataBuffer += str
-        debugPrint("[insertBuffer] Added to buffer: \(str.prefix(50))")
         shell.explicitRequestStatusPickup()
     }
 
@@ -236,13 +226,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
         setupShellData()
 
-        debugPrint("\(self) \(#function) \(machine.id)")
         putInformation("[*] Creating Connection")
         continueDecision = true
 
         termInterface
             .setupBellChain {
-                debugPrint("terminal bell")
+                // Terminal bell
             }
             .setupBufferChain { [weak self] buffer in
                 self?.insertBuffer(buffer)
@@ -317,7 +306,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         shell.begin(
             withTerminalType: "xterm"
         ) {
-            debugPrint("channel open")
+            // Channel opened
         } withTerminalSize: { [weak self] in
             var size = self?.terminalSize ?? TerminalContext.defaultTerminalSize
             if size.width < 8 || size.height < 8 {
@@ -337,9 +326,6 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         } withContinuationHandler: { [weak self] in
             self?.continueDecision ?? false
         }
-
-        // leave loop
-        debugPrint("\(self) \(#function) defer \(machine.id)")
 
         processShutdown()
     }

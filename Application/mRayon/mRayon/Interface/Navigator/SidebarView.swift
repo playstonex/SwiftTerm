@@ -10,7 +10,7 @@ import SwiftUI
 
 struct SidebarView: View {
     @EnvironmentObject var store: RayonStore
-    @StateObject var assistantManager = AssistantManager.shared
+    @ObservedObject var assistantManager = AssistantManager.shared
 
     @StateObject var monitorManager = MonitorManager.shared
     @StateObject var terminalManager = TerminalManager.shared

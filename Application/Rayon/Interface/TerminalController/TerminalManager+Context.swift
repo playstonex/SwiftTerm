@@ -70,11 +70,6 @@ extension TerminalManager {
             defer { bufferAccessLock.unlock() }
             let copy = _dataBuffer
 
-            // Debug: Log what we're getting
-            if !copy.isEmpty {
-                debugPrint("[getBuffer] Buffer content: '\(copy)' (hex: \(copy.data(using: .utf8)?.map { String(format: "%02x", $0) }.joined() ?? "nil"))")
-            }
-
             // Accumulate input for history tracking
             _inputAccumulator += copy
 
@@ -85,16 +80,12 @@ extension TerminalManager {
             if hasReturn || hasNewline {
                 let separator = hasReturn ? "\r" : "\n"
                 let lines = _inputAccumulator.components(separatedBy: separator)
-                debugPrint("[getBuffer] Found \(lines.count) lines in accumulator")
 
-                for (index, line) in lines.enumerated() {
-                    debugPrint("[getBuffer] Line \(index): '\(line)'")
-
+                for (_, line) in lines.enumerated() {
                     // Process non-empty lines
                     if !line.isEmpty {
                         let command = line.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
                         if !command.isEmpty {
-                            debugPrint("[getBuffer] ✓ Adding to history: '\(command)'")
                             addToHistory(command)
                         }
                     }
@@ -129,7 +120,6 @@ extension TerminalManager {
             defer { bufferAccessLock.unlock() }
             guard !closed else { return }
             _dataBuffer += str
-            debugPrint("[insertBuffer] Added to buffer: \(str.prefix(50))")
             Context.queue.async { [weak self] in
                 self?.shell.explicitRequestStatusPickup()
             }
@@ -138,12 +128,10 @@ extension TerminalManager {
         func addToHistory(_ command: String) {
             let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return }
-            debugPrint("[History] Adding command: \(trimmed)")
             DispatchQueue.main.async { [self] in
                 // Avoid duplicates
                 if inputHistory.last != trimmed {
                     inputHistory.append(trimmed)
-                    debugPrint("[History] Total count: \(inputHistory.count)")
                     // Keep history size limited
                     if inputHistory.count > maxHistorySize {
                         inputHistory.removeFirst()
@@ -218,13 +206,12 @@ extension TerminalManager {
 
             setupShellData()
 
-            debugPrint("\(self) \(#function) \(machine.id)")
             putInformation("[*] Creating Connection")
             continueDecision = true
 
             termInterface
                 .setupBellChain {
-                    debugPrint("terminal bell")
+                    // Terminal bell
                 }
                 .setupBufferChain { [weak self] buffer in
                     self?.insertBuffer(buffer)
@@ -297,7 +284,7 @@ extension TerminalManager {
             }
 
             shell.begin(withTerminalType: "xterm") {
-                debugPrint("channel open")
+                // Channel opened
             } withTerminalSize: { [weak self] in
                 var size = self?.terminalSize ?? Context.defaultTerminalSize
                 if size.width < 8 || size.height < 8 {
@@ -317,9 +304,6 @@ extension TerminalManager {
             } withContinuationHandler: { [weak self] in
                 self?.continueDecision ?? false
             }
-
-            // leave loop
-            debugPrint("\(self) \(#function) defer \(machine.id)")
 
             processShutdown()
         }

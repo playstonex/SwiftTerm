@@ -31,39 +31,38 @@ struct TerminalView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onChange(of: store.terminalFontSize) { newValue in
-                        context.termInterface.setTerminalFontSize(with: newValue)
+                .onChange(of: store.terminalFontSize) { oldValue, newValue in
+                    context.termInterface.setTerminalFontSize(with: newValue)
+                }
+                .onChange(of: store.terminalFontName) { oldValue, newValue in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.applyFont()
                     }
-                    .onChange(of: store.terminalFontName) { newValue in
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            self.applyFont()
-                        }
+                }
+                .onChange(of: store.terminalThemeName) { oldValue, newValue in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self.applyTheme()
                     }
-                    .onChange(of: store.terminalThemeName) { _ in
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            self.applyTheme()
-                        }
+                }
+                .onAppear {
+                    context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
+                    context.termInterface.setTerminalFontName(with: store.terminalFontName)
+                    // Set initial background color
+                    if let color = Color(hex: store.terminalTheme.background) {
+                        backgroundColor = color
                     }
-                    .onAppear {
-                        context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
-                        context.termInterface.setTerminalFontName(with: store.terminalFontName)
-                        // Set initial background color
-                        if let color = Color(hex: store.terminalTheme.background) {
-                            backgroundColor = color
-                        }
-                        // Delay theme application to ensure WebView is ready
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                            self.applyTheme()
-                            self.applyFont()
-                        }
+                    // Delay theme application to ensure WebView is ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.applyTheme()
+                        self.applyFont()
                     }
+                }
             } else {
                 Text("Terminal Transfer To Another Window")
             }
         }
         .id(context.id) // Force view refresh for different contexts
         .onAppear {
-            debugPrint("set interface token \(interfaceToken)")
             DispatchQueue.main.async {
                 context.interfaceToken = interfaceToken
             }

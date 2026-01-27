@@ -33,16 +33,10 @@ struct AssistantDetailView: View {
         }
         .id(context.id) // Force view refresh for different contexts
         .onAppear {
-            debugPrint("[AssistantDetailView] appeared for context: \(context.machine.name)")
-            DispatchQueue.main.async {
-                assistantManager.setCurrentContext(context)
-            }
+            assistantManager.setCurrentContext(context)
         }
         .onDisappear {
-            debugPrint("[AssistantDetailView] disappeared for context: \(context.machine.name)")
-            DispatchQueue.main.async {
-                assistantManager.clearCurrentContext()
-            }
+            assistantManager.clearCurrentContext()
         }
     }
 }
@@ -217,21 +211,14 @@ struct TerminalHistoryView: View {
         isLoading = true
         errorMessage = nil
 
-        debugPrint("[History] Fetching system history...")
-        debugPrint("[History] Shell connected: \(context.shell.isConnected)")
-        debugPrint("[History] Shell authenticated: \(context.shell.isAuthenticated)")
-
         // Use the existing shell connection
         guard context.shell.isConnected, context.shell.isAuthenticated else {
-            debugPrint("[History] No active shell connection")
             errorMessage = "Terminal not connected"
             isLoading = false
             return
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            debugPrint("[History] Executing history command...")
-
             // Detect shell and read appropriate history file
             // Supports: bash, zsh, fish, tcsh, and others
             let command = """
@@ -255,30 +242,18 @@ struct TerminalHistoryView: View {
 
             var output = ""
 
-            let result = self.context.shell.beginExecute(
+            self.context.shell.beginExecute(
                 withCommand: " \(command)",  // Leading space to avoid storing in history
                 withTimeout: NSNumber(value: 15),
-                withOnCreate: {
-                    debugPrint("[History] Command execution started")
-                },
+                withOnCreate: {},
                 withOutput: { chunk in
-                    if chunk.count > 100 {
-                        debugPrint("[History] Received large chunk: \(chunk.prefix(50))...")
-                    } else {
-                        debugPrint("[History] Received chunk: \(chunk)")
-                    }
                     output.append(chunk)
                 },
                 withContinuationHandler: nil
             )
 
-            debugPrint("[History] Command result: \(result)")
-            debugPrint("[History] Total output length: \(output.count)")
-            debugPrint("[History] Raw output (first 500 chars): \n\(output.prefix(500))")
-
             // Parse the output
             let parsed = self.parseHistoryOutput(output)
-            debugPrint("[History] Parsed \(parsed.count) commands")
 
             DispatchQueue.main.async {
                 self.systemHistory = parsed
@@ -286,7 +261,6 @@ struct TerminalHistoryView: View {
                 if parsed.isEmpty {
                     self.errorMessage = "No commands found in history"
                 }
-                debugPrint("[History] Updated UI with \(parsed.count) commands")
             }
         }
     }
@@ -448,16 +422,12 @@ struct AssistantStatusView: View {
         guard let aid = machine.associatedIdentity,
               let uid = UUID(uuidString: aid)
         else {
-            debugPrint("[Status] No associated identity found")
             return
         }
         let identity = RayonStore.shared.identityGroup[uid]
         guard !identity.username.isEmpty else {
-            debugPrint("[Status] Identity username is empty")
             return
         }
-
-        debugPrint("[Status] Starting monitoring for \(machine.remoteAddress)")
 
         // Create a temporary shell for status check
         let shell = NSRemoteShell()
@@ -466,25 +436,18 @@ struct AssistantStatusView: View {
             .setupConnectionTimeout(6)
 
         DispatchQueue.global(qos: .userInitiated).async {
-            debugPrint("[Status] Connecting to server...")
             shell.requestConnectAndWait()
             identity.callAuthenticationWith(remote: shell)
 
             if shell.isConnected, shell.isAuthenticated {
-                debugPrint("[Status] Connected and authenticated, requesting status...")
                 // Update status on background thread, then update UI on main thread
                 self.serverStatus.requestInfoAndWait(with: shell)
-
-                debugPrint("[Status] Status received, disconnecting...")
                 shell.requestDisconnectAndWait()
 
                 // Update UI on main thread after status is fetched
                 DispatchQueue.main.async {
-                    debugPrint("[Status] Updating UI")
                     self.isMonitoring = true
                 }
-            } else {
-                debugPrint("[Status] Failed to connect or authenticate")
             }
         }
     }

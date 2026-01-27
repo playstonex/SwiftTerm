@@ -85,15 +85,15 @@ struct TerminalView: View {
                                 self.applyFont()
                             }
                         }
-                        .onChange(of: store.terminalFontSize) { newValue in
+                        .onChange(of: store.terminalFontSize) { oldValue, newValue in
                             context.termInterface.setTerminalFontSize(with: newValue)
                         }
-                        .onChange(of: store.terminalFontName) { newValue in
+                        .onChange(of: store.terminalFontName) { oldValue, newValue in
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                 self.applyFont()
                             }
                         }
-                        .onChange(of: store.terminalThemeName) { _ in
+                        .onChange(of: store.terminalThemeName) { oldValue, newValue in
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                                 self.applyTheme()
                             }

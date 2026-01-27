@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import RayonModule
 
+@MainActor
 class AssistantManager: ObservableObject {
     static let shared = AssistantManager()
 
@@ -18,7 +19,7 @@ class AssistantManager: ObservableObject {
     @Published var selectedSegment: AssistantSegment = .history
 
     // Current terminal context for the assistant
-    @Published var currentTerminalContext: TerminalContext?
+    var currentTerminalContext: TerminalContext?
 
     enum AssistantSegment: String, CaseIterable {
         case history
@@ -61,15 +62,11 @@ class AssistantManager: ObservableObject {
     }
 
     func setCurrentContext(_ context: TerminalContext) {
-        DispatchQueue.main.async { [self] in
-            currentTerminalContext = context
-        }
+        currentTerminalContext = context
     }
 
     func clearCurrentContext() {
-        DispatchQueue.main.async { [self] in
-            currentTerminalContext = nil
-            isVisible = false
-        }
+        currentTerminalContext = nil
+        isVisible = false
     }
 }
