@@ -5,8 +5,11 @@
 //  Created by Claude on 2026/1/27.
 //
 
-import SwiftUI
+import MachineStatus
+import MachineStatusView
+import NSRemoteShell
 import RayonModule
+import SwiftUI
 
 struct AssistantDetailView: View {
     @StateObject var context: TerminalContext
@@ -43,24 +46,6 @@ struct AssistantInspectorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with info icon (SF Symbols style)
-            HStack(spacing: 12) {
-                Button {
-                    // Info button - could show help or about
-                } label: {
-                    Image(systemName: "info.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.blue)
-                }
-
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
-
-            Divider()
-
             // Segmented control
             Picker("Assistant", selection: $assistantManager.selectedSegment) {
                 ForEach(AssistantManager.AssistantSegment.allCases, id: \.self) { segment in
@@ -146,12 +131,19 @@ struct TerminalHistoryView: View {
 // MARK: - Status Segment
 struct AssistantStatusView: View {
     @StateObject var context: TerminalContext
-    @State private var monitorContext: MonitorContext?
+    @State private var isMonitoring = false
+    @State private var serverStatus: ServerStatus = .init()
 
     var body: some View {
         Group {
-            if let monitorContext = monitorContext {
-                MonitorView(context: monitorContext)
+            if isMonitoring {
+                // Display server status directly without MonitorView's toolbar
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ServerStatusViews.createBaseStatusView(withContext: serverStatus)
+                    }
+                    .padding()
+                }
             } else {
                 VStack(spacing: 16) {
                     Spacer()
@@ -180,10 +172,8 @@ struct AssistantStatusView: View {
             }
         }
         .onAppear {
-            // Auto-start monitoring if not started
-            if monitorContext == nil {
-                startMonitoring()
-            }
+            // Auto-start monitoring when this segment appears
+            startMonitoring()
         }
         .onDisappear {
             stopMonitoring()
@@ -201,12 +191,30 @@ struct AssistantStatusView: View {
         guard !identity.username.isEmpty else {
             return
         }
-        monitorContext = MonitorContext(machine: machine, identity: identity)
+
+        // Create a temporary shell for status check
+        let shell = NSRemoteShell()
+            .setupConnectionHost(machine.remoteAddress)
+            .setupConnectionPort(NSNumber(value: Int(machine.remotePort) ?? 0))
+            .setupConnectionTimeout(6)
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            shell.requestConnectAndWait()
+            identity.callAuthenticationWith(remote: shell)
+
+            if shell.isConnected, shell.isAuthenticated {
+                mainActor {
+                    self.isMonitoring = true
+                    // Update status
+                    self.serverStatus.requestInfoAndWait(with: shell)
+                    shell.requestDisconnectAndWait()
+                }
+            }
+        }
     }
 
     private func stopMonitoring() {
-        monitorContext?.processShutdown()
-        monitorContext = nil
+        isMonitoring = false
     }
 }
 
