@@ -181,6 +181,10 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
             .setupSizeChain { [weak self] size in
                 self?.terminalSize = size
             }
+            .setupCopyChain { [weak self] text in
+                // Handle copy operation from terminal
+                UIPasteboard.general.string = text
+            }
 
         shell.requestConnectAndWait()
 

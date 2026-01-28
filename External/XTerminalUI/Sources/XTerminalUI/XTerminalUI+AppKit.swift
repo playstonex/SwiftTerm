@@ -48,6 +48,18 @@ import Foundation
             return self
         }
 
+        @discardableResult
+        public func setupCopyChain(callback: ((String) -> Void)?) -> Self {
+            associatedCore.setupCopyChain(callback: callback)
+            return self
+        }
+
+        @discardableResult
+        public func setupNavigationChain(callback: (() -> Void)?) -> Self {
+            associatedCore.setupNavigationChain(callback: callback)
+            return self
+        }
+
         public func write(_ str: String) {
             associatedCore.write(str)
         }

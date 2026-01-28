@@ -15,7 +15,12 @@
       "Bash(du:*)",
       "Bash(xcrun simctl boot:*)",
       "Bash(xcrun:*)",
-      "Bash(git stash push:*)"
+      "Bash(git stash push:*)",
+      "Bash(python3:*)",
+      "Bash(./Workflow/Scripts/fmt.sh:*)",
+      "Bash(git restore:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)"
     ]
   }
 }

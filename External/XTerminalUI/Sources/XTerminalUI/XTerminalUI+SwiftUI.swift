@@ -44,6 +44,18 @@ import SwiftUI
             correspondingView.setupSizeChain(callback: callback)
             return self
         }
+
+        @discardableResult
+        public func setupCopyChain(callback: ((String) -> Void)?) -> Self {
+            correspondingView.setupCopyChain(callback: callback)
+            return self
+        }
+
+        @discardableResult
+        public func setupNavigationChain(callback: (() -> Void)?) -> Self {
+            correspondingView.setupNavigationChain(callback: callback)
+            return self
+        }
         
         public func setTerminalFontSize(with size: Int) {
             correspondingView.setTerminalFontSize(with: size)
@@ -142,6 +154,18 @@ import SwiftUI
         @discardableResult
         public func setupSizeChain(callback: ((CGSize) -> Void)?) -> Self {
             correspondingView.setupSizeChain(callback: callback)
+            return self
+        }
+
+        @discardableResult
+        public func setupCopyChain(callback: ((String) -> Void)?) -> Self {
+            correspondingView.setupCopyChain(callback: callback)
+            return self
+        }
+
+        @discardableResult
+        public func setupNavigationChain(callback: (() -> Void)?) -> Self {
+            correspondingView.setupNavigationChain(callback: callback)
             return self
         }
 

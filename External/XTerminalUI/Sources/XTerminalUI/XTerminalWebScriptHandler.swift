@@ -13,6 +13,7 @@ class XTerminalWebScriptHandler: NSObject, WKScriptMessageHandler {
     var onTitleChain: ((String) -> Void)?
     var onDataChain: ((String) -> Void)?
     var onSizeChain: ((CGSize) -> Void)?
+    var onCopyChain: ((String) -> Void)?
 
     func userContentController(
         _: WKUserContentController,
@@ -35,6 +36,8 @@ class XTerminalWebScriptHandler: NSObject, WKScriptMessageHandler {
             if let size = ResizeData.fromString(msg) {
                 onSizeChain?(size)
             }
+        case "copy":
+            onCopyChain?(msg)
         default:
             debugPrint("unrecognized message magic")
             debugPrint(message.body)
@@ -60,5 +63,6 @@ class XTerminalWebScriptHandler: NSObject, WKScriptMessageHandler {
         onDataChain = nil
         onTitleChain = nil
         onSizeChain = nil
+        onCopyChain = nil
     }
 }

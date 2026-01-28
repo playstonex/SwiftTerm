@@ -31,6 +31,12 @@ protocol XTerminal {
     @discardableResult
     func setupSizeChain(callback: ((CGSize) -> Void)?) -> Self
 
+    @discardableResult
+    func setupCopyChain(callback: ((String) -> Void)?) -> Self
+
+    @discardableResult
+    func setupNavigationChain(callback: (() -> Void)?) -> Self
+
     func write(_ str: String)
 
     func requestTerminalSize() -> CGSize
@@ -139,6 +145,18 @@ class XTerminalCore: XTerminal {
     @discardableResult
     func setupSizeChain(callback: ((CGSize) -> Void)?) -> Self {
         associatedScriptDelegate.onSizeChain = callback
+        return self
+    }
+
+    @discardableResult
+    func setupCopyChain(callback: ((String) -> Void)?) -> Self {
+        associatedScriptDelegate.onCopyChain = callback
+        return self
+    }
+
+    @discardableResult
+    func setupNavigationChain(callback: (() -> Void)?) -> Self {
+        associatedWebDelegate.onNavigationCompleted = callback
         return self
     }
 
