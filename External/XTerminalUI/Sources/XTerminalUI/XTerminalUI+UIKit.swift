@@ -10,11 +10,27 @@
 
     public class XTerminalView: UIView, XTerminal {
         private let associatedCore = XTerminalCore()
+        public var onLongPress: ((String) -> Void)?
 
         public required init() {
             super.init(frame: CGRect())
             addSubview(associatedCore.associatedWebView)
             associatedCore.associatedWebView.bindFrameToSuperviewBounds()
+
+            // Add long press gesture for copying
+            let longPress = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+            associatedCore.associatedWebView.addGestureRecognizer(longPress)
+        }
+
+        @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+            if gesture.state == .began {
+                // Get current line or buffer
+                associatedCore.getSelection { [weak self] selection in
+                    if let selection = selection, !selection.isEmpty {
+                        self?.onLongPress?(selection)
+                    }
+                }
+            }
         }
 
         @available(*, unavailable)

@@ -253,12 +253,16 @@ struct TerminalView: View {
                 }
             }
             makeKeyButton("doc.on.doc") {
+                debugPrint("[Copy Button] Attempting to get selection...")
                 context.termInterface.getSelection { selection in
+                    debugPrint("[Copy Button] Selection result: \(selection ?? "nil")")
                     if let selection = selection, !selection.isEmpty {
                         UIPasteboard.general.string = selection
-                        UIBridge.presentSuccess(with: "Copied to clipboard")
+                        debugPrint("[Copy Button] Copied to clipboard: \(selection)")
+                        UIBridge.presentSuccess(with: "已复制 \(selection.count) 字符")
                     } else {
-                        UIBridge.presentError(with: "No text selected")
+                        debugPrint("[Copy Button] No selection found")
+                        UIBridge.presentError(with: "请先选择文本\n\n长按终端屏幕选择文本，然后点击此按钮")
                     }
                 }
             }

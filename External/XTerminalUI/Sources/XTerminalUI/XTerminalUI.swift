@@ -108,6 +108,12 @@ class XTerminalCore: XTerminal {
             associatedWebView.backgroundColor = UIColor.clear
             associatedWebView.scrollView.backgroundColor = UIColor.clear
             associatedWebView.scrollView.isScrollEnabled = false
+            // Ensure user interaction is enabled for text selection
+            associatedWebView.isUserInteractionEnabled = true
+            // Allow text selection on iOS
+            if #available(iOS 11.0, *) {
+                associatedWebView.configuration.dataDetectorTypes = []
+            }
         #endif
 
         guard let resources = Bundle
@@ -349,16 +355,29 @@ class XTerminalCore: XTerminal {
 
     func getSelection(completion: @escaping (String?) -> Void) {
         DispatchQueue.main.async {
-            let script = """
-            (function() {
-                const terminal = window.M || window.term || window.terminal;
-                if (terminal && terminal.hasSelection()) {
-                    return terminal.getSelection();
-                }
-                return null;
-            })();
-            """
+            let script = "(function() { " +
+                "try { " +
+                "  const term = window.term || window.M || window.terminal; " +
+                "  console.log('[Copy] Getting selection from term:', term ? 'found' : 'null'); " +
+                "  if (term) { " +
+                "    if (typeof term.hasSelection === 'function') { " +
+                "      const hasSel = term.hasSelection(); " +
+                "      console.log('[Copy] hasSelection:', hasSel); " +
+                "      if (hasSel && typeof term.getSelection === 'function') { " +
+                "        return term.getSelection(); " +
+                "      } " +
+                "    } " +
+                "    if (term.selectionText) return term.selectionText; " +
+                "    console.log('[Copy] No selection found'); " +
+                "  } " +
+                "  return null; " +
+                "} catch (e) { " +
+                "  console.error('[Copy] Error:', e); " +
+                "  return null; " +
+                "} " +
+                "})();"
             self.associatedWebView.evaluateJavaScript(script) { result, error in
+                debugPrint("[Copy] JavaScript result: \(String(describing: result)), error: \(String(describing: error))")
                 if let error = error {
                     debugPrint("Error getting selection: \(error)")
                     completion(nil)
