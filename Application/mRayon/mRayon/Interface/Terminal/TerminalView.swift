@@ -17,12 +17,8 @@ struct TerminalView: View {
 
     @State var terminalSize: CGSize = TerminalContext.defaultTerminalSize
 
-    @State var openControlKeyPopover: Bool = false
     @State var controlKey: String = ""
-
-    @State var accessoryBarOffset: CGSize = .zero
-    @State var isDraggingAccessoryBar: Bool = false
-    @State var lastDragOffset: CGSize = .zero
+    @State var isShowingControlPopover = false
 
     @StateObject var store = RayonStore.shared
     @ObservedObject var assistantManager = AssistantManager.shared
@@ -98,7 +94,7 @@ struct TerminalView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Modern accessory bar at the bottom
+                    // Scrollable accessory bar at the bottom
                     if !context.destroyedSession {
                         VStack {
                             Spacer()
@@ -106,7 +102,7 @@ struct TerminalView: View {
                                 context: context,
                                 isReconnecting: context.closed,
                                 controlKey: $controlKey,
-                                isShowingControlPopover: $openControlKeyPopover,
+                                isShowingControlPopover: $isShowingControlPopover,
                                 onReconnect: {
                                     DispatchQueue.global().async {
                                         context.putInformation("[i] Reconnect will use the information you provide previously,")
@@ -150,81 +146,7 @@ struct TerminalView: View {
                                     self.safeWrite(key)
                                 }
                             )
-                                .offset(accessoryBarOffset)
-                                .animation(isDraggingAccessoryBar ? .interactiveSpring() : .spring(response: 0.3, dampingFraction: 0.7), value: accessoryBarOffset)
-                                .gesture(
-                                    DragGesture()
-                                        .onChanged { value in
-                                            isDraggingAccessoryBar = true
-                                            // Calculate cumulative offset from last position
-                                            let newOffset = CGSize(
-                                                width: lastDragOffset.width + value.translation.width,
-                                                height: lastDragOffset.height + value.translation.height
-                                            )
-                                            accessoryBarOffset = newOffset
-                                        }
-                                        .onEnded { value in
-                                            isDraggingAccessoryBar = false
-
-                                            // Get screen size and safe area
-                                            let screenSize = UIScreen.main.bounds.size
-                                            let window = UIApplication.shared.connectedScenes
-                                                .compactMap { $0 as? UIWindowScene }
-                                                .first?.windows.first
-                                            let safeAreaInsets = window?.safeAreaInsets ?? .zero
-
-                                            // Safe area already includes navbar and status bar
-                                            let topSafeArea = safeAreaInsets.top
-                                            let bottomSafeArea = safeAreaInsets.bottom
-                                            let sidePadding: CGFloat = 8 // Match the .padding(.horizontal, 8)
-
-                                            // Approximate accessory bar size
-                                            let barWidth: CGFloat = screenSize.width - (sidePadding * 2)
-                                            let barHeight: CGFloat = 50 // Approximate with padding
-
-                                            let snapThreshold: CGFloat = 80
-                                            var targetOffset = CGSize.zero
-
-                                            // Get current position
-                                            let currentX = lastDragOffset.width + value.translation.width
-                                            let currentY = lastDragOffset.height + value.translation.height
-
-                                            // Determine horizontal snap
-                                            if abs(currentX) < snapThreshold {
-                                                // Keep near center
-                                                targetOffset.width = 0
-                                            } else if currentX < 0 {
-                                                // Snap to left edge (account for padding)
-                                                let maxLeftOffset = -(screenSize.width / 2) + sidePadding + (barWidth / 2)
-                                                targetOffset.width = maxLeftOffset
-                                            } else {
-                                                // Snap to right edge (account for padding)
-                                                let maxRightOffset = (screenSize.width / 2) - sidePadding - (barWidth / 2)
-                                                targetOffset.width = maxRightOffset
-                                            }
-
-                                            // Determine vertical snap
-                                            let availableHeight = screenSize.height - topSafeArea - bottomSafeArea
-                                            let maxY = availableHeight / 2 - barHeight - 8 // 8 is bottom padding
-
-                                            if abs(currentY) < snapThreshold {
-                                                // Keep near bottom (default position)
-                                                targetOffset.height = 0
-                                            } else if currentY < 0 {
-                                                // Snap to top (below navbar)
-                                                let minY = -(availableHeight / 2) + (barHeight / 2) + 8
-                                                targetOffset.height = minY
-                                            } else {
-                                                // Snap to bottom
-                                                targetOffset.height = maxY
-                                            }
-
-                                            // Update last offset and animate to snap position
-                                            lastDragOffset = targetOffset
-                                            accessoryBarOffset = targetOffset
-                                        }
-                                )
-                                .padding(.bottom, 8)
+                            .padding(.bottom, 8)
                         }
                     }
                 }
@@ -334,103 +256,104 @@ private struct AccessoryBar: View {
     @State private var isShowingEscapeHint = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Session management group
-            Group {
-                if isReconnecting {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                // Session management group
+                Group {
+                    if isReconnecting {
+                        AccessoryBarButton(
+                            icon: "arrow.clockwise",
+                            label: "Reconnect",
+                            action: onReconnect
+                        )
+                    }
+
                     AccessoryBarButton(
-                        icon: "arrow.clockwise",
-                        label: "Reconnect",
-                        action: onReconnect
+                        icon: isReconnecting ? "xmark" : "power",
+                        label: isReconnecting ? "Cancel" : "Close",
+                        action: onClose
                     )
                 }
 
-                AccessoryBarButton(
-                    icon: isReconnecting ? "xmark" : "power",
-                    label: isReconnecting ? "Cancel" : "Close",
-                    action: onClose
-                )
-            }
+                Separator()
 
-            Separator()
+                // Clipboard group
+                Group {
+                    AccessoryBarButton(
+                        icon: "doc.on.clipboard",
+                        label: "Paste",
+                        action: onPaste
+                    )
 
-            // Clipboard group
-            Group {
-                AccessoryBarButton(
-                    icon: "doc.on.clipboard",
-                    label: "Paste",
-                    action: onPaste
-                )
-
-                AccessoryBarButton(
-                    icon: "doc.on.doc",
-                    label: "Copy",
-                    action: onCopy
-                )
-            }
-
-            Separator()
-
-            // Control keys group
-            Group {
-                AccessoryBarButton(
-                    icon: "arrow.right.to.line",
-                    label: "End",
-                    action: { onSendKey("\u{0005}") } // C-E
-                )
-
-                AccessoryBarButton(
-                    icon: "keyboard",
-                    label: "Ctrl",
-                    action: { isShowingControlPopover = true }
-                )
-                .popover(isPresented: $isShowingControlPopover) {
-                    ControlKeyPopover(
-                        controlKey: $controlKey,
-                        isPresented: $isShowingControlPopover,
-                        onSend: { onSendKey($0) }
+                    AccessoryBarButton(
+                        icon: "doc.on.doc",
+                        label: "Copy",
+                        action: onCopy
                     )
                 }
 
-                AccessoryBarButton(
-                    icon: "escape",
-                    label: "Esc",
-                    action: { onSendKey("\u{001B}") }
-                )
+                Separator()
+
+                // Control keys group
+                Group {
+                    AccessoryBarButton(
+                        icon: "arrow.right.to.line",
+                        label: "End",
+                        action: { onSendKey("\u{0005}") } // C-E
+                    )
+
+                    AccessoryBarButton(
+                        icon: "keyboard",
+                        label: "Ctrl",
+                        action: { isShowingControlPopover = true }
+                    )
+                    .popover(isPresented: $isShowingControlPopover) {
+                        ControlKeyPopover(
+                            controlKey: $controlKey,
+                            isPresented: $isShowingControlPopover,
+                            onSend: { onSendKey($0) }
+                        )
+                    }
+
+                    AccessoryBarButton(
+                        icon: "escape",
+                        label: "Esc",
+                        action: { onSendKey("\u{001B}") }
+                    )
+                }
+
+                Separator()
+
+                // Arrow keys group
+                Group {
+                    AccessoryBarButton(
+                        icon: "arrow.left",
+                        label: "Left",
+                        action: { onSendKey("\u{001B}[D") }
+                    )
+
+                    AccessoryBarButton(
+                        icon: "arrow.right",
+                        label: "Right",
+                        action: { onSendKey("\u{001B}[C") }
+                    )
+
+                    AccessoryBarButton(
+                        icon: "arrow.up",
+                        label: "Up",
+                        action: { onSendKey("\u{001B}[A") }
+                    )
+
+                    AccessoryBarButton(
+                        icon: "arrow.down",
+                        label: "Down",
+                        action: { onSendKey("\u{001B}[B") }
+                    )
+                }
             }
-
-            Separator()
-
-            // Arrow keys group
-            Group {
-                AccessoryBarButton(
-                    icon: "arrow.left",
-                    label: "Left",
-                    action: { onSendKey("\u{001B}[D") }
-                )
-
-                AccessoryBarButton(
-                    icon: "arrow.right",
-                    label: "Right",
-                    action: { onSendKey("\u{001B}[C") }
-                )
-
-                AccessoryBarButton(
-                    icon: "arrow.up",
-                    label: "Up",
-                    action: { onSendKey("\u{001B}[A") }
-                )
-
-                AccessoryBarButton(
-                    icon: "arrow.down",
-                    label: "Down",
-                    action: { onSendKey("\u{001B}[B") }
-                )
-            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: -4)
     }

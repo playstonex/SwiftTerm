@@ -20,7 +20,9 @@
       "Bash(./Workflow/Scripts/fmt.sh:*)",
       "Bash(git restore:*)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Skill(swiftui-expert-skill)"
     ]
   }
 }
