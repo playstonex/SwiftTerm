@@ -119,6 +119,10 @@ import Foundation
         public func requestTerminalSize() -> CGSize {
             associatedCore.requestTerminalSize()
         }
+
+        public func getSelection(completion: @escaping (String?) -> Void) {
+            associatedCore.getSelection(completion: completion)
+        }
     }
 
     extension NSView {

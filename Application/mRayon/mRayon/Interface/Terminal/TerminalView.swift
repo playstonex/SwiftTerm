@@ -252,6 +252,16 @@ struct TerminalView: View {
                     if yes { self.safeWrite(str) }
                 }
             }
+            makeKeyButton("doc.on.doc") {
+                context.termInterface.getSelection { selection in
+                    if let selection = selection, !selection.isEmpty {
+                        UIPasteboard.general.string = selection
+                        UIBridge.presentSuccess(with: "Copied to clipboard")
+                    } else {
+                        UIBridge.presentError(with: "No text selected")
+                    }
+                }
+            }
 
             Divider().frame(width: 1, height: 20).background(Color.gray.opacity(0.3))
 

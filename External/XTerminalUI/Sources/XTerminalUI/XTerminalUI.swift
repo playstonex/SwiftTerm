@@ -45,6 +45,8 @@ protocol XTerminal {
 
     func setTerminalFontName(with name: String)
 
+    func getSelection(completion: @escaping (String?) -> Void)
+
     func setTerminalTheme(
         foreground: String,
         background: String,
@@ -343,5 +345,29 @@ class XTerminalCore: XTerminal {
         let size = CGSize(width: col, height: row)
 //        debugPrint(size)
         return size
+    }
+
+    func getSelection(completion: @escaping (String?) -> Void) {
+        DispatchQueue.main.async {
+            let script = """
+            (function() {
+                const terminal = window.M || window.term || window.terminal;
+                if (terminal && terminal.hasSelection()) {
+                    return terminal.getSelection();
+                }
+                return null;
+            })();
+            """
+            self.associatedWebView.evaluateJavaScript(script) { result, error in
+                if let error = error {
+                    debugPrint("Error getting selection: \(error)")
+                    completion(nil)
+                } else if let selection = result as? String, !selection.isEmpty {
+                    completion(selection)
+                } else {
+                    completion(nil)
+                }
+            }
+        }
     }
 }

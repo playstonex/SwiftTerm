@@ -116,6 +116,10 @@ import SwiftUI
         public func requestTerminalSize() -> CGSize {
             correspondingView.requestTerminalSize()
         }
+
+        public func getSelection(completion: @escaping (String?) -> Void) {
+            correspondingView.getSelection(completion: completion)
+        }
     }
 #endif
 
@@ -227,6 +231,10 @@ import SwiftUI
 
         public func requestTerminalSize() -> CGSize {
             correspondingView.requestTerminalSize()
+        }
+
+        public func getSelection(completion: @escaping (String?) -> Void) {
+            correspondingView.getSelection(completion: completion)
         }
     }
 #endif
