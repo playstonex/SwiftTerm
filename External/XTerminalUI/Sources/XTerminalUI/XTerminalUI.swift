@@ -355,29 +355,86 @@ class XTerminalCore: XTerminal {
 
     func getSelection(completion: @escaping (String?) -> Void) {
         DispatchQueue.main.async {
-            let script = "(function() { " +
-                "try { " +
-                "  const term = window.term || window.M || window.terminal; " +
-                "  console.log('[Copy] Getting selection from term:', term ? 'found' : 'null'); " +
-                "  if (term) { " +
-                "    if (typeof term.hasSelection === 'function') { " +
-                "      const hasSel = term.hasSelection(); " +
-                "      console.log('[Copy] hasSelection:', hasSel); " +
-                "      if (hasSel && typeof term.getSelection === 'function') { " +
-                "        return term.getSelection(); " +
-                "      } " +
-                "    } " +
-                "    if (term.selectionText) return term.selectionText; " +
-                "    console.log('[Copy] No selection found'); " +
-                "  } " +
-                "  return null; " +
-                "} catch (e) { " +
-                "  console.error('[Copy] Error:', e); " +
-                "  return null; " +
-                "} " +
-                "})();"
+            // Multi-step search to find terminal object
+            let script = """
+            (function() {
+                console.log('[Copy] Starting terminal search...');
+
+                // Step 1: Check all known locations
+                var term = window.term || window.M || window.terminal;
+                console.log('[Copy] Step 1 - Direct check:', term ? 'found' : 'not found');
+
+                // Step 2: Search through window object properties
+                if (!term) {
+                    console.log('[Copy] Step 2 - Searching window properties...');
+                    for (var key in window) {
+                        try {
+                            var obj = window[key];
+                            if (obj && typeof obj === 'object') {
+                                // Check for terminal-like properties
+                                if (obj.hasOwnProperty('options') ||
+                                    obj.hasOwnProperty('write') ||
+                                    obj.hasOwnProperty('buffer') ||
+                                    obj.hasOwnProperty('hasSelection')) {
+                                    console.log('[Copy] Found terminal-like object at window.' + key);
+                                    term = obj;
+                                    break;
+                                }
+                            }
+                        } catch (e) {
+                            // Ignore errors during iteration
+                        }
+                    }
+                }
+
+                // Step 3: Try to access React root if exists
+                if (!term && typeof document !== 'undefined') {
+                    console.log('[Copy] Step 3 - Searching React roots...');
+                    var rootElem = document.getElementById('root');
+                    if (rootElem && rootElem._reactRootContainer) {
+                        console.log('[Copy] Found React root');
+                    }
+                }
+
+                // Step 4: Last resort - get all text from document
+                if (!term) {
+                    console.log('[Copy] Step 4 - Terminal not found, trying document text');
+                    var termElement = document.querySelector('.xterm') || document.querySelector('[class*="terminal"]');
+                    if (termElement) {
+                        console.log('[Copy] Found terminal element:', termElement.className);
+                        return termElement.innerText || termElement.textContent;
+                    }
+                    console.error('[Copy] Terminal object not found anywhere!');
+                    return null;
+                }
+
+                console.log('[Copy] Terminal found, attempting to get selection...');
+
+                // Try to get selection using various methods
+                try {
+                    if (typeof term.hasSelection === 'function') {
+                        var hasSel = term.hasSelection();
+                        console.log('[Copy] hasSelection:', hasSel);
+                        if (hasSel && typeof term.getSelection === 'function') {
+                            return term.getSelection();
+                        }
+                    }
+
+                    if (term.selectionText) {
+                        console.log('[Copy] selectionText found');
+                        return term.selectionText;
+                    }
+
+                    console.log('[Copy] No selection methods available');
+                    return null;
+                } catch (e) {
+                    console.error('[Copy] Error getting selection:', e);
+                    return null;
+                }
+            })();
+            """
             self.associatedWebView.evaluateJavaScript(script) { result, error in
-                debugPrint("[Copy] JavaScript result: \(String(describing: result)), error: \(String(describing: error))")
+                debugPrint("[Copy] Result: \(String(describing: result)), Error: \(String(describing: error))")
                 if let error = error {
                     debugPrint("Error getting selection: \(error)")
                     completion(nil)
