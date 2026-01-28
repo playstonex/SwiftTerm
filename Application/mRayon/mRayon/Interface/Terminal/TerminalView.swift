@@ -69,7 +69,7 @@ struct TerminalView: View {
 
                     // Terminal fills the entire view
                     context.termInterface
-                        .onChange(of: r.size) { _ in
+                        .onChange(of: r.size) { _, _ in
                             guard context.interfaceToken == interfaceToken else {
                                 return
                             }
@@ -84,13 +84,13 @@ struct TerminalView: View {
                                 self.applyFont()
                             }
                         }
-                        .onChange(of: store.terminalFontSize) { oldValue, newValue in
+                        .onChange(of: store.terminalFontSize) { _, newValue in
                             context.termInterface.setTerminalFontSize(with: newValue)
                         }
-                        .onChange(of: store.terminalFontName) { oldValue, newValue in
+                        .onChange(of: store.terminalFontName) { _, _ in
                             applyFont()
                         }
-                        .onChange(of: store.terminalThemeName) { oldValue, newValue in
+                        .onChange(of: store.terminalThemeName) { _, _ in
                             // Schedule background update on next runloop cycle
                             DispatchQueue.main.async {
                                 applyTheme()
@@ -98,16 +98,60 @@ struct TerminalView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Floating accessory bar at the bottom
+                    // Modern accessory bar at the bottom
                     if !context.destroyedSession {
                         VStack {
                             Spacer()
-                            buttonGroup
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 6)
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(10)
-                                .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: -4)
+                            AccessoryBar(
+                                context: context,
+                                isReconnecting: context.closed,
+                controlKey: $controlKey,
+                isShowingControlPopover: $openControlKeyPopover,
+                onReconnect: {
+                    DispatchQueue.global().async {
+                        context.putInformation("[i] Reconnect will use the information you provide previously,")
+                        context.putInformation("    if the machine was edited, create a new terminal.")
+                        context.processBootstrap()
+                    }
+                },
+                onClose: {
+                    if context.closed {
+                        presentationMode.wrappedValue.dismiss()
+                        TerminalManager.shared.end(for: context.id)
+                    } else {
+                        UIBridge.requiresConfirmation(
+                            message: "Are you sure you want to close this session?"
+                        ) { yes in
+                            if yes { context.processShutdown() }
+                        }
+                    }
+                },
+                onPaste: {
+                    guard let str = UIPasteboard.general.string else {
+                        UIBridge.presentError(with: "Empty Pasteboard")
+                        return
+                    }
+                    UIBridge.requiresConfirmation(
+                        message: "Are you sure you want to paste following string?\n\n\(str)"
+                    ) { yes in
+                        if yes { self.safeWrite(str) }
+                    }
+                },
+                onCopy: {
+                    let cleanHistory = context.getOutputHistoryStrippedANSI()
+                    if !cleanHistory.isEmpty {
+                        UIPasteboard.general.string = cleanHistory
+                        UIBridge.presentSuccess(with: "已复制")
+                    } else {
+                        UIBridge.presentError(with: "终端内容为空")
+                    }
+                },
+                onSendKey: { key in
+                    self.safeWrite(key)
+                }
+            )
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
                                 .offset(accessoryBarOffset)
                                 .animation(isDraggingAccessoryBar ? .interactiveSpring() : .spring(response: 0.3, dampingFraction: 0.7), value: accessoryBarOffset)
                                 .gesture(
@@ -204,7 +248,7 @@ struct TerminalView: View {
             ToolbarItem(placement: .principal) {
                 Text(context.navigationTitle)
                     .font(.headline)
-                    .foregroundColor(ColorFromHex(store.terminalTheme.foreground))
+                    .foregroundStyle(ColorFromHex(store.terminalTheme.foreground))
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -214,173 +258,9 @@ struct TerminalView: View {
                 }
             }
         }
-        .onChange(of: store.terminalThemeName) { _ in
+        .onChange(of: store.terminalThemeName) { _, _ in
             // Force toolbar update when theme changes
         }
-    }
-    var buttonGroup: some View {
-        HStack(spacing: 1) {
-            if context.closed {
-                makeKeyButton("arrow.counterclockwise") {
-                    DispatchQueue.global().async {
-                        context.putInformation("[i] Reconnect will use the information you provide previously,")
-                        context.putInformation("    if the machine was edited, create a new terminal.")
-                        context.processBootstrap()
-                    }
-                }
-            }
-            makeKeyButton("trash") {
-                if context.closed {
-                    presentationMode.wrappedValue.dismiss()
-                    TerminalManager.shared.end(for: context.id)
-                } else {
-                    UIBridge.requiresConfirmation(
-                        message: "Are you sure you want to close this session?"
-                    ) { yes in
-                        if yes { context.processShutdown() }
-                    }
-                }
-            }
-            makeKeyButton("doc.on.clipboard") {
-                guard let str = UIPasteboard.general.string else {
-                    UIBridge.presentError(with: "Empty Pasteboard")
-                    return
-                }
-                UIBridge.requiresConfirmation(
-                    message: "Are you sure you want to paste following string?\n\n\(str)"
-                ) { yes in
-                    if yes { self.safeWrite(str) }
-                }
-            }
-            makeKeyButton("doc.on.doc") {
-                debugPrint("[Copy Button] Button clicked!")
-
-                // Get the complete history with ANSI codes stripped for cleaner copying
-                let cleanHistory = context.getOutputHistoryStrippedANSI()
-
-                if !cleanHistory.isEmpty {
-                    debugPrint("[Copy] Got \(cleanHistory.count) chars from stripped history")
-                    UIPasteboard.general.string = cleanHistory
-                    UIBridge.presentSuccess(with: "已复制")
-                } else {
-                    debugPrint("[Copy] History is empty")
-                    UIBridge.presentError(with: "终端内容为空")
-                }
-            }
-
-            Divider().frame(width: 1, height: 20).background(Color.gray.opacity(0.3))
-
-            makeKeyButton("arrow.right.to.line.compact") {
-                safeWriteBase64("CQ==")
-            }
-            makeKeyButton("control") {
-                openControlKeyPopover = true
-            }
-            .popover(isPresented: $openControlKeyPopover) {
-                HStack(spacing: 2) {
-                    Text("Ctrl + ")
-                    TextField("Key To Send", text: $controlKey)
-                        .disableAutocorrection(true)
-                        .onChange(of: controlKey) { newValue in
-                            guard let f = newValue.uppercased().last else {
-                                if !controlKey.isEmpty { controlKey = "" }
-                                return
-                            }
-                            if controlKey != String(f) {
-                                controlKey = String(f)
-                            }
-                        }
-                        .onSubmit {
-                            sendCtrl()
-                        }
-                    Button {
-                        sendCtrl()
-                    } label: {
-                        Image(systemName: "return")
-                    }
-                }
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .padding()
-                .frame(width: 200, height: 40)
-            }
-            makeKeyButton("escape") {
-                safeWriteBase64("Gw==")
-            }
-
-            Divider().frame(width: 1, height: 20).background(Color.gray.opacity(0.3))
-
-            makeKeyButton("arrow.left.circle.fill") {
-                safeWriteBase64("G1tE")
-            }
-            makeKeyButton("arrow.right.circle.fill") {
-                safeWriteBase64("G1tD")
-            }
-            makeKeyButton("arrow.up.circle.fill") {
-                safeWriteBase64("G1tB")
-            }
-            makeKeyButton("arrow.down.circle.fill") {
-                safeWriteBase64("G1tC")
-            }
-        }
-    }
-
-    func sendCtrl() {
-        let key = controlKey
-        controlKey = ""
-        openControlKeyPopover = false
-        /*
-         Note: The Ctrl-Key representation is simply associating the non-printable characters from ASCII code 1 with the printable (letter) characters from ASCII code 65 ("A"). ASCII code 1 would be ^A (Ctrl-A), while ASCII code 7 (BEL) would be ^G (Ctrl-G). This is a common representation (and input method) and historically comes from one of the VT series of terminals.
-
-         https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-         */
-        guard key.count == 1 else { return }
-        let char = Character(key)
-        guard let asciiValue = char.asciiValue,
-              let asciiInt = Int(exactly: asciiValue) // 65 = "A" 1 = "CTRL+A"
-        else {
-            return
-        }
-        let ctrlInt = asciiInt - 64
-        guard ctrlInt > 0, ctrlInt < 65 else {
-            return
-        }
-        guard let us = UnicodeScalar(ctrlInt) else {
-            return
-        }
-        let nc = Character(us)
-        let st = String(nc)
-        safeWrite(st)
-    }
-
-    func safeWriteBase64(_ base64: String) {
-        guard let data = Data(base64Encoded: base64),
-              let str = String(data: data, encoding: .utf8)
-        else {
-            return
-        }
-        safeWrite(str)
-    }
-
-    func safeWrite(_ str: String) {
-        guard !context.closed else {
-            return
-        }
-        guard context.interfaceToken == interfaceToken else {
-            return
-        }
-        context.insertBuffer(str)
-    }
-
-    func makeKeyButton(_ imageName: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: imageName)
-                .font(.system(size: 16, weight: .medium))
-                .frame(width: 32, height: 28)
-                .foregroundColor(.primary)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .background(Color(uiColor: .systemGray5))
-        .cornerRadius(4)
     }
 
     func updateTerminalSize() {
@@ -431,5 +311,231 @@ struct TerminalView: View {
     func applyFont() {
         let fontName = store.terminalFontName
         context.termInterface.setTerminalFontName(with: fontName)
+    }
+
+    func safeWrite(_ str: String) {
+        guard !context.closed else { return }
+        guard context.interfaceToken == interfaceToken else { return }
+        context.insertBuffer(str)
+    }
+}
+
+// MARK: - Modern Accessory Bar
+
+private struct AccessoryBar: View {
+    let context: TerminalContext
+    let isReconnecting: Bool
+    @Binding var controlKey: String
+    @Binding var isShowingControlPopover: Bool
+    let onReconnect: () -> Void
+    let onClose: () -> Void
+    let onPaste: () -> Void
+    let onCopy: () -> Void
+    let onSendKey: (String) -> Void
+
+    @State private var isShowingEscapeHint = false
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Session management group
+            Group {
+                if isReconnecting {
+                    AccessoryBarButton(
+                        icon: "arrow.clockwise",
+                        label: "Reconnect",
+                        action: onReconnect
+                    )
+                }
+
+                AccessoryBarButton(
+                    icon: isReconnecting ? "xmark" : "power",
+                    label: isReconnecting ? "Cancel" : "Close",
+                    action: onClose
+                )
+            }
+
+            Separator()
+
+            // Clipboard group
+            Group {
+                AccessoryBarButton(
+                    icon: "doc.on.clipboard",
+                    label: "Paste",
+                    action: onPaste
+                )
+
+                AccessoryBarButton(
+                    icon: "doc.on.doc",
+                    label: "Copy",
+                    action: onCopy
+                )
+            }
+
+            Separator()
+
+            // Control keys group
+            Group {
+                AccessoryBarButton(
+                    icon: "arrow.right.to.line",
+                    label: "End",
+                    action: { onSendKey("\u{0005}") } // C-E
+                )
+
+                AccessoryBarButton(
+                    icon: "keyboard",
+                    label: "Ctrl",
+                    action: { isShowingControlPopover = true }
+                )
+                .popover(isPresented: $isShowingControlPopover) {
+                    ControlKeyPopover(
+                        controlKey: $controlKey,
+                        isPresented: $isShowingControlPopover,
+                        onSend: { onSendKey($0) }
+                    )
+                }
+
+                AccessoryBarButton(
+                    icon: "escape",
+                    label: "Esc",
+                    action: { onSendKey("\u{001B}") }
+                )
+            }
+
+            Separator()
+
+            // Arrow keys group
+            Group {
+                AccessoryBarButton(
+                    icon: "arrow.left",
+                    label: "Left",
+                    action: { onSendKey("\u{001B}[D") }
+                )
+
+                AccessoryBarButton(
+                    icon: "arrow.right",
+                    label: "Right",
+                    action: { onSendKey("\u{001B}[C") }
+                )
+
+                AccessoryBarButton(
+                    icon: "arrow.up",
+                    label: "Up",
+                    action: { onSendKey("\u{001B}[A") }
+                )
+
+                AccessoryBarButton(
+                    icon: "arrow.down",
+                    label: "Down",
+                    action: { onSendKey("\u{001B}[B") }
+                )
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: -4)
+    }
+}
+
+// MARK: - Accessory Bar Button
+
+private struct AccessoryBarButton: View {
+    let icon: String
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(label)
+        .buttonStyle(.borderless)
+    }
+}
+
+// MARK: - Separator
+
+private struct Separator: View {
+    var body: some View {
+        Rectangle()
+            .fill(.separator)
+            .frame(width: 1)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Control Key Popover
+
+private struct ControlKeyPopover: View {
+    @Binding var controlKey: String
+    @Binding var isPresented: Bool
+    let onSend: (String) -> Void
+
+    private func sendCtrl() {
+        guard controlKey.count == 1 else { return }
+
+        let char = Character(controlKey)
+        guard let asciiValue = char.asciiValue,
+              let asciiInt = Int(exactly: asciiValue)
+        else {
+            return
+        }
+
+        let ctrlInt = asciiInt - 64
+        guard ctrlInt > 0, ctrlInt < 65 else { return }
+        guard let us = UnicodeScalar(ctrlInt) else { return }
+
+        let result = String(Character(us))
+        onSend(result)
+        controlKey = ""
+        isPresented = false
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("Ctrl Key")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 8) {
+                Text("Ctrl +")
+                    .foregroundStyle(.secondary)
+
+                TextField("Key", text: $controlKey, prompt: Text("A-Z"))
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 60)
+                    .textInputAutocapitalization(.characters)
+                    .disableAutocorrection(true)
+                    .onChange(of: controlKey) { _, newValue in
+                        // Keep only last uppercase character
+                        guard let lastChar = newValue.uppercased().last else {
+                            if !newValue.isEmpty { controlKey = "" }
+                            return
+                        }
+                        if newValue != String(lastChar) {
+                            controlKey = String(lastChar)
+                        }
+                    }
+                    .onSubmit {
+                        sendCtrl()
+                    }
+
+                Button {
+                    sendCtrl()
+                } label: {
+                    Text("Send")
+                        .frame(minWidth: 60)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding()
+        .presentationDetents([.height(120)])
+        .presentationDragIndicator(.visible)
     }
 }
