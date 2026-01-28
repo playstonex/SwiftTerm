@@ -25,6 +25,9 @@
       // Store pending theme if terminal is not ready
       var pendingTheme = null;
 
+      // Make terminal globally accessible for copy functionality
+      window.term = null;
+
       window.setTerminalTheme = function(theme) {
         // Set body background to match theme
         if (theme && theme.background) {
@@ -84,9 +87,12 @@
 
       // Watch for terminal to be ready and apply any pending theme
       var checkInterval = setInterval(function() {
-        var terminal = window.M || window.term || window.terminal;
+        var terminal = window.M || window.terminal;
         if (terminal && terminal.options) {
           clearInterval(checkInterval);
+          // Store globally for copy functionality
+          window.term = terminal;
+          console.log('[Terminal] Terminal object found and stored in window.term');
           if (pendingTheme) {
             window.setTerminalTheme(pendingTheme);
           }
