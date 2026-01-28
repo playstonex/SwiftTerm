@@ -152,6 +152,12 @@
         public func getSelection(completion: @escaping (String?) -> Void) {
             associatedCore.getSelection(completion: completion)
         }
+
+        public func evaluateJavaScript(_ script: String, completion: @escaping (Any?, Error?) -> Void) {
+            DispatchQueue.main.async {
+                self.associatedCore.associatedWebView.evaluateJavaScript(script, completionHandler: completion)
+            }
+        }
     }
 
     extension UIView {

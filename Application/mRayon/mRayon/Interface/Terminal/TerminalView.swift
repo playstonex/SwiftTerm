@@ -255,33 +255,16 @@ struct TerminalView: View {
             makeKeyButton("doc.on.doc") {
                 debugPrint("[Copy Button] Button clicked!")
 
-                // Get persistent history (not affected by getBuffer clearing)
-                let history = context.getOutputHistory()
-                debugPrint("[Copy Button] History size: \(history.count) chars")
+                // Get the complete history with ANSI codes stripped for cleaner copying
+                let cleanHistory = context.getOutputHistoryStrippedANSI()
 
-                if history.isEmpty {
-                    debugPrint("[Copy Button] History is EMPTY!")
-                    UIBridge.presentError(with: "终端内容为空")
-                    return
-                }
-
-                // Get last 100 lines
-                let lines = history.components(separatedBy: "\n")
-                let recentLines = lines.suffix(100).joined(separator: "\n")
-
-                debugPrint("[Copy Button] About to copy \(recentLines.count) chars, \(lines.count) total lines")
-                UIPasteboard.general.string = recentLines
-
-                // Verify copy worked
-                let verified = UIPasteboard.general.string
-                debugPrint("[Copy Button] Verification - Pasteboard has \(verified?.count ?? 0) chars")
-
-                if verified != nil && !verified!.isEmpty {
-                    debugPrint("[Copy Button] SUCCESS!")
-                    UIBridge.presentSuccess(with: "已复制 \(recentLines.count) 字")
+                if !cleanHistory.isEmpty {
+                    debugPrint("[Copy] Got \(cleanHistory.count) chars from stripped history")
+                    UIPasteboard.general.string = cleanHistory
+                    UIBridge.presentSuccess(with: "已复制")
                 } else {
-                    debugPrint("[Copy Button] FAILED - Pasteboard still empty!")
-                    UIBridge.presentError(with: "复制失败")
+                    debugPrint("[Copy] History is empty")
+                    UIBridge.presentError(with: "终端内容为空")
                 }
             }
 

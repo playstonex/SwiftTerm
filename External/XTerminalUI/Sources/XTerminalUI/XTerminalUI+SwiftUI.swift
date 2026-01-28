@@ -120,6 +120,10 @@ import SwiftUI
         public func getSelection(completion: @escaping (String?) -> Void) {
             correspondingView.getSelection(completion: completion)
         }
+
+        public func evaluateJavaScript(_ script: String, completion: @escaping (Any?, Error?) -> Void) {
+            correspondingView.evaluateJavaScript(script, completion: completion)
+        }
     }
 #endif
 
@@ -235,6 +239,10 @@ import SwiftUI
 
         public func getSelection(completion: @escaping (String?) -> Void) {
             correspondingView.getSelection(completion: completion)
+        }
+
+        public func evaluateJavaScript(_ script: String, completion: @escaping (Any?, Error?) -> Void) {
+            correspondingView.evaluateJavaScript(script, completion: completion)
         }
     }
 #endif

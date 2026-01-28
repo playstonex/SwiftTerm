@@ -68,9 +68,9 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     private var _dataBuffer: String = ""
     private var bufferAccessLock = NSLock()
-    // Persistent history for copy functionality (keeps last 5000 chars)
+    // Persistent history for copy functionality (keeps last 50000 chars)
     private var outputHistory: String = ""
-    private let maxHistorySize = 5000
+    private let maxHistorySize = 50000
     private let historyLock = NSLock()
 
     func getBuffer() -> String {
@@ -113,6 +113,24 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         historyLock.lock()
         defer { historyLock.unlock() }
         return outputHistory
+    }
+
+    func addToHistory(_ str: String) {
+        historyLock.lock()
+        outputHistory += str
+        // Keep history at max size by removing old content
+        if outputHistory.count > maxHistorySize {
+            let removeCount = outputHistory.count - maxHistorySize
+            outputHistory = String(outputHistory.dropFirst(removeCount))
+        }
+        historyLock.unlock()
+
+        debugPrint("[TerminalContext] addToHistory: \(str.prefix(50)), history size: \(outputHistory.count)")
+    }
+
+    func getOutputHistoryStrippedANSI() -> String {
+        let history = getOutputHistory()
+        return history.stripANSIEscapeCodes()
     }
 
     var continueDecision: Bool = true {
@@ -165,7 +183,9 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     func putInformation(_ str: String) {
-        termInterface.write(str + "\r\n")
+        let message = str + "\r\n"
+        addToHistory(message)
+        termInterface.write(message)
     }
 
     func processBootstrap() {
@@ -292,6 +312,9 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         } withOutputDataBuffer: { [weak self] output in
             let sem = DispatchSemaphore(value: 0)
             mainActor {
+                // Capture server output to history
+                self?.addToHistory(output)
+                // Display output
                 self?.termInterface.write(output)
                 sem.signal()
             }
@@ -340,5 +363,40 @@ extension TerminalContext {
             }
             .navigationViewStyle(StackNavigationViewStyle())
         }
+    }
+}
+
+extension String {
+    /// Strip ANSI escape codes from terminal output
+    func stripANSIEscapeCodes() -> String {
+        var result = self
+
+        // Remove OSC sequences (Operating System Command) like ]2;title<BEL> or ]1;title<BEL>
+        // ESC] is \u{1B}\], BEL is \u{07}
+        result = result.replacingOccurrences(of: "\u{1B}\\][^\u{07}]*\u{07}", with: "", options: .regularExpression)
+        result = result.replacingOccurrences(of: "\u{1B}\\][^\u{1B}]*\u{1B}\\\\", with: "", options: .regularExpression)
+
+        // Remove CSI sequences (Control Sequence Introducer) like [1m, [31;1m, [?2004h, [K, [A
+        result = result.replacingOccurrences(of: "\u{1B}\\[[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)
+
+        // Remove bracket sequences without ESC (sometimes captured separately)
+        result = result.replacingOccurrences(of: "\\[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)
+
+        // Remove character set designation sequences like (B or (0
+        result = result.replacingOccurrences(of: "\u{1B}\\([0-9A-Za-z]", with: "", options: .regularExpression)
+
+        // Remove backspace characters (used for character-by-character input rendering)
+        result = result.replacingOccurrences(of: "\u{08}", with: "")
+
+        // Clean up carriage returns - keep only linefeeds
+        result = result.replacingOccurrences(of: "\r\n", with: "\n")
+        result = result.replacingOccurrences(of: "\r", with: "")
+
+        // Clean up multiple consecutive empty lines
+        while result.contains("\n\n\n") {
+            result = result.replacingOccurrences(of: "\n\n\n", with: "\n\n")
+        }
+
+        return result
     }
 }
