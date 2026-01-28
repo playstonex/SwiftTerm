@@ -354,6 +354,8 @@ private struct AccessoryBar: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
         }
+        .frame(height: 56)  // Fixed height: 44pt button + 12pt padding
+        .padding(.horizontal, 8)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: -4)
     }
