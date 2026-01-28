@@ -35,13 +35,12 @@ struct TerminalView: View {
                     context.termInterface.setTerminalFontSize(with: newValue)
                 }
                 .onChange(of: store.terminalFontName) { oldValue, newValue in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.applyFont()
-                    }
+                    applyFont()
                 }
                 .onChange(of: store.terminalThemeName) { oldValue, newValue in
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self.applyTheme()
+                    // Schedule background update on next runloop cycle
+                    DispatchQueue.main.async {
+                        applyTheme()
                     }
                 }
                 .onAppear {
@@ -52,9 +51,9 @@ struct TerminalView: View {
                         backgroundColor = color
                     }
                     // Delay theme application to ensure WebView is ready
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        self.applyTheme()
-                        self.applyFont()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        applyTheme()
+                        applyFont()
                     }
                 }
             } else {
@@ -127,7 +126,6 @@ struct TerminalView: View {
         guard let data = Data(base64Encoded: base64),
               let str = String(data: data, encoding: .utf8)
         else {
-            debugPrint("failed to decode \(base64)")
             return
         }
         safeWrite(str)
@@ -159,7 +157,6 @@ struct TerminalView: View {
 
     func applyTheme() {
         let theme = store.terminalTheme
-        debugPrint("Applying terminal theme: \(theme.name)")
 
         // Update background color state
         if let color = Color(hex: theme.background) {
@@ -191,8 +188,6 @@ struct TerminalView: View {
 
     func applyFont() {
         let fontName = store.terminalFontName
-        debugPrint("Applying terminal font: \(fontName)")
-
         context.termInterface.setTerminalFontName(with: fontName)
     }
 }

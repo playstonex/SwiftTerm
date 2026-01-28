@@ -71,7 +71,6 @@ struct TerminalView: View {
                     context.termInterface
                         .onChange(of: r.size) { _ in
                             guard context.interfaceToken == interfaceToken else {
-                                debugPrint("interface token mismatch")
                                 return
                             }
                             updateTerminalSize()
@@ -89,13 +88,12 @@ struct TerminalView: View {
                             context.termInterface.setTerminalFontSize(with: newValue)
                         }
                         .onChange(of: store.terminalFontName) { oldValue, newValue in
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                self.applyFont()
-                            }
+                            applyFont()
                         }
                         .onChange(of: store.terminalThemeName) { oldValue, newValue in
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                self.applyTheme()
+                            // Schedule background update on next runloop cycle
+                            DispatchQueue.main.async {
+                                applyTheme()
                             }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -196,7 +194,6 @@ struct TerminalView: View {
         .id(context.id) // Force view refresh for different contexts
         .disabled(context.destroyedSession)
         .onAppear {
-            debugPrint("[iOS TerminalView] appeared for context: \(context.machine.name)")
             DispatchQueue.main.async {
                 context.interfaceToken = interfaceToken
             }
@@ -326,16 +323,13 @@ struct TerminalView: View {
         guard let asciiValue = char.asciiValue,
               let asciiInt = Int(exactly: asciiValue) // 65 = "A" 1 = "CTRL+A"
         else {
-            debugPrint("failed to encode control")
             return
         }
         let ctrlInt = asciiInt - 64
         guard ctrlInt > 0, ctrlInt < 65 else {
-            debugPrint("control character overflow")
             return
         }
         guard let us = UnicodeScalar(ctrlInt) else {
-            debugPrint("failed to encode control")
             return
         }
         let nc = Character(us)
@@ -347,7 +341,6 @@ struct TerminalView: View {
         guard let data = Data(base64Encoded: base64),
               let str = String(data: data, encoding: .utf8)
         else {
-            debugPrint("failed to decode \(base64)")
             return
         }
         safeWrite(str)
@@ -381,16 +374,13 @@ struct TerminalView: View {
         DispatchQueue.global().async {
             let newSize = core.requestTerminalSize()
             guard newSize.width > 5, newSize.height > 5 else {
-                debugPrint("ignoring malformed terminal size: \(newSize)")
                 return
             }
             if newSize != origSize {
                 mainActor {
                     guard context.interfaceToken == interfaceToken else {
-                        debugPrint("interface token mismatch")
                         return
                     }
-                    debugPrint("new terminal size: \(newSize)")
                     terminalSize = newSize
                     context.shell.explicitRequestStatusPickup()
                 }
@@ -400,7 +390,6 @@ struct TerminalView: View {
 
     func applyTheme() {
         let theme = store.terminalTheme
-        debugPrint("Applying terminal theme: \(theme.name)")
         context.termInterface.setTerminalTheme(
             foreground: theme.foreground,
             background: theme.background,
@@ -426,7 +415,6 @@ struct TerminalView: View {
 
     func applyFont() {
         let fontName = store.terminalFontName
-        debugPrint("Applying terminal font: \(fontName)")
         context.termInterface.setTerminalFontName(with: fontName)
     }
 }
