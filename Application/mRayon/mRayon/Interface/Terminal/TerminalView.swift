@@ -253,18 +253,35 @@ struct TerminalView: View {
                 }
             }
             makeKeyButton("doc.on.doc") {
-                debugPrint("[Copy Button] Copying terminal output...")
+                debugPrint("[Copy Button] Button clicked!")
+                debugPrint("[Copy Button] Buffer content preview: \(String(context.peekBuffer().prefix(100)))")
+
                 // Get buffer without clearing it
                 let buffer = context.peekBuffer()
+                debugPrint("[Copy Button] Full buffer size: \(buffer.count) chars")
+
+                if buffer.isEmpty {
+                    debugPrint("[Copy Button] Buffer is EMPTY!")
+                    UIBridge.presentError(with: "终端内容为空")
+                    return
+                }
+
                 let lines = buffer.components(separatedBy: "\n")
                 let recentLines = lines.suffix(100).joined(separator: "\n")
-                if !recentLines.isEmpty {
-                    UIPasteboard.general.string = recentLines
-                    debugPrint("[Copy Button] Copied \(recentLines.count) chars, \(lines.count) lines")
-                    UIBridge.presentSuccess(with: "已复制")
+
+                debugPrint("[Copy Button] About to copy \(recentLines.count) chars, \(lines.count) lines")
+                UIPasteboard.general.string = recentLines
+
+                // Verify copy worked
+                let verified = UIPasteboard.general.string
+                debugPrint("[Copy Button] Verification - Pasteboard has \(verified?.count ?? 0) chars")
+
+                if verified != nil && !verified!.isEmpty {
+                    debugPrint("[Copy Button] SUCCESS!")
+                    UIBridge.presentSuccess(with: "已复制 \(recentLines.count) 字")
                 } else {
-                    debugPrint("[Copy Button] Buffer is empty")
-                    UIBridge.presentError(with: "终端内容为空")
+                    debugPrint("[Copy Button] FAILED - Pasteboard still empty!")
+                    UIBridge.presentError(with: "复制失败")
                 }
             }
 
