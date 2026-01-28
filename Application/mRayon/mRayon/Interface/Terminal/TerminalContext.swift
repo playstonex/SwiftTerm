@@ -88,6 +88,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         defer { bufferAccessLock.unlock() }
         guard !closed else { return }
         _dataBuffer += str
+        debugPrint("[TerminalContext] insertBuffer: \(str.prefix(50)), total buffer size: \(_dataBuffer.count)")
         shell.explicitRequestStatusPickup()
     }
 
