@@ -87,12 +87,22 @@
 
       // Watch for terminal to be ready and apply any pending theme
       var checkInterval = setInterval(function() {
-        var terminal = window.M || window.terminal;
-        if (terminal && terminal.options) {
+        // Try multiple possible variable names
+        var terminal = window.M || window.term || window.terminal;
+
+        // Debug: log what we found
+        if (!terminal) {
+          console.log('[Terminal] Checking... window.M:', typeof window.M, 'window.term:', typeof window.term);
+        }
+
+        // Check if terminal has options or write method (more reliable)
+        if (terminal && (terminal.options || terminal.write)) {
           clearInterval(checkInterval);
           // Store globally for copy functionality
           window.term = terminal;
           console.log('[Terminal] Terminal object found and stored in window.term');
+          console.log('[Terminal] Type:', typeof terminal, 'Keys:', Object.keys(terminal).slice(0, 10).join(', '));
+
           if (pendingTheme) {
             window.setTerminalTheme(pendingTheme);
           }
@@ -105,6 +115,9 @@
       // Stop checking after 10 seconds
       setTimeout(function() {
         clearInterval(checkInterval);
+        if (!window.term) {
+          console.error('[Terminal] Failed to find terminal object after 10 seconds');
+        }
       }, 10000);
     </script>
   </head>

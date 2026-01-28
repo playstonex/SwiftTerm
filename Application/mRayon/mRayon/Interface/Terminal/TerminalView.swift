@@ -258,11 +258,11 @@ struct TerminalView: View {
                     debugPrint("[Copy Button] Selection result: \(selection ?? "nil")")
                     if let selection = selection, !selection.isEmpty {
                         UIPasteboard.general.string = selection
-                        debugPrint("[Copy Button] Copied to clipboard: \(selection)")
-                        UIBridge.presentSuccess(with: "已复制 \(selection.count) 字符")
+                        debugPrint("[Copy Button] Copied \(selection.count) chars")
+                        UIBridge.presentSuccess(with: "已复制")
                     } else {
                         debugPrint("[Copy Button] No selection found")
-                        UIBridge.presentError(with: "请先选择文本\n\n长按终端屏幕选择文本，然后点击此按钮")
+                        UIBridge.presentError(with: "请先选择文本")
                     }
                 }
             }
