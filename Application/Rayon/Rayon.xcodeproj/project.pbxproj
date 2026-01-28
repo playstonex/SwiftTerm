@@ -68,6 +68,8 @@
 		50FD878827D9CC3300EE3A5C /* PortForwardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */; };
 		ABD999D328A09F0700404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D228A09F0700404E61 /* CloudKit.framework */; };
 		ABD999D728A21E0D00404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D628A21E0D00404E61 /* DataSync */; };
+		50C000012F26B01200B4F3DB /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C000022F26B01200B4F3DB /* AssistantManager.swift */; };
+		50C000032F26B01200B4F3DB /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C000042F26B01200B4F3DB /* AssistantDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -140,6 +142,8 @@
 		50F64E5D27B3D922008D52FB /* MachineCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineCreateView.swift; sourceTree = "<group>"; };
 		50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardManager.swift; sourceTree = "<group>"; };
 		ABD999D228A09F0700404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
+		50C000022F26B01200B4F3DB /* AssistantManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantManager.swift; sourceTree = "<group>"; };
+		50C000042F26B01200B4F3DB /* AssistantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -292,6 +296,7 @@
 				50A8A69C27B83413004F6DDC /* SnippetController */,
 				5068E44F27CE3C3B00F8B770 /* Menubar */,
 				509F7F9227B2E3D100F28752 /* Effects */,
+				50C000052F26B01200B4F3DB /* Assistant */,
 			);
 			path = Interface;
 			sourceTree = "<group>";
@@ -327,6 +332,15 @@
 				505E762F27B5053B008D80F6 /* AlignedLabel.swift */,
 			);
 			path = Effects;
+			sourceTree = "<group>";
+		};
+		50C000052F26B01200B4F3DB /* Assistant */ = {
+			isa = PBXGroup;
+			children = (
+				50C000022F26B01200B4F3DB /* AssistantManager.swift */,
+				50C000042F26B01200B4F3DB /* AssistantDetailView.swift */,
+			);
+			path = Assistant;
 			sourceTree = "<group>";
 		};
 		509F7FA127B303E900F28752 /* UIBridge */ = {
@@ -531,6 +545,8 @@
 				509F7FAD27B309EE00F28752 /* IdentityManager.swift in Sources */,
 				5027915827CE448200EB22DD /* MenubarLoader.swift in Sources */,
 				5020A66027D9983300F6EA0D /* TerminalManager+Context.swift in Sources */,
+				50C000012F26B01200B4F3DB /* AssistantManager.swift in Sources */,
+				50C000032F26B01200B4F3DB /* AssistantDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

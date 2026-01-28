@@ -40,6 +40,8 @@
 		5082A1C827D09D1700C71C0F /* MonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C727D09D1700C71C0F /* MonitorView.swift */; };
 		5082A1CA27D0A90100C71C0F /* MonitorContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C927D0A90100C71C0F /* MonitorContext.swift */; };
 		5082A1CC27D0AC0900C71C0F /* TerminalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */; };
+		7C9E168838D648E990B6D7FE /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C9E168738D648E990B6D7FD /* AssistantManager.swift */; };
+		8EA7ACF9AB114CB89ED2BB2A /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */; };
 		5082A1D327D0E10000C71C0F /* EULA in Resources */ = {isa = PBXBuildFile; fileRef = 5082A1D127D0E10000C71C0F /* EULA */; };
 		5082A1D427D0E10000C71C0F /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 5082A1D227D0E10000C71C0F /* LICENSE */; };
 		5082A1D627D1228900C71C0F /* UIViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1D527D1228900C71C0F /* UIViewController.swift */; };
@@ -149,6 +151,8 @@
 		ABB80CB72B8EC2B700FDD779 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B1027CF18C100F60B51 /* TerminalView.swift */; };
 		ABB80CB82B8EC2B700FDD779 /* TerminalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B0E27CF18BD00F60B51 /* TerminalManager.swift */; };
 		ABB80CB92B8EC2B700FDD779 /* TerminalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */; };
+		ABB80CC02B8EC2B900FDD77C /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C9E168738D648E990B6D7FD /* AssistantManager.swift */; };
+		ABB80CC12B8EC2BA000FDD7D /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */; };
 		ABB80CBA2B8EC2BB00FDD779 /* FileTransferContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51627E4B14800EF01C4 /* FileTransferContext.swift */; };
 		ABB80CBB2B8EC2BB00FDD779 /* FileTransferManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51427E4B14100EF01C4 /* FileTransferManager.swift */; };
 		ABB80CBC2B8EC2BB00FDD779 /* FileTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51827E4B14E00EF01C4 /* FileTransferView.swift */; };
@@ -210,6 +214,8 @@
 		5082A1C727D09D1700C71C0F /* MonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorView.swift; sourceTree = "<group>"; };
 		5082A1C927D0A90100C71C0F /* MonitorContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorContext.swift; sourceTree = "<group>"; };
 		5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalContext.swift; sourceTree = "<group>"; };
+		7C9E168738D648E990B6D7FD /* AssistantManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantManager.swift; sourceTree = "<group>"; };
+		8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDetailView.swift; sourceTree = "<group>"; };
 		5082A1D127D0E10000C71C0F /* EULA */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = EULA; path = ../../../../Resources/EULA; sourceTree = "<group>"; };
 		5082A1D227D0E10000C71C0F /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = LICENSE; path = ../../../../Resources/LICENSE; sourceTree = "<group>"; };
 		5082A1D527D1228900C71C0F /* UIViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewController.swift; sourceTree = "<group>"; };
@@ -457,6 +463,8 @@
 				50C90B0827CF15F000F60B51 /* WelcomeView.swift */,
 				50C90AED27CF119F00F60B51 /* SidebarView.swift */,
 				5047BEA227DEDB77008887A7 /* SidebarView+Recent.swift */,
+				7C9E168738D648E990B6D7FD /* AssistantManager.swift */,
+				8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */,
 				50C90AEB27CF119500F60B51 /* TabsView.swift */,
 			);
 			path = Navigator;
@@ -512,6 +520,7 @@
 			children = (
 				50C90B0E27CF18BD00F60B51 /* TerminalManager.swift */,
 				5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */,
+				844B8FB4398C41F5BB7A093A /* AssistantView.swift */,
 				50C90B1027CF18C100F60B51 /* TerminalView.swift */,
 			);
 			path = Terminal;
@@ -822,6 +831,8 @@
 				50C90B0F27CF18BD00F60B51 /* TerminalManager.swift in Sources */,
 				5082A1CA27D0A90100C71C0F /* MonitorContext.swift in Sources */,
 				5082A1CC27D0AC0900C71C0F /* TerminalContext.swift in Sources */,
+				7C9E168838D648E990B6D7FE /* AssistantManager.swift in Sources */,
+				8EA7ACF9AB114CB89ED2BB2A /* AssistantDetailView.swift in Sources */,
 				500D727127CF40CC00149A43 /* EditIdentityView.swift in Sources */,
 				5082A1E027D1ED5800C71C0F /* AgreementView.swift in Sources */,
 			);
@@ -867,6 +878,8 @@
 				ABB80CBC2B8EC2BB00FDD779 /* FileTransferView.swift in Sources */,
 				ABB80CA22B8EC29E00FDD779 /* SidebarView.swift in Sources */,
 				ABB80CB92B8EC2B700FDD779 /* TerminalContext.swift in Sources */,
+				ABB80CC02B8EC2B900FDD77C /* AssistantManager.swift in Sources */,
+				ABB80CC12B8EC2BA000FDD7D /* AssistantDetailView.swift in Sources */,
 				ABB80CB02B8EC2B000FDD779 /* PortForwardBackend.swift in Sources */,
 				ABB80CBB2B8EC2BB00FDD779 /* FileTransferManager.swift in Sources */,
 				ABB80CA72B8EC2A700FDD779 /* SnippetElementView.swift in Sources */,
@@ -1021,7 +1034,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 73;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_APP_SANDBOX = YES;
@@ -1073,7 +1086,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 73;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_APP_SANDBOX = YES;
@@ -1125,7 +1138,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 74;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
@@ -1163,7 +1176,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 69;
+				CURRENT_PROJECT_VERSION = 74;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
 				ENABLE_PREVIEWS = YES;

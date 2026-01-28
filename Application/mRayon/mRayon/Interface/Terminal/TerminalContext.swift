@@ -34,7 +34,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     private var title: String = "" {
         didSet {
-            mainActor {
+            DispatchQueue.main.async {
                 self.navigationSubtitle = self.title
             }
         }
@@ -87,7 +87,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     var continueDecision: Bool = true {
         didSet {
-            mainActor {
+            DispatchQueue.main.async {
                 self.interfaceDisabled = !self.continueDecision
             }
         }
@@ -140,12 +140,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     func processBootstrap() {
         defer {
-            mainActor { self.processShutdown(exitFromShell: true) }
+            DispatchQueue.main.async { self.processShutdown(exitFromShell: true) }
         }
 
         termInterface.setTerminalFontSize(with: RayonStore.shared.terminalFontSize)
 
-        mainActor {
+        DispatchQueue.main.async {
             guard self.firstConnect else {
                 return
             }
@@ -165,13 +165,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
         setupShellData()
 
-        debugPrint("\(self) \(#function) \(machine.id)")
         putInformation("[*] Creating Connection")
         continueDecision = true
 
         termInterface
             .setupBellChain {
-                debugPrint("terminal bell")
+                // Terminal bell
             }
             .setupBufferChain { [weak self] buffer in
                 self?.insertBuffer(buffer)
@@ -232,7 +231,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
             return
         }
 
-        mainActor {
+        DispatchQueue.main.async {
             guard self.remoteType == .machine else {
                 return
             }
@@ -246,7 +245,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         shell.begin(
             withTerminalType: "xterm"
         ) {
-            debugPrint("channel open")
+            // Channel opened
         } withTerminalSize: { [weak self] in
             var size = self?.terminalSize ?? TerminalContext.defaultTerminalSize
             if size.width < 8 || size.height < 8 {
@@ -266,9 +265,6 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         } withContinuationHandler: { [weak self] in
             self?.continueDecision ?? false
         }
-
-        // leave loop
-        debugPrint("\(self) \(#function) defer \(machine.id)")
 
         processShutdown()
     }

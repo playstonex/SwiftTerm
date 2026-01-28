@@ -26,7 +26,7 @@ extension TerminalManager {
 
         private var title: String = "" {
             didSet {
-                mainActor {
+                DispatchQueue.main.async {
                     self.navigationSubtitle = self.title
                 }
             }
@@ -81,7 +81,7 @@ extension TerminalManager {
 
         var continueDecision: Bool = true {
             didSet {
-                mainActor {
+                DispatchQueue.main.async {
                     self.interfaceDisabled = !self.continueDecision
                 }
             }
@@ -140,18 +140,17 @@ extension TerminalManager {
 
         func processBootstrap() {
             defer {
-                mainActor { self.processShutdown(exitFromShell: true) }
+                DispatchQueue.main.async { self.processShutdown(exitFromShell: true) }
             }
 
             setupShellData()
 
-            debugPrint("\(self) \(#function) \(machine.id)")
             putInformation("[*] Creating Connection")
             continueDecision = true
 
             termInterface
                 .setupBellChain {
-                    debugPrint("terminal bell")
+                    // Terminal bell
                 }
                 .setupBufferChain { [weak self] buffer in
                     self?.insertBuffer(buffer)
@@ -212,7 +211,7 @@ extension TerminalManager {
                 return
             }
 
-            mainActor {
+            DispatchQueue.main.async {
                 guard self.remoteType == .machine else {
                     return
                 }
@@ -224,7 +223,7 @@ extension TerminalManager {
             }
 
             shell.begin(withTerminalType: "xterm") {
-                debugPrint("channel open")
+                // Channel opened
             } withTerminalSize: { [weak self] in
                 var size = self?.terminalSize ?? Context.defaultTerminalSize
                 if size.width < 8 || size.height < 8 {
@@ -244,9 +243,6 @@ extension TerminalManager {
             } withContinuationHandler: { [weak self] in
                 self?.continueDecision ?? false
             }
-
-            // leave loop
-            debugPrint("\(self) \(#function) defer \(machine.id)")
 
             processShutdown()
         }

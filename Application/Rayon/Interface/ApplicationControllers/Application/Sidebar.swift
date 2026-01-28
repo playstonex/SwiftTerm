@@ -87,7 +87,9 @@ struct SidebarView: View {
             } else {
                 ForEach(terminalManager.sessionContexts) { context in
                     NavigationLink {
-                        TerminalView(context: context).requiresFrame()
+                        AssistantDetailView(context: context)
+                            .id(context.id)
+                            .requiresFrame()
                     } label: {
                         if context.remoteType == .machine {
                             Label(context.machine.name, systemImage: "terminal")
@@ -171,7 +173,9 @@ struct SidebarView: View {
             } else {
                 ForEach(transferManager.transfers) { context in
                     NavigationLink {
-                        FileTransferView(context: context).requiresFrame()
+                        FileTransferView(context: context)
+                            .id(context.id)
+                            .requiresFrame()
                     } label: {
                         Label(context.navigationTitle, systemImage: "externaldrive.connected.to.line.below")
                     }
