@@ -65,7 +65,7 @@ struct TerminalView: View {
                         .ignoresSafeArea()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Terminal fills the entire view
+                    // Terminal fills the view, reserving space for keyboard and toolbar
                     context.termInterface
                         .onChange(of: r.size) { _, _ in
                             guard context.interfaceToken == interfaceToken else {
@@ -95,62 +95,62 @@ struct TerminalView: View {
                             }
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .safeAreaInset(edge: .bottom, spacing: keyboardHeight + 72) {
+                            // Reserve space for toolbar (56pt + 8pt padding) + keyboard
+                            Color.clear.frame(height: 1)
+                        }
 
                     // Scrollable accessory bar at the bottom
                     if !context.destroyedSession {
-                        VStack {
-                            Spacer()
-                            AccessoryBar(
-                                context: context,
-                                isReconnecting: context.closed,
-                                controlKey: $controlKey,
-                                isShowingControlPopover: $isShowingControlPopover,
-                                onReconnect: {
-                                    DispatchQueue.global().async {
-                                        context.putInformation("[i] Reconnect will use the information you provide previously,")
-                                        context.putInformation("    if the machine was edited, create a new terminal.")
-                                        context.processBootstrap()
-                                    }
-                                },
-                                onClose: {
-                                    if context.closed {
-                                        presentationMode.wrappedValue.dismiss()
-                                        TerminalManager.shared.end(for: context.id)
-                                    } else {
-                                        UIBridge.requiresConfirmation(
-                                            message: "Are you sure you want to close this session?"
-                                        ) { yes in
-                                            if yes { context.processShutdown() }
-                                        }
-                                    }
-                                },
-                                onPaste: {
-                                    guard let str = UIPasteboard.general.string else {
-                                        UIBridge.presentError(with: "Empty Pasteboard")
-                                        return
-                                    }
-                                    UIBridge.requiresConfirmation(
-                                        message: "Are you sure you want to paste following string?\n\n\(str)"
-                                    ) { yes in
-                                        if yes { self.safeWrite(str) }
-                                    }
-                                },
-                                onCopy: {
-                                    let cleanHistory = context.getOutputHistoryStrippedANSI()
-                                    if !cleanHistory.isEmpty {
-                                        UIPasteboard.general.string = cleanHistory
-                                        UIBridge.presentSuccess(with: "已复制")
-                                    } else {
-                                        UIBridge.presentError(with: "终端内容为空")
-                                    }
-                                },
-                                onSendKey: { key in
-                                    self.safeWrite(key)
+                        AccessoryBar(
+                            context: context,
+                            isReconnecting: context.closed,
+                            controlKey: $controlKey,
+                            isShowingControlPopover: $isShowingControlPopover,
+                            onReconnect: {
+                                DispatchQueue.global().async {
+                                    context.putInformation("[i] Reconnect will use the information you provide previously,")
+                                    context.putInformation("    if the machine was edited, create a new terminal.")
+                                    context.processBootstrap()
                                 }
-                            )
-                            .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 8 : 8)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: keyboardHeight)
-                        }
+                            },
+                            onClose: {
+                                if context.closed {
+                                    presentationMode.wrappedValue.dismiss()
+                                    TerminalManager.shared.end(for: context.id)
+                                } else {
+                                    UIBridge.requiresConfirmation(
+                                        message: "Are you sure you want to close this session?"
+                                    ) { yes in
+                                        if yes { context.processShutdown() }
+                                    }
+                                }
+                            },
+                            onPaste: {
+                                guard let str = UIPasteboard.general.string else {
+                                    UIBridge.presentError(with: "Empty Pasteboard")
+                                    return
+                                }
+                                UIBridge.requiresConfirmation(
+                                    message: "Are you sure you want to paste following string?\n\n\(str)"
+                                ) { yes in
+                                    if yes { self.safeWrite(str) }
+                                }
+                            },
+                            onCopy: {
+                                let cleanHistory = context.getOutputHistoryStrippedANSI()
+                                if !cleanHistory.isEmpty {
+                                    UIPasteboard.general.string = cleanHistory
+                                    UIBridge.presentSuccess(with: "已复制")
+                                } else {
+                                    UIBridge.presentError(with: "终端内容为空")
+                                }
+                            },
+                            onSendKey: { key in
+                                self.safeWrite(key)
+                            }
+                        )
+                        .padding(.bottom, 8)
                     }
                 }
             }
@@ -170,12 +170,18 @@ struct TerminalView: View {
                   let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
                 return
             }
-            let keyboardTop = keyboardFrame.minY
-            let screenHeight = UIScreen.main.bounds.height
-            keyboardHeight = screenHeight - keyboardTop
+            // Use keyboard height directly
+            let height = keyboardFrame.height
+
+            // Animate the change
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                keyboardHeight = height
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            keyboardHeight = 0
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                keyboardHeight = 0
+            }
         }
         .navigationTitle(context.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
