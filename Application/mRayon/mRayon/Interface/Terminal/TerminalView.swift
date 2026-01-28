@@ -17,11 +17,6 @@ struct TerminalView: View {
 
     @State var terminalSize: CGSize = TerminalContext.defaultTerminalSize
 
-    @State var controlKey: String = ""
-    @State var isShowingControlPopover = false
-
-    @State private var keyboardHeight: CGFloat = 0
-
     @StateObject var store = RayonStore.shared
     @ObservedObject var assistantManager = AssistantManager.shared
 
@@ -58,100 +53,92 @@ struct TerminalView: View {
     var body: some View {
         Group {
             if context.interfaceToken == interfaceToken {
-            GeometryReader { r in
-                ZStack {
-                    // Background fills entire view including safe area (chin)
-                    ColorFromHex(store.terminalTheme.background)
-                        .ignoresSafeArea()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                GeometryReader { r in
+                    ZStack {
+                        // Background
+                        ColorFromHex(store.terminalTheme.background)
+                            .ignoresSafeArea()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    // Terminal fills the view with padding to avoid keyboard overlap
-                    context.termInterface
-                        .onChange(of: r.size) { _, _ in
-                            guard context.interfaceToken == interfaceToken else {
-                                return
+                        // Terminal view
+                        context.termInterface
+                            .onChange(of: r.size) { _, _ in
+                                guard context.interfaceToken == interfaceToken else { return }
+                                updateTerminalSize()
                             }
-                            updateTerminalSize()
-                        }
-                        .onAppear {
-                            context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
-                            context.termInterface.setTerminalFontName(with: store.terminalFontName)
-                            // Delay theme application to ensure WebView is ready
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                self.applyTheme()
-                                self.applyFont()
-                            }
-                        }
-                        .onChange(of: store.terminalFontSize) { _, newValue in
-                            context.termInterface.setTerminalFontSize(with: newValue)
-                        }
-                        .onChange(of: store.terminalFontName) { _, _ in
-                            applyFont()
-                        }
-                        .onChange(of: store.terminalThemeName) { _, _ in
-                            // Schedule background update on next runloop cycle
-                            DispatchQueue.main.async {
-                                applyTheme()
-                            }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 72 : 8)
-                }
-                .overlay(alignment: .bottom) {
-                    // Accessory bar positioned at bottom using overlay
-                    if !context.destroyedSession {
-                        AccessoryBar(
-                            context: context,
-                            isReconnecting: context.closed,
-                            controlKey: $controlKey,
-                            isShowingControlPopover: $isShowingControlPopover,
-                            onReconnect: {
-                                DispatchQueue.global().async {
-                                    context.putInformation("[i] Reconnect will use the information you provide previously,")
-                                    context.putInformation("    if the machine was edited, create a new terminal.")
-                                    context.processBootstrap()
+                            .onAppear {
+                                context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
+                                context.termInterface.setTerminalFontName(with: store.terminalFontName)
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                    self.applyTheme()
+                                    self.applyFont()
                                 }
-                            },
-                            onClose: {
-                                if context.closed {
-                                    presentationMode.wrappedValue.dismiss()
-                                    TerminalManager.shared.end(for: context.id)
-                                } else {
-                                    UIBridge.requiresConfirmation(
-                                        message: "Are you sure you want to close this session?"
-                                    ) { yes in
-                                        if yes { context.processShutdown() }
+                            }
+                            .onChange(of: store.terminalFontSize) { _, newValue in
+                                context.termInterface.setTerminalFontSize(with: newValue)
+                            }
+                            .onChange(of: store.terminalFontName) { _, _ in
+                                applyFont()
+                            }
+                            .onChange(of: store.terminalThemeName) { _, _ in
+                                DispatchQueue.main.async {
+                                    applyTheme()
+                                }
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .safeAreaInset(edge: .bottom, spacing: 0) {
+                        if !context.destroyedSession {
+                            AccessoryBar(
+                                isReconnecting: context.closed,
+                                controlKey: .constant(""),
+                                isShowingControlPopover: .constant(false),
+                                onReconnect: {
+                                    DispatchQueue.global().async {
+                                        context.putInformation("[i] Reconnect will use the information you provide previously,")
+                                        context.putInformation("    if the machine was edited, create a new terminal.")
+                                        context.processBootstrap()
                                     }
+                                },
+                                onClose: {
+                                    if context.closed {
+                                        presentationMode.wrappedValue.dismiss()
+                                        TerminalManager.shared.end(for: context.id)
+                                    } else {
+                                        UIBridge.requiresConfirmation(
+                                            message: "Are you sure you want to close this session?"
+                                        ) { yes in
+                                            if yes { context.processShutdown() }
+                                        }
+                                    }
+                                },
+                                onPaste: {
+                                    guard let str = UIPasteboard.general.string else {
+                                        UIBridge.presentError(with: "Empty Pasteboard")
+                                        return
+                                    }
+                                    UIBridge.requiresConfirmation(
+                                        message: "Are you sure you want to paste following string?\n\n\(str)"
+                                    ) { yes in
+                                        if yes { self.safeWrite(str) }
+                                    }
+                                },
+                                onCopy: {
+                                    let cleanHistory = context.getOutputHistoryStrippedANSI()
+                                    if !cleanHistory.isEmpty {
+                                        UIPasteboard.general.string = cleanHistory
+                                        UIBridge.presentSuccess(with: "已复制")
+                                    } else {
+                                        UIBridge.presentError(with: "终端内容为空")
+                                    }
+                                },
+                                onSendKey: { key in
+                                    self.safeWrite(key)
                                 }
-                            },
-                            onPaste: {
-                                guard let str = UIPasteboard.general.string else {
-                                    UIBridge.presentError(with: "Empty Pasteboard")
-                                    return
-                                }
-                                UIBridge.requiresConfirmation(
-                                    message: "Are you sure you want to paste following string?\n\n\(str)"
-                                ) { yes in
-                                    if yes { self.safeWrite(str) }
-                                }
-                            },
-                            onCopy: {
-                                let cleanHistory = context.getOutputHistoryStrippedANSI()
-                                if !cleanHistory.isEmpty {
-                                    UIPasteboard.general.string = cleanHistory
-                                    UIBridge.presentSuccess(with: "已复制")
-                                } else {
-                                    UIBridge.presentError(with: "终端内容为空")
-                                }
-                            },
-                            onSendKey: { key in
-                                self.safeWrite(key)
-                            }
-                        )
-                        .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 8 : 8)
+                            )
+                        }
                     }
                 }
-            }
             } else {
                 PlaceholderView("Terminal Transfer To Another Window", img: .emptyWindow)
             }
@@ -161,24 +148,6 @@ struct TerminalView: View {
         .onAppear {
             DispatchQueue.main.async {
                 context.interfaceToken = interfaceToken
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-            guard let userInfo = notification.userInfo,
-                  let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
-                return
-            }
-            // Use keyboard height directly
-            let height = keyboardFrame.height
-
-            // Animate the change
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                keyboardHeight = height
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                keyboardHeight = 0
             }
         }
         .navigationTitle(context.navigationTitle)
@@ -262,7 +231,6 @@ struct TerminalView: View {
 // MARK: - Modern Accessory Bar
 
 private struct AccessoryBar: View {
-    let context: TerminalContext
     let isReconnecting: Bool
     @Binding var controlKey: String
     @Binding var isShowingControlPopover: Bool
