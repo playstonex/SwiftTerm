@@ -68,6 +68,10 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     private var _dataBuffer: String = ""
     private var bufferAccessLock = NSLock()
+    // Persistent history for copy functionality (keeps last 5000 chars)
+    private var outputHistory: String = ""
+    private let maxHistorySize = 5000
+    private let historyLock = NSLock()
 
     func getBuffer() -> String {
         bufferAccessLock.lock()
@@ -87,9 +91,28 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         bufferAccessLock.lock()
         defer { bufferAccessLock.unlock() }
         guard !closed else { return }
+
+        // Add to data buffer (for SSH)
         _dataBuffer += str
-        debugPrint("[TerminalContext] insertBuffer: \(str.prefix(50)), total buffer size: \(_dataBuffer.count)")
+
+        // Add to persistent history (for copy)
+        historyLock.lock()
+        outputHistory += str
+        // Keep history at max size by removing old content
+        if outputHistory.count > maxHistorySize {
+            let removeCount = outputHistory.count - maxHistorySize
+            outputHistory = String(outputHistory.dropFirst(removeCount))
+        }
+        historyLock.unlock()
+
+        debugPrint("[TerminalContext] insertBuffer: \(str.prefix(50)), history size: \(outputHistory.count)")
         shell.explicitRequestStatusPickup()
+    }
+
+    func getOutputHistory() -> String {
+        historyLock.lock()
+        defer { historyLock.unlock() }
+        return outputHistory
     }
 
     var continueDecision: Bool = true {

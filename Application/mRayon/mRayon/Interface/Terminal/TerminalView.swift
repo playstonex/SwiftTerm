@@ -254,22 +254,22 @@ struct TerminalView: View {
             }
             makeKeyButton("doc.on.doc") {
                 debugPrint("[Copy Button] Button clicked!")
-                debugPrint("[Copy Button] Buffer content preview: \(String(context.peekBuffer().prefix(100)))")
 
-                // Get buffer without clearing it
-                let buffer = context.peekBuffer()
-                debugPrint("[Copy Button] Full buffer size: \(buffer.count) chars")
+                // Get persistent history (not affected by getBuffer clearing)
+                let history = context.getOutputHistory()
+                debugPrint("[Copy Button] History size: \(history.count) chars")
 
-                if buffer.isEmpty {
-                    debugPrint("[Copy Button] Buffer is EMPTY!")
+                if history.isEmpty {
+                    debugPrint("[Copy Button] History is EMPTY!")
                     UIBridge.presentError(with: "终端内容为空")
                     return
                 }
 
-                let lines = buffer.components(separatedBy: "\n")
+                // Get last 100 lines
+                let lines = history.components(separatedBy: "\n")
                 let recentLines = lines.suffix(100).joined(separator: "\n")
 
-                debugPrint("[Copy Button] About to copy \(recentLines.count) chars, \(lines.count) lines")
+                debugPrint("[Copy Button] About to copy \(recentLines.count) chars, \(lines.count) total lines")
                 UIPasteboard.general.string = recentLines
 
                 // Verify copy worked
