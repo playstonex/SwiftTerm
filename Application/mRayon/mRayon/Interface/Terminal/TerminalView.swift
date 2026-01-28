@@ -249,125 +249,93 @@ private struct AccessoryBar: View {
     let onCopy: () -> Void
     let onSendKey: (String) -> Void
 
-    @State private var isShowingEscapeHint = false
-
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 0) {
-                // Session management group
-                Group {
-                    if isReconnecting {
+                ForEach(Array(keyStore.enabledKeys().enumerated()), id: \.element.id) { index, key in
+                    if key.keySequence.isEmpty {
+                        // Special button (no key sequence)
+                        specialButton(for: key)
+                    } else {
+                        // Regular key button
                         AccessoryBarButton(
-                            icon: "arrow.clockwise",
-                            label: "Reconnect",
-                            action: onReconnect
+                            icon: key.icon,
+                            label: key.label,
+                            action: { onSendKey(key.keySequence) }
                         )
                     }
 
-                    AccessoryBarButton(
-                        icon: isReconnecting ? "xmark" : "power",
-                        label: isReconnecting ? "Cancel" : "Close",
-                        action: onClose
-                    )
-                }
-
-                Separator()
-
-                // Clipboard group
-                Group {
-                    AccessoryBarButton(
-                        icon: "doc.on.clipboard",
-                        label: "Paste",
-                        action: onPaste
-                    )
-
-                    AccessoryBarButton(
-                        icon: "doc.on.doc",
-                        label: "Copy",
-                        action: onCopy
-                    )
-                }
-
-                Separator()
-
-                // Arrow keys group
-                Group {
-                    AccessoryBarButton(
-                        icon: "arrow.left",
-                        label: "Left",
-                        action: { onSendKey("\u{001B}[D") }
-                    )
-
-                    AccessoryBarButton(
-                        icon: "arrow.right",
-                        label: "Right",
-                        action: { onSendKey("\u{001B}[C") }
-                    )
-
-                    AccessoryBarButton(
-                        icon: "arrow.up",
-                        label: "Up",
-                        action: { onSendKey("\u{001B}[A") }
-                    )
-
-                    AccessoryBarButton(
-                        icon: "arrow.down",
-                        label: "Down",
-                        action: { onSendKey("\u{001B}[B") }
-                    )
-                }
-
-                Separator()
-
-                // Control keys group
-                Group {
-                    AccessoryBarButton(
-                        icon: "keyboard",
-                        label: "Ctrl",
-                        action: { isShowingControlPopover = true }
-                    )
-                    .popover(isPresented: $isShowingControlPopover) {
-                        ControlKeyPopover(
-                            controlKey: $controlKey,
-                            isPresented: $isShowingControlPopover,
-                            onSend: { onSendKey($0) }
-                        )
+                    // Add separator between different categories
+                    if index < keyStore.enabledKeys().count - 1 {
+                        let nextKey = keyStore.enabledKeys()[index + 1]
+                        if key.category != nextKey.category {
+                            Separator()
+                        }
                     }
-
-                    AccessoryBarButton(
-                        icon: "escape",
-                        label: "Esc",
-                        action: { onSendKey("\u{001B}") }
-                    )
                 }
 
+                // Settings button (always shown)
                 Separator()
-
-                // Custom keys from user selection
-                ForEach(keyStore.enabledKeys()) { key in
-                    AccessoryBarButton(
-                        icon: key.icon,
-                        label: key.label,
-                        action: { onSendKey(key.keySequence) }
-                    )
-                }
-
-                Separator()
-
-                // Settings button
                 AccessoryBarButton(
                     icon: "ellipsis.circle",
-                    label: "Customize",
+                    label: "自定义",
                     action: { isShowingToolbarSettings = true }
                 )
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
         }
-        .frame(height: 56)  // Fixed height: 44pt button + 12pt padding
+        .frame(height: 56)
         .padding(.horizontal, 8)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: -4)
+    }
+
+    @ViewBuilder
+    private func specialButton(for key: ToolbarKey) -> some View {
+        switch key.id {
+        case "reconnect":
+            if isReconnecting {
+                AccessoryBarButton(
+                    icon: key.icon,
+                    label: key.label,
+                    action: onReconnect
+                )
+            }
+        case "close":
+            AccessoryBarButton(
+                icon: isReconnecting ? "xmark" : key.icon,
+                label: isReconnecting ? "Cancel" : key.label,
+                action: onClose
+            )
+        case "paste":
+            AccessoryBarButton(
+                icon: key.icon,
+                label: key.label,
+                action: onPaste
+            )
+        case "copy":
+            AccessoryBarButton(
+                icon: key.icon,
+                label: key.label,
+                action: onCopy
+            )
+        case "ctrl":
+            AccessoryBarButton(
+                icon: key.icon,
+                label: key.label,
+                action: { isShowingControlPopover = true }
+            )
+            .popover(isPresented: $isShowingControlPopover) {
+                ControlKeyPopover(
+                    controlKey: $controlKey,
+                    isPresented: $isShowingControlPopover,
+                    onSend: { onSendKey($0) }
+                )
+            }
+        default:
+            EmptyView()
+        }
     }
 }
 
@@ -482,6 +450,15 @@ struct ToolbarKey: Identifiable, Equatable, Codable {
     let label: String
     let keySequence: String
     var isEnabled: Bool
+    var category: KeyCategory
+
+    enum KeyCategory: String, Codable {
+        case session = "Session"
+        case clipboard = "Clipboard"
+        case navigation = "Navigation"
+        case control = "Control"
+        case custom = "Custom"
+    }
 
     static func == (lhs: ToolbarKey, rhs: ToolbarKey) -> Bool {
         lhs.id == rhs.id && lhs.isEnabled == rhs.isEnabled
@@ -494,26 +471,45 @@ class ToolbarKeyStore: ObservableObject {
     @AppStorage("terminalToolbarKeys") private var keysData: Data = Data()
 
     @Published var availableKeys: [ToolbarKey] = [
-        ToolbarKey(id: "tab", icon: "arrow.right", label: "Tab", keySequence: "\u{0009}", isEnabled: true),
-        ToolbarKey(id: "home", icon: "arrow.left.to.line", label: "Home", keySequence: "\u{0001}", isEnabled: false),
-        ToolbarKey(id: "end", icon: "arrow.right.to.line", label: "End", keySequence: "\u{0005}", isEnabled: true),
-        ToolbarKey(id: "pgup", icon: "arrow.up.to.line", label: "PgUp", keySequence: "\u{001B}[5~", isEnabled: false),
-        ToolbarKey(id: "pgdn", icon: "arrow.down.to.line", label: "PgDn", keySequence: "\u{001B}[6~", isEnabled: false),
-        ToolbarKey(id: "del", icon: "delete.right", label: "Del", keySequence: "\u{007F}", isEnabled: false),
-        ToolbarKey(id: "ins", icon: "text.append", label: "Ins", keySequence: "\u{001B}[2~", isEnabled: false),
-        ToolbarKey(id: "ctrl_c", icon: "xmark.circle", label: "Ctrl+C", keySequence: "\u{0003}", isEnabled: false),
-        ToolbarKey(id: "ctrl_d", icon: "power", label: "Ctrl+D", keySequence: "\u{0004}", isEnabled: false),
-        ToolbarKey(id: "ctrl_z", icon: "arrow.uturn.backward", label: "Ctrl+Z", keySequence: "\u{001A}", isEnabled: false),
-        ToolbarKey(id: "ctrl_a", icon: "text.alignleft", label: "Ctrl+A", keySequence: "\u{0001}", isEnabled: false),
-        ToolbarKey(id: "ctrl_e", icon: "text.alignright", label: "Ctrl+E", keySequence: "\u{0005}", isEnabled: false),
-        ToolbarKey(id: "ctrl_l", icon: "arrow.clockwise", label: "Ctrl+L", keySequence: "\u{000C}", isEnabled: false),
-        ToolbarKey(id: "ctrl_u", icon: "arrow.up.doc", label: "Ctrl+U", keySequence: "\u{0015}", isEnabled: false),
-        ToolbarKey(id: "ctrl_w", icon: "textformat.alt", label: "Ctrl+W", keySequence: "\u{0017}", isEnabled: false),
-        ToolbarKey(id: "f1", icon: "one.arrow.trianglehead.clockwise", label: "F1", keySequence: "\u{001B}OP", isEnabled: false),
-        ToolbarKey(id: "f2", icon: "two.arrow.trianglehead.clockwise", label: "F2", keySequence: "\u{001B}OQ", isEnabled: false),
-        ToolbarKey(id: "f3", icon: "three.arrow.trianglehead.clockwise", label: "F3", keySequence: "\u{001B}OR", isEnabled: false),
-        ToolbarKey(id: "f4", icon: "four.arrow.trianglehead.clockwise", label: "F4", keySequence: "\u{001B}OS", isEnabled: false),
-        ToolbarKey(id: "f5", icon: "five.arrow.trianglehead.clockwise", label: "F5", keySequence: "\u{001B}[15~", isEnabled: false),
+        // Session management
+        ToolbarKey(id: "reconnect", icon: "arrow.clockwise", label: "Reconnect", keySequence: "", isEnabled: true, category: .session),
+        ToolbarKey(id: "close", icon: "power", label: "Close", keySequence: "", isEnabled: true, category: .session),
+
+        // Clipboard
+        ToolbarKey(id: "paste", icon: "doc.on.clipboard", label: "Paste", keySequence: "", isEnabled: true, category: .clipboard),
+        ToolbarKey(id: "copy", icon: "doc.on.doc", label: "Copy", keySequence: "", isEnabled: true, category: .clipboard),
+
+        // Navigation
+        ToolbarKey(id: "left", icon: "arrow.left", label: "Left", keySequence: "\u{001B}[D", isEnabled: true, category: .navigation),
+        ToolbarKey(id: "right", icon: "arrow.right", label: "Right", keySequence: "\u{001B}[C", isEnabled: true, category: .navigation),
+        ToolbarKey(id: "up", icon: "arrow.up", label: "Up", keySequence: "\u{001B}[A", isEnabled: true, category: .navigation),
+        ToolbarKey(id: "down", icon: "arrow.down", label: "Down", keySequence: "\u{001B}[B", isEnabled: true, category: .navigation),
+
+        // Control keys
+        ToolbarKey(id: "ctrl", icon: "keyboard", label: "Ctrl", keySequence: "", isEnabled: true, category: .control),
+        ToolbarKey(id: "esc", icon: "escape", label: "Esc", keySequence: "\u{001B}", isEnabled: true, category: .control),
+
+        // Custom keys
+        ToolbarKey(id: "tab", icon: "arrow.right", label: "Tab", keySequence: "\u{0009}", isEnabled: true, category: .custom),
+        ToolbarKey(id: "home", icon: "arrow.left.to.line", label: "Home", keySequence: "\u{0001}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "end", icon: "arrow.right.to.line", label: "End", keySequence: "\u{0005}", isEnabled: true, category: .custom),
+        ToolbarKey(id: "pgup", icon: "arrow.up.to.line", label: "PgUp", keySequence: "\u{001B}[5~", isEnabled: false, category: .custom),
+        ToolbarKey(id: "pgdn", icon: "arrow.down.to.line", label: "PgDn", keySequence: "\u{001B}[6~", isEnabled: false, category: .custom),
+        ToolbarKey(id: "del", icon: "delete.right", label: "Del", keySequence: "\u{007F}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ins", icon: "text.append", label: "Ins", keySequence: "\u{001B}[2~", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_c", icon: "xmark.circle", label: "Ctrl+C", keySequence: "\u{0003}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_d", icon: "power", label: "Ctrl+D", keySequence: "\u{0004}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_z", icon: "arrow.uturn.backward", label: "Ctrl+Z", keySequence: "\u{001A}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_a", icon: "text.alignleft", label: "Ctrl+A", keySequence: "\u{0001}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_e", icon: "text.alignright", label: "Ctrl+E", keySequence: "\u{0005}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_l", icon: "arrow.clockwise", label: "Ctrl+L", keySequence: "\u{000C}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_u", icon: "arrow.up.doc", label: "Ctrl+U", keySequence: "\u{0015}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "ctrl_w", icon: "textformat.alt", label: "Ctrl+W", keySequence: "\u{0017}", isEnabled: false, category: .custom),
+        ToolbarKey(id: "f1", icon: "one.arrow.trianglehead.clockwise", label: "F1", keySequence: "\u{001B}OP", isEnabled: false, category: .custom),
+        ToolbarKey(id: "f2", icon: "two.arrow.trianglehead.clockwise", label: "F2", keySequence: "\u{001B}OQ", isEnabled: false, category: .custom),
+        ToolbarKey(id: "f3", icon: "three.arrow.trianglehead.clockwise", label: "F3", keySequence: "\u{001B}OR", isEnabled: false, category: .custom),
+        ToolbarKey(id: "f4", icon: "four.arrow.trianglehead.clockwise", label: "F4", keySequence: "\u{001B}OS", isEnabled: false, category: .custom),
+        ToolbarKey(id: "f5", icon: "five.arrow.trianglehead.clockwise", label: "F5", keySequence: "\u{001B}[15~", isEnabled: false, category: .custom),
     ]
 
     private init() {
@@ -524,12 +520,8 @@ class ToolbarKeyStore: ObservableObject {
         guard !keysData.isEmpty else { return }
         do {
             let decoded = try JSONDecoder().decode([ToolbarKey].self, from: keysData)
-            // Merge with default keys to handle new keys added in future versions
-            for index in availableKeys.indices {
-                if let savedKey = decoded.first(where: { $0.id == availableKeys[index].id }) {
-                    availableKeys[index].isEnabled = savedKey.isEnabled
-                }
-            }
+            // Restore saved keys including order
+            availableKeys = decoded
         } catch {
             print("Failed to load toolbar keys: \(error)")
         }
@@ -544,6 +536,11 @@ class ToolbarKeyStore: ObservableObject {
         }
     }
 
+    func move(from source: IndexSet, to destination: Int) {
+        availableKeys.move(fromOffsets: source, toOffset: destination)
+        saveKeys()
+    }
+
     func enabledKeys() -> [ToolbarKey] {
         return availableKeys.filter { $0.isEnabled }
     }
@@ -552,12 +549,13 @@ class ToolbarKeyStore: ObservableObject {
 struct ToolbarSettingsView: View {
     @ObservedObject var keyStore: ToolbarKeyStore
     @Environment(\.dismiss) var dismiss
+    @State private var editMode: EditMode = .inactive
 
     var body: some View {
         NavigationView {
             List {
                 Section {
-                    Text("选择要显示在工具栏中的快捷键")
+                    Text("拖动调整顺序，开关控制显示/隐藏")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } header: {
@@ -572,8 +570,14 @@ struct ToolbarSettingsView: View {
                                 .foregroundStyle(.blue)
                                 .frame(width: 32)
 
-                            Text(key.label)
-                                .font(.body)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(key.label)
+                                    .font(.body)
+
+                                Text(categoryLabel(key.category))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
 
                             Spacer()
 
@@ -588,22 +592,42 @@ struct ToolbarSettingsView: View {
                             ))
                         }
                     }
+                    .onMove(perform: editMode == .active ? keyStore.move : nil)
                 } header: {
-                    Text("可用快捷键")
+                    Text("所有按钮")
                 } footer: {
-                    Text("启用后的快捷键将显示在终端工具栏中")
+                    Text("编辑模式下拖动可调整按钮顺序")
                         .font(.caption)
                 }
             }
             .navigationTitle("自定义工具栏")
             .navigationBarTitleDisplayMode(.inline)
+            .environment(\.editMode, $editMode)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(editMode == .active ? "完成" : "编辑") {
+                        withAnimation {
+                            editMode = editMode == .active ? .inactive : .active
+                        }
+                    }
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button("关闭") {
                         dismiss()
                     }
                 }
             }
+        }
+    }
+
+    private func categoryLabel(_ category: ToolbarKey.KeyCategory) -> String {
+        switch category {
+        case .session: return "会话管理"
+        case .clipboard: return "剪贴板"
+        case .navigation: return "导航"
+        case .control: return "控制键"
+        case .custom: return "自定义"
         }
     }
 }
