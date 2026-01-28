@@ -20,6 +20,8 @@ struct TerminalView: View {
     @State var controlKey: String = ""
     @State var isShowingControlPopover = false
 
+    @State private var keyboardHeight: CGFloat = 0
+
     @StateObject var store = RayonStore.shared
     @ObservedObject var assistantManager = AssistantManager.shared
 
@@ -146,7 +148,8 @@ struct TerminalView: View {
                                     self.safeWrite(key)
                                 }
                             )
-                            .padding(.bottom, 8)
+                            .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 8 : 8)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: keyboardHeight)
                         }
                     }
                 }
@@ -161,6 +164,18 @@ struct TerminalView: View {
             DispatchQueue.main.async {
                 context.interfaceToken = interfaceToken
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+            guard let userInfo = notification.userInfo,
+                  let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+                return
+            }
+            let keyboardTop = keyboardFrame.minY
+            let screenHeight = UIScreen.main.bounds.height
+            keyboardHeight = screenHeight - keyboardTop
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
         }
         .navigationTitle(context.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
