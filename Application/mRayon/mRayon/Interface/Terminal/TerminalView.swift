@@ -105,53 +105,51 @@ struct TerminalView: View {
                             AccessoryBar(
                                 context: context,
                                 isReconnecting: context.closed,
-                controlKey: $controlKey,
-                isShowingControlPopover: $openControlKeyPopover,
-                onReconnect: {
-                    DispatchQueue.global().async {
-                        context.putInformation("[i] Reconnect will use the information you provide previously,")
-                        context.putInformation("    if the machine was edited, create a new terminal.")
-                        context.processBootstrap()
-                    }
-                },
-                onClose: {
-                    if context.closed {
-                        presentationMode.wrappedValue.dismiss()
-                        TerminalManager.shared.end(for: context.id)
-                    } else {
-                        UIBridge.requiresConfirmation(
-                            message: "Are you sure you want to close this session?"
-                        ) { yes in
-                            if yes { context.processShutdown() }
-                        }
-                    }
-                },
-                onPaste: {
-                    guard let str = UIPasteboard.general.string else {
-                        UIBridge.presentError(with: "Empty Pasteboard")
-                        return
-                    }
-                    UIBridge.requiresConfirmation(
-                        message: "Are you sure you want to paste following string?\n\n\(str)"
-                    ) { yes in
-                        if yes { self.safeWrite(str) }
-                    }
-                },
-                onCopy: {
-                    let cleanHistory = context.getOutputHistoryStrippedANSI()
-                    if !cleanHistory.isEmpty {
-                        UIPasteboard.general.string = cleanHistory
-                        UIBridge.presentSuccess(with: "已复制")
-                    } else {
-                        UIBridge.presentError(with: "终端内容为空")
-                    }
-                },
-                onSendKey: { key in
-                    self.safeWrite(key)
-                }
-            )
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
+                                controlKey: $controlKey,
+                                isShowingControlPopover: $openControlKeyPopover,
+                                onReconnect: {
+                                    DispatchQueue.global().async {
+                                        context.putInformation("[i] Reconnect will use the information you provide previously,")
+                                        context.putInformation("    if the machine was edited, create a new terminal.")
+                                        context.processBootstrap()
+                                    }
+                                },
+                                onClose: {
+                                    if context.closed {
+                                        presentationMode.wrappedValue.dismiss()
+                                        TerminalManager.shared.end(for: context.id)
+                                    } else {
+                                        UIBridge.requiresConfirmation(
+                                            message: "Are you sure you want to close this session?"
+                                        ) { yes in
+                                            if yes { context.processShutdown() }
+                                        }
+                                    }
+                                },
+                                onPaste: {
+                                    guard let str = UIPasteboard.general.string else {
+                                        UIBridge.presentError(with: "Empty Pasteboard")
+                                        return
+                                    }
+                                    UIBridge.requiresConfirmation(
+                                        message: "Are you sure you want to paste following string?\n\n\(str)"
+                                    ) { yes in
+                                        if yes { self.safeWrite(str) }
+                                    }
+                                },
+                                onCopy: {
+                                    let cleanHistory = context.getOutputHistoryStrippedANSI()
+                                    if !cleanHistory.isEmpty {
+                                        UIPasteboard.general.string = cleanHistory
+                                        UIBridge.presentSuccess(with: "已复制")
+                                    } else {
+                                        UIBridge.presentError(with: "终端内容为空")
+                                    }
+                                },
+                                onSendKey: { key in
+                                    self.safeWrite(key)
+                                }
+                            )
                                 .offset(accessoryBarOffset)
                                 .animation(isDraggingAccessoryBar ? .interactiveSpring() : .spring(response: 0.3, dampingFraction: 0.7), value: accessoryBarOffset)
                                 .gesture(
@@ -430,6 +428,7 @@ private struct AccessoryBar: View {
                 )
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
