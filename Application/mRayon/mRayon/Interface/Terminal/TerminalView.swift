@@ -253,17 +253,18 @@ struct TerminalView: View {
                 }
             }
             makeKeyButton("doc.on.doc") {
-                debugPrint("[Copy Button] Attempting to get selection...")
-                context.termInterface.getSelection { selection in
-                    debugPrint("[Copy Button] Selection result: \(selection ?? "nil")")
-                    if let selection = selection, !selection.isEmpty {
-                        UIPasteboard.general.string = selection
-                        debugPrint("[Copy Button] Copied \(selection.count) chars")
-                        UIBridge.presentSuccess(with: "已复制")
-                    } else {
-                        debugPrint("[Copy Button] No selection found")
-                        UIBridge.presentError(with: "请先选择文本")
-                    }
+                debugPrint("[Copy Button] Copying terminal output...")
+                // Get buffer without clearing it
+                let buffer = context.peekBuffer()
+                let lines = buffer.components(separatedBy: "\n")
+                let recentLines = lines.suffix(100).joined(separator: "\n")
+                if !recentLines.isEmpty {
+                    UIPasteboard.general.string = recentLines
+                    debugPrint("[Copy Button] Copied \(recentLines.count) chars, \(lines.count) lines")
+                    UIBridge.presentSuccess(with: "已复制")
+                } else {
+                    debugPrint("[Copy Button] Buffer is empty")
+                    UIBridge.presentError(with: "终端内容为空")
                 }
             }
 

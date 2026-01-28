@@ -77,6 +77,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         return copy
     }
 
+    func peekBuffer() -> String {
+        bufferAccessLock.lock()
+        defer { bufferAccessLock.unlock() }
+        return _dataBuffer
+    }
+
     func insertBuffer(_ str: String) {
         bufferAccessLock.lock()
         defer { bufferAccessLock.unlock() }
