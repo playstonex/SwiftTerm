@@ -435,41 +435,496 @@ struct AssistantStatusView: View {
 // MARK: - AI Segment
 struct AssistantAIView: View {
     @StateObject var context: TerminalContext
+    @State private var searchText = ""
+    @State private var analyzedCommands: [CommandAnalysis] = []
+    @State private var isAnalyzing = false
+    @State private var selectedCommand: CommandAnalysis?
+    @State private var showingCommandDetail = false
+
+    var filteredCommands: [CommandAnalysis] {
+        if searchText.isEmpty {
+            return analyzedCommands
+        }
+        return analyzedCommands.filter { command in
+            command.text.localizedCaseInsensitiveContains(searchText) ||
+            command.category.rawValue.localizedCaseInsensitiveContains(searchText)
+        }
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                Spacer()
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 48))
+        VStack(spacing: 0) {
+            // Search bar
+            HStack {
+                Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
 
-                Text("AI Assistant")
-                    .font(.headline)
+                TextField("Search commands...", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
 
-                Text("Get AI-powered help with terminal commands, troubleshooting, and more.")
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(uiColor: .secondarySystemGroupedBackground))
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Label("Command explanations", systemImage: "checkmark.circle.fill")
-                    Label("Error troubleshooting", systemImage: "checkmark.circle.fill")
-                    Label("Script suggestions", systemImage: "checkmark.circle.fill")
-                    Label("System optimization tips", systemImage: "checkmark.circle.fill")
+            Divider()
+
+            // Content
+            if isAnalyzing {
+                VStack(spacing: 16) {
+                    Spacer()
+                    ProgressView()
+                    Text("Analyzing command history...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            } else if analyzedCommands.isEmpty {
+                VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+
+                    Text("No Commands Analyzed")
+                        .font(.headline)
+
+                    Text("Start typing commands to see AI-powered insights")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Button("Analyze History") {
+                        analyzeCommandHistory()
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Spacer()
                 }
                 .padding()
-                .background(Color(uiColor: .secondarySystemGroupedBackground))
-                .cornerRadius(10)
+            } else {
+                // Statistics summary
+                CommandStatsView(commands: analyzedCommands)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
 
-                Text("Coming soon")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top)
+                Divider()
+
+                // Command list
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredCommands) { command in
+                            CommandAnalysisRow(
+                                analysis: command,
+                                onTap: {
+                                    selectedCommand = command
+                                    showingCommandDetail = true
+                                },
+                                onExecute: {
+                                    executeCommand(command.text)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            if analyzedCommands.isEmpty {
+                analyzeCommandHistory()
+            }
+        }
+        .sheet(isPresented: $showingCommandDetail) {
+            if let command = selectedCommand {
+                CommandDetailView(analysis: command, context: context)
+            }
+        }
+    }
+
+    private func analyzeCommandHistory() {
+        isAnalyzing = true
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let history = context.getOutputHistoryStrippedANSI()
+            let commands = Self.extractAndAnalyzeCommands(from: history)
+
+            DispatchQueue.main.async {
+                self.analyzedCommands = commands
+                self.isAnalyzing = false
+            }
+        }
+    }
+
+    private func executeCommand(_ command: String) {
+        context.insertBuffer(command + "\n")
+    }
+
+    private static func extractAndAnalyzeCommands(from history: String) -> [CommandAnalysis] {
+        var commandCounts: [String: Int] = [:]
+        var commandCategories: [String: CommandCategory] = [:]
+        let lines = history.components(separatedBy: "\n")
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Skip empty lines and prompts
+            guard !trimmed.isEmpty,
+                  !trimmed.hasPrefix("$"),
+                  !trimmed.hasPrefix(">"),
+                  !trimmed.hasPrefix("Last login:") else {
+                continue
+            }
+
+            // Skip output lines (lines that don't start with common command patterns)
+            guard trimmed.range(of: "^[a-zA-Z/~\\-\\$]", options: .regularExpression) != nil else {
+                continue
+            }
+
+            // Extract base command (first word)
+            let components = trimmed.components(separatedBy: .whitespacesAndNewlines)
+            guard let baseCommand = components.first else { continue }
+
+            // Count occurrences
+            commandCounts[trimmed, default: 0] += 1
+
+            // Categorize
+            if commandCategories[trimmed] == nil {
+                commandCategories[trimmed] = Self.categorizeCommand(baseCommand)
+            }
+        }
+
+        // Convert to CommandAnalysis array
+        let analyses = commandCounts.map { (command, count) -> CommandAnalysis in
+            CommandAnalysis(
+                text: command,
+                count: count,
+                category: commandCategories[command] ?? .other,
+                lastUsed: Date() // We'll track this in the future
+            )
+        }
+
+        // Sort by frequency
+        return analyses.sorted { $0.count > $1.count }
+    }
+
+    private static func categorizeCommand(_ baseCommand: String) -> CommandCategory {
+        switch baseCommand {
+        // File operations
+        case "ls", "ll", "la", "dir", "tree", "find", "locate":
+            return .fileOps
+
+        // System info
+        case "top", "htop", "ps", "uptime", "df", "du", "free":
+            return .systemInfo
+
+        // Network
+        case "ping", "netstat", "ss", "curl", "wget", "ssh", "scp", "rsync":
+            return .network
+
+        // Git
+        case "git":
+            return .git
+
+        // Text editing
+        case "vim", "vi", "nano", "emacs", "cat", "less", "more", "head", "tail":
+            return .textEditor
+
+        // Package management
+        case "apt", "apt-get", "yum", "dnf", "pacman", "brew", "npm", "pip":
+            return .packageMgr
+
+        // System control
+        case "systemctl", "service", "chkconfig", "reboot", "shutdown":
+            return .systemCtl
+
+        // User management
+        case "useradd", "userdel", "usermod", "passwd", "who", "w":
+            return .userMgmt
+
+        default:
+            return .other
+        }
+    }
+}
+
+// MARK: - Command Analysis Models
+struct CommandAnalysis: Identifiable {
+    let id = UUID()
+    let text: String
+    let count: Int
+    let category: CommandCategory
+    var lastUsed: Date
+}
+
+enum CommandCategory: String {
+    case fileOps = "File Operations"
+    case systemInfo = "System Info"
+    case network = "Network"
+    case git = "Git"
+    case textEditor = "Text Editor"
+    case packageMgr = "Package Manager"
+    case systemCtl = "System Control"
+    case userMgmt = "User Management"
+    case other = "Other"
+
+    var icon: String {
+        switch self {
+        case .fileOps: return "doc.text"
+        case .systemInfo: return "chart.bar"
+        case .network: return "network"
+        case .git: return "branch"
+        case .textEditor: return "text.alignleft"
+        case .packageMgr: return "cube.box"
+        case .systemCtl: return "gearshape"
+        case .userMgmt: return "person.2"
+        case .other: return "terminal"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .fileOps: return .blue
+        case .systemInfo: return .green
+        case .network: return .purple
+        case .git: return .orange
+        case .textEditor: return .cyan
+        case .packageMgr: return .pink
+        case .systemCtl: return .red
+        case .userMgmt: return .indigo
+        case .other: return .gray
+        }
+    }
+}
+
+// MARK: - Command Stats View
+struct CommandStatsView: View {
+    let commands: [CommandAnalysis]
+
+    var totalCommands: Int {
+        commands.reduce(0) { $0 + $1.count }
+    }
+
+    var uniqueCommands: Int {
+        commands.count
+    }
+
+    var topCategory: (category: CommandCategory, count: Int)? {
+        var categoryCounts: [CommandCategory: Int] = [:]
+        for cmd in commands {
+            categoryCounts[cmd.category, default: 0] += cmd.count
+        }
+        guard let max = categoryCounts.max(by: { $0.value < $1.value }) else {
+            return nil
+        }
+        return (category: max.key, count: max.value)
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            StatItem(icon: "number", label: "\(uniqueCommands)", subtitle: "Unique")
+
+            Divider()
+                .frame(height: 30)
+
+            StatItem(icon: "arrow.clockwise", label: "\(totalCommands)", subtitle: "Total")
+
+            if let top = topCategory {
+                Divider()
+                    .frame(height: 30)
+
+                HStack(spacing: 4) {
+                    Image(systemName: top.category.icon)
+                        .foregroundColor(top.category.color)
+                    Text("\(top.category.rawValue)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .font(.system(.body, design: .rounded))
+    }
+}
+
+struct StatItem: View {
+    let icon: String
+    let label: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Image(systemName: icon)
+                .foregroundColor(.secondary)
+            Text(label)
+                .font(.headline)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Command Analysis Row
+struct CommandAnalysisRow: View {
+    let analysis: CommandAnalysis
+    let onTap: () -> Void
+    let onExecute: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 8) {
+                // Category icon
+                Image(systemName: analysis.category.icon)
+                    .foregroundColor(analysis.category.color)
+                    .frame(width: 20)
+
+                // Command text
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(analysis.text)
+                        .font(.system(.body, design: .monospaced))
+                        .lineLimit(2)
+                        .foregroundStyle(.primary)
+
+                    HStack(spacing: 6) {
+                        // Category badge
+                        Text(analysis.category.rawValue)
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(analysis.category.color.opacity(0.15))
+                            .foregroundStyle(analysis.category.color)
+                            .cornerRadius(4)
+
+                        // Frequency
+                        Text("×\(analysis.count)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
 
                 Spacer()
+
+                // Quick execute button
+                Button(action: onExecute) {
+                    Image(systemName: "play.circle.fill")
+                        .foregroundColor(.accentColor)
+                }
+                .buttonStyle(PlainButtonStyle())
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Command Detail View
+struct CommandDetailView: View {
+    let analysis: CommandAnalysis
+    let context: TerminalContext
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Command header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(analysis.category.rawValue, systemImage: analysis.category.icon)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(analysis.category.color.opacity(0.15))
+                            .foregroundStyle(analysis.category.color)
+                            .cornerRadius(6)
+
+                        Text(analysis.text)
+                            .font(.system(.title2, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                    .padding()
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+
+                    // Statistics
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Usage Statistics")
+                            .font(.headline)
+
+                        HStack {
+                            Label("Used \(analysis.count) times", systemImage: "arrow.clockwise")
+                            Spacer()
+                        }
+
+                        HStack {
+                            Label("Category: \(analysis.category.rawValue)", systemImage: analysis.category.icon)
+                            Spacer()
+                        }
+                    }
+                    .padding()
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+
+                    // Quick actions
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Quick Actions")
+                            .font(.headline)
+
+                        Button(action: {
+                            context.insertBuffer(analysis.text + "\n")
+                            dismiss()
+                        }) {
+                            Label("Execute Command", systemImage: "play.circle.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button(action: {
+                            UIPasteboard.general.string = analysis.text
+                        }) {
+                            Label("Copy to Clipboard", systemImage: "doc.on.doc")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding()
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+
+                    // Command explanation (future enhancement)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("About This Command")
+                            .font(.headline)
+
+                        Text("Command explanations and AI-powered suggestions will be available in future updates.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+                }
+                .padding()
+            }
+            .navigationTitle("Command Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }
