@@ -435,11 +435,27 @@ struct AssistantStatusView: View {
 // MARK: - AI Segment
 struct AssistantAIView: View {
     @StateObject var context: TerminalContext
+    @ObservedObject var aiAssistant = AIAssistant.shared
     @State private var searchText = ""
     @State private var analyzedCommands: [CommandAnalysis] = []
     @State private var isAnalyzing = false
     @State private var selectedCommand: CommandAnalysis?
     @State private var showingCommandDetail = false
+    @State private var selectedTab: AITab = .commands
+    @State private var nlInput = ""
+    @State private var isProcessing = false
+    @State private var aiResponse = ""
+    @State private var errorMessage = ""
+    @State private var showingError = false
+    @State private var showingSettings = false
+
+    enum AITab: String, CaseIterable {
+        case commands = "Commands"
+        case explain = "Explain"
+        case suggest = "Suggest"
+        case diagnose = "Diagnose"
+        case nl2cmd = "AI Chat"
+    }
 
     var filteredCommands: [CommandAnalysis] {
         if searchText.isEmpty {
@@ -453,31 +469,55 @@ struct AssistantAIView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search bar
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
+            // AI Provider Status
+            if !aiAssistant.isEnabled || aiAssistant.apiKey.isEmpty {
+                AIProviderBanner(onTap: { showingSettings = true })
+            }
 
-                TextField("Search commands...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .autocapitalization(.none)
-                    .disableAutocorrection(true)
-
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
+            // Tab selector
+            Picker("", selection: $selectedTab) {
+                ForEach(AITab.allCases, id: \.self) { tab in
+                    Text(tab.rawValue).tag(tab)
                 }
             }
+            .pickerStyle(SegmentedPickerStyle())
             .padding(.horizontal)
             .padding(.vertical, 8)
-            .background(Color(uiColor: .secondarySystemGroupedBackground))
 
             Divider()
 
-            // Content
+            // Tab content
+            ScrollView {
+                Group {
+                    switch selectedTab {
+                    case .commands:
+                        commandHistoryView
+                    case .explain:
+                        explainView
+                    case .suggest:
+                        suggestView
+                    case .diagnose:
+                        diagnoseView
+                    case .nl2cmd:
+                        nl2cmdView
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showingCommandDetail) {
+            if let command = selectedCommand {
+                CommandDetailView(analysis: command, context: context)
+            }
+        }
+        .sheet(isPresented: $showingSettings) {
+            AISettingsView()
+        }
+    }
+
+    // MARK: - Command History View
+
+    private var commandHistoryView: some View {
+        VStack(spacing: 0) {
             if isAnalyzing {
                 VStack(spacing: 16) {
                     Spacer()
@@ -487,6 +527,7 @@ struct AssistantAIView: View {
                         .foregroundColor(.secondary)
                     Spacer()
                 }
+                .padding()
             } else if analyzedCommands.isEmpty {
                 VStack(spacing: 16) {
                     Spacer()
@@ -497,10 +538,9 @@ struct AssistantAIView: View {
                     Text("No Commands Analyzed")
                         .font(.headline)
 
-                    Text("Start typing commands to see AI-powered insights")
+                    Text("Type commands to see AI-powered insights")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
 
                     Button("Analyze History") {
                         analyzeCommandHistory()
@@ -511,16 +551,39 @@ struct AssistantAIView: View {
                 }
                 .padding()
             } else {
-                // Statistics summary
-                CommandStatsView(commands: analyzedCommands)
+                VStack(spacing: 0) {
+                    // Search bar
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+
+                        TextField("Search commands...", text: $searchText)
+                            .textFieldStyle(.plain)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                    }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground))
 
-                Divider()
+                    Divider()
 
-                // Command list
-                ScrollView {
+                    // Statistics
+                    CommandStatsView(commands: analyzedCommands)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+
+                    Divider()
+
+                    // Command list
                     LazyVStack(spacing: 0) {
                         ForEach(filteredCommands) { command in
                             CommandAnalysisRow(
@@ -543,12 +606,299 @@ struct AssistantAIView: View {
                 analyzeCommandHistory()
             }
         }
-        .sheet(isPresented: $showingCommandDetail) {
-            if let command = selectedCommand {
-                CommandDetailView(analysis: command, context: context)
+    }
+
+    // MARK: - Explain View
+
+    private var explainView: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.blue)
+                    Text("Command Explainer")
+                        .font(.headline)
+                    Spacer()
+                }
+
+                Text("Enter a command to get a detailed explanation of what it does.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
+            .padding()
+
+            VStack(spacing: 12) {
+                TextField("e.g., find . -name '*.log'", text: $searchText)
+                    .textFieldStyle(.roundedBorder)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+
+                Button(action: {
+                    Task {
+                        await explainCommand()
+                    }
+                }) {
+                    if isProcessing {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Analyzing...")
+                        }
+                    } else {
+                        Text("Explain")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(searchText.isEmpty || isProcessing)
+
+                if !aiResponse.isEmpty {
+                    ScrollView {
+                        Text(aiResponse)
+                            .font(.body)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(Color(uiColor: .secondarySystemGroupedBackground))
+                            .cornerRadius(10)
+                    }
+                }
+            }
+            .padding()
         }
     }
+
+    // MARK: - Suggest View
+
+    private var suggestView: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "lightbulb")
+                        .foregroundColor(.yellow)
+                    Text("Smart Suggestions")
+                        .font(.headline)
+                    Spacer()
+                }
+
+                Text("AI-powered command suggestions based on your context.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+
+            VStack(spacing: 12) {
+                Button(action: {
+                    Task {
+                        await getSuggestions()
+                    }
+                }) {
+                    if isProcessing {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Getting suggestions...")
+                        }
+                    } else {
+                        Label("Get Suggestions", systemImage: "sparkles")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isProcessing)
+
+                if !aiResponse.isEmpty {
+                    ScrollView {
+                        let suggestions = aiResponse.components(separatedBy: "\n")
+                            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(Array(suggestions.enumerated()), id: \.offset) { index, suggestion in
+                                Button(action: {
+                                    executeCommand(suggestion.trimmingCharacters(in: .whitespaces))
+                                }) {
+                                    HStack {
+                                        Text("\(index + 1).")
+                                            .foregroundColor(.secondary)
+                                            .font(.system(.caption, design: .monospaced))
+                                        Text(suggestion)
+                                            .font(.system(.body, design: .monospaced))
+                                            .lineLimit(2)
+                                        Spacer()
+                                        Image(systemName: "play.circle")
+                                            .foregroundColor(.accentColor)
+                                    }
+                                    .padding(.vertical, 6)
+                                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+            .padding()
+        }
+    }
+
+    // MARK: - Diagnose View
+
+    private var diagnoseView: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundColor(.orange)
+                    Text("Error Diagnosis")
+                        .font(.headline)
+                    Spacer()
+                }
+
+                Text("Paste an error message to get help fixing it.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+
+            VStack(spacing: 12) {
+                if errorMessage.isEmpty {
+                    Text("Paste error message here:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    TextEditor(text: $errorMessage)
+                        .frame(minHeight: 80)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .cornerRadius(8)
+                } else {
+                    HStack {
+                        Text("Error message:")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Clear") {
+                            errorMessage = ""
+                        }
+                        .font(.caption)
+                    }
+
+                    TextEditor(text: $errorMessage)
+                        .frame(minHeight: 80)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .cornerRadius(8)
+                }
+
+                Button(action: {
+                    Task {
+                        await diagnoseError()
+                    }
+                }) {
+                    if isProcessing {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Analyzing...")
+                        }
+                    } else {
+                        Label("Diagnose", systemImage: "stethoscope")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(errorMessage.isEmpty || isProcessing)
+
+                if !aiResponse.isEmpty {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("AI Diagnosis:")
+                                .font(.headline)
+
+                            Text(aiResponse)
+                                .font(.body)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .cornerRadius(10)
+                    }
+                }
+            }
+            .padding()
+        }
+    }
+
+    // MARK: - Natural Language to Command View
+
+    private var nl2cmdView: some View {
+        VStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .foregroundColor(.green)
+                    Text("AI Chat - Natural Language to Command")
+                        .font(.headline)
+                    Spacer()
+                }
+
+                Text("Describe what you want to do in plain English, and AI will convert it to a command.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+
+            VStack(spacing: 12) {
+                TextField("e.g., Find files larger than 100MB", text: $nlInput)
+                    .textFieldStyle(.roundedBorder)
+                    .autocapitalization(.none)
+                    .disableAutocorrection(true)
+                    .onSubmit {
+                        Task {
+                            await convertToCommand()
+                        }
+                    }
+
+                Button(action: {
+                    Task {
+                        await convertToCommand()
+                    }
+                }) {
+                    if isProcessing {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Converting...")
+                        }
+                    } else {
+                        Label("Convert to Command", systemImage: "wand.and.stars")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(nlInput.isEmpty || isProcessing)
+
+                if !aiResponse.isEmpty {
+                    HStack(spacing: 12) {
+                        Text(aiResponse)
+                            .font(.system(.body, design: .monospaced))
+                            .textSelection(.enabled)
+                            .padding()
+
+                        Button("Execute") {
+                            executeCommand(aiResponse)
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Copy") {
+                            UIPasteboard.general.string = aiResponse
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding()
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
+                    .cornerRadius(10)
+                }
+            }
+            .padding()
+        }
+    }
+
+    // MARK: - Helper Methods
 
     private func analyzeCommandHistory() {
         isAnalyzing = true
@@ -568,6 +918,68 @@ struct AssistantAIView: View {
         context.insertBuffer(command + "\n")
     }
 
+    private func explainCommand() async {
+        isProcessing = true
+        aiResponse = ""
+
+        do {
+            let response = try await aiAssistant.explainCommand(searchText)
+            aiResponse = response
+        } catch {
+            aiResponse = "Error: \(error.localizedDescription)"
+        }
+
+        isProcessing = false
+    }
+
+    private func getSuggestions() async {
+        isProcessing = true
+        aiResponse = ""
+
+        do {
+            let suggestions = try await aiAssistant.getSuggestions(
+                currentDirectory: nil,
+                recentCommands: analyzedCommands.prefix(5).map { $0.text }
+            )
+            aiResponse = suggestions.joined(separator: "\n")
+        } catch {
+            aiResponse = "Error: \(error.localizedDescription)"
+        }
+
+        isProcessing = false
+    }
+
+    private func diagnoseError() async {
+        isProcessing = true
+        aiResponse = ""
+
+        do {
+            let response = try await aiAssistant.diagnoseError(errorMessage)
+            aiResponse = response
+        } catch {
+            aiResponse = "Error: \(error.localizedDescription)"
+        }
+
+        isProcessing = false
+    }
+
+    private func convertToCommand() async {
+        isProcessing = true
+        aiResponse = ""
+
+        do {
+            let command = try await aiAssistant.naturalLanguageToCommand(
+                nlInput,
+                context: "Current directory: user's home directory"
+            )
+            aiResponse = command
+        } catch {
+            aiResponse = "Error: \(error.localizedDescription)"
+        }
+
+        isProcessing = false
+    }
+
     private static func extractAndAnalyzeCommands(from history: String) -> [CommandAnalysis] {
         var commandCounts: [String: Int] = [:]
         var commandCategories: [String: CommandCategory] = [:]
@@ -576,7 +988,6 @@ struct AssistantAIView: View {
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Skip empty lines and prompts
             guard !trimmed.isEmpty,
                   !trimmed.hasPrefix("$"),
                   !trimmed.hasPrefix(">"),
@@ -584,74 +995,157 @@ struct AssistantAIView: View {
                 continue
             }
 
-            // Skip output lines (lines that don't start with common command patterns)
             guard trimmed.range(of: "^[a-zA-Z/~\\-\\$]", options: .regularExpression) != nil else {
                 continue
             }
 
-            // Extract base command (first word)
             let components = trimmed.components(separatedBy: .whitespacesAndNewlines)
             guard let baseCommand = components.first else { continue }
 
-            // Count occurrences
             commandCounts[trimmed, default: 0] += 1
 
-            // Categorize
             if commandCategories[trimmed] == nil {
                 commandCategories[trimmed] = Self.categorizeCommand(baseCommand)
             }
         }
 
-        // Convert to CommandAnalysis array
         let analyses = commandCounts.map { (command, count) -> CommandAnalysis in
             CommandAnalysis(
                 text: command,
                 count: count,
                 category: commandCategories[command] ?? .other,
-                lastUsed: Date() // We'll track this in the future
+                lastUsed: Date()
             )
         }
 
-        // Sort by frequency
         return analyses.sorted { $0.count > $1.count }
     }
 
     private static func categorizeCommand(_ baseCommand: String) -> CommandCategory {
         switch baseCommand {
-        // File operations
         case "ls", "ll", "la", "dir", "tree", "find", "locate":
             return .fileOps
-
-        // System info
         case "top", "htop", "ps", "uptime", "df", "du", "free":
             return .systemInfo
-
-        // Network
         case "ping", "netstat", "ss", "curl", "wget", "ssh", "scp", "rsync":
             return .network
-
-        // Git
         case "git":
             return .git
-
-        // Text editing
         case "vim", "vi", "nano", "emacs", "cat", "less", "more", "head", "tail":
             return .textEditor
-
-        // Package management
         case "apt", "apt-get", "yum", "dnf", "pacman", "brew", "npm", "pip":
             return .packageMgr
-
-        // System control
         case "systemctl", "service", "chkconfig", "reboot", "shutdown":
             return .systemCtl
-
-        // User management
         case "useradd", "userdel", "usermod", "passwd", "who", "w":
             return .userMgmt
-
         default:
             return .other
+        }
+    }
+}
+
+// MARK: - AI Provider Banner
+
+struct AIProviderBanner: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        HStack {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("AI Assistant is disabled")
+                    .font(.headline)
+
+                Text("Configure your API key in settings to enable AI features")
+                    .font(.caption)
+            }
+
+            Spacer()
+
+            Button("Settings") {
+                onTap()
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding()
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(10)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - AI Settings View
+
+struct AISettingsView: View {
+    @ObservedObject var aiAssistant = AIAssistant.shared
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section {
+                    Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
+                } header: {
+                    Text("Status")
+                }
+
+                Section {
+                    Picker("AI Provider", selection: $aiAssistant.provider) {
+                        ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
+                            Text(provider.displayName).tag(provider)
+                        }
+                    }
+
+                    SecureField("API Key", text: $aiAssistant.apiKey)
+                        .textContentType(.password)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Your API key is stored locally and never sent to our servers.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
+                            Text("Get OpenAI API Key →")
+                                .font(.caption)
+                        }
+                    }
+                } header: {
+                    Text("Configuration")
+                } footer: {
+                    Text("AI features require an API key. Your key is stored securely on your device.")
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Supported Features:")
+                            .font(.headline)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Command explanation", systemImage: "info.circle")
+                            Label("Smart suggestions", systemImage: "lightbulb")
+                            Label("Error diagnosis", systemImage: "stethoscope")
+                            Label("Natural language to command", systemImage: "wand.and.stars")
+                            Label("Command history analysis", systemImage: "chart.bar")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Features")
+                }
+            }
+            .navigationTitle("AI Settings")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }

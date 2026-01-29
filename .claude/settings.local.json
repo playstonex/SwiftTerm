@@ -22,7 +22,8 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(find:*)",
-      "Skill(swiftui-expert-skill)"
+      "Skill(swiftui-expert-skill)",
+      "WebSearch"
     ]
   }
 }
