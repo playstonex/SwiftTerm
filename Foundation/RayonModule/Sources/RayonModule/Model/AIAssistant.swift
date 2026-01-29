@@ -17,6 +17,26 @@ public class AIAssistant: ObservableObject {
     @Published public var provider: AIProvider = .openai
     @Published public var isEnabled: Bool = false
 
+    // Customizable configuration
+    @Published public var customBaseURL: String = ""
+    @Published public var customModel: String = ""
+
+    // Get effective base URL (custom or default)
+    public var effectiveBaseURL: String {
+        if !customBaseURL.isEmpty {
+            return customBaseURL
+        }
+        return provider.baseURL
+    }
+
+    // Get effective model name (custom or default)
+    public var effectiveModel: String {
+        if !customModel.isEmpty {
+            return customModel
+        }
+        return provider.defaultModel
+    }
+
     public enum AIProvider: String, CaseIterable, Codable {
         case openai = "OpenAI"
         case anthropic = "Anthropic"
@@ -35,6 +55,14 @@ public class AIAssistant: ObservableObject {
             case .openai: return "https://api.openai.com/v1"
             case .anthropic: return "https://api.anthropic.com/v1"
             case .local: return "http://localhost:11434/v1"
+            }
+        }
+
+        public var defaultModel: String {
+            switch self {
+            case .openai: return "gpt-4"
+            case .anthropic: return "claude-3-sonnet-20240229"
+            case .local: return "llama2"
             }
         }
     }
@@ -158,14 +186,14 @@ public class AIAssistant: ObservableObject {
     }
 
     private func sendOpenAIRequest(_ prompt: String) async throws -> String {
-        let url = URL(string: "\(provider.baseURL)/chat/completions")!
+        let url = URL(string: "\(effectiveBaseURL)/chat/completions")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let requestBody: [String: Any] = [
-            "model": "gpt-4",
+            "model": effectiveModel,
             "messages": [
                 ["role": "user", "content": prompt]
             ],
@@ -189,7 +217,7 @@ public class AIAssistant: ObservableObject {
     }
 
     private func sendAnthropicRequest(_ prompt: String) async throws -> String {
-        let url = URL(string: "\(provider.baseURL)/messages")!
+        let url = URL(string: "\(effectiveBaseURL)/messages")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "x-api-key")
@@ -197,7 +225,7 @@ public class AIAssistant: ObservableObject {
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
         let requestBody: [String: Any] = [
-            "model": "claude-3-sonnet-20240229",
+            "model": effectiveModel,
             "max_tokens": 500,
             "messages": [
                 ["role": "user", "content": prompt]
@@ -219,13 +247,13 @@ public class AIAssistant: ObservableObject {
     }
 
     private func sendLocalRequest(_ prompt: String) async throws -> String {
-        let url = URL(string: "\(provider.baseURL)/chat/completions")!
+        let url = URL(string: "\(effectiveBaseURL)/chat/completions")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let requestBody: [String: Any] = [
-            "model": "llama2",
+            "model": effectiveModel,
             "messages": [
                 ["role": "user", "content": prompt]
             ],

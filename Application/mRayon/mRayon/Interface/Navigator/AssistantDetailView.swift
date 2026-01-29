@@ -1103,7 +1103,18 @@ struct AISettingsView: View {
                     SecureField("API Key", text: $aiAssistant.apiKey)
                         .textContentType(.password)
 
+                    TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                    TextField("Custom Model (optional)", text: $aiAssistant.customModel)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
                     VStack(alignment: .leading, spacing: 8) {
+                        Text("Leave custom fields empty to use defaults.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                         Text("Your API key is stored locally and never sent to our servers.")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -1116,7 +1127,7 @@ struct AISettingsView: View {
                 } header: {
                     Text("Configuration")
                 } footer: {
-                    Text("AI features require an API key. Your key is stored securely on your device.")
+                    Text("AI features require an API key. Your key is stored securely on your device.\n\nCustom base URL and model name allow you to use compatible OpenAI API endpoints or self-hosted models.")
                 }
 
                 Section {
