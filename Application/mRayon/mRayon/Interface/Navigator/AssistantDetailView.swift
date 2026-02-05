@@ -16,18 +16,19 @@ struct AssistantDetailView: View {
     @ObservedObject var assistantManager = AssistantManager.shared
 
     var body: some View {
-        GeometryReader { geometry in
-            HStack(spacing: 0) {
-                // Terminal View (takes remaining space)
-                TerminalView(context: context)
-                    .frame(maxWidth: .infinity)
+        ZStack(alignment: .trailing) {
+            // Terminal View (takes full space)
+            TerminalView(context: context)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Assistant Panel (shows when visible)
-                if assistantManager.isVisible {
-                    AssistantInspectorView(context: context)
-                        .frame(width: 320)
-                        .transition(.move(edge: .trailing))
-                }
+            // Assistant Panel (floating overlay)
+            if assistantManager.isVisible {
+                AssistantInspectorView(context: context)
+                    .frame(width: 320)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .shadow(color: .black.opacity(0.3), radius: 20, x: -10, y: 0)
+                    .padding(.trailing, 16)
+                    .padding(.vertical, 16)
             }
         }
         .id(context.id) // Force view refresh for different contexts
@@ -77,12 +78,10 @@ struct AssistantInspectorView: View {
             }
         }
         .background(Color(uiColor: .systemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            // Separator on the left
-            Rectangle()
-                .fill(Color(uiColor: .separator))
-                .frame(width: 0.5),
-            alignment: .leading
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color(uiColor: .separator), lineWidth: 0.5)
         )
     }
 }

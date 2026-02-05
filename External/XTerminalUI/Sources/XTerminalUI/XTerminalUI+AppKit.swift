@@ -123,6 +123,10 @@ import Foundation
         public func getSelection(completion: @escaping (String?) -> Void) {
             associatedCore.getSelection(completion: completion)
         }
+
+        public func evaluateJavaScript(_ script: String, completion: @escaping (Any?, Error?) -> Void) {
+            associatedCore.associatedWebView.evaluateJavaScript(script, completionHandler: completion)
+        }
     }
 
     extension NSView {
