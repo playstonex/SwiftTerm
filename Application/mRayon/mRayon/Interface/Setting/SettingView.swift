@@ -81,6 +81,18 @@ struct SettingView: View {
             }
 
             Section {
+                NavigationLink {
+                    AISettingsView()
+                } label: {
+                    Label("AI Assistant", systemImage: "brain.head.profile")
+                }
+            } header: {
+                Label("AI", systemImage: "arrow.right")
+            } footer: {
+                Text("Configure OpenAI API and AI assistant features")
+            }
+
+            Section {
                 Picker("Terminal Theme", selection: $store.terminalThemeName) {
                     ForEach(TerminalTheme.allThemes, id: \.name) { theme in
                         Text(theme.name).tag(theme.name)

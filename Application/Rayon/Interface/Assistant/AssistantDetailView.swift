@@ -1084,6 +1084,8 @@ struct AIProviderBanner: View {
 struct AISettingsView: View {
     @ObservedObject var aiAssistant = AIAssistant.shared
     @Environment(\.dismiss) var dismiss
+    @State private var isTesting = false
+    @State private var testResult: AIAssistant.TestResult?
 
     var body: some View {
         NavigationView {
@@ -1108,6 +1110,50 @@ struct AISettingsView: View {
 
                     TextField("Custom Model (optional)", text: $aiAssistant.customModel)
                         .disableAutocorrection(true)
+
+                    // Test Connection Button
+                    Button(action: {
+                        Task {
+                            await testAPIConnection()
+                        }
+                    }) {
+                        HStack {
+                            if isTesting {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                Text("Testing...")
+                            } else {
+                                Image(systemName: "checkmark.circle")
+                                Text("Test Connection")
+                            }
+                        }
+                    }
+                    .disabled(isTesting || aiAssistant.apiKey.isEmpty)
+
+                    // Test Result
+                    if let result = testResult {
+                        HStack(spacing: 12) {
+                            Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(result.success ? .green : .red)
+                                .font(.title2)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(result.message)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                if let details = result.details {
+                                    Text(details)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 12)
+                        .background((result.success ? Color.green : Color.red).opacity(0.1))
+                        .cornerRadius(8)
+                    }
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Leave custom fields empty to use defaults.")
@@ -1155,6 +1201,18 @@ struct AISettingsView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func testAPIConnection() async {
+        isTesting = true
+        testResult = nil
+
+        let result = await aiAssistant.testConnection()
+
+        DispatchQueue.main.async {
+            self.testResult = result
+            self.isTesting = false
         }
     }
 }

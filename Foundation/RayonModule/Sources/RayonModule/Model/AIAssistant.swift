@@ -276,6 +276,63 @@ public class AIAssistant: ObservableObject {
         throw AIError.invalidResponse
     }
 
+    // MARK: - Connection Test
+
+    public struct TestResult {
+        public let success: Bool
+        public let message: String
+        public let details: String?
+
+        public init(success: Bool, message: String, details: String? = nil) {
+            self.success = success
+            self.message = message
+            self.details = details
+        }
+    }
+
+    public func testConnection() async -> TestResult {
+        guard !apiKey.isEmpty else {
+            return TestResult(
+                success: false,
+                message: "API key is empty",
+                details: "Please enter your API key first."
+            )
+        }
+
+        let testPrompt = "Respond with just: OK"
+
+        do {
+            let response = try await sendChatRequest(testPrompt)
+
+            // Check if we got a valid response
+            if response.contains("OK") || !response.isEmpty {
+                return TestResult(
+                    success: true,
+                    message: "Connection successful!",
+                    details: "Connected to \(provider.displayName) using model: \(effectiveModel)"
+                )
+            } else {
+                return TestResult(
+                    success: false,
+                    message: "Unexpected response",
+                    details: "Received: \(String(response.prefix(100)))"
+                )
+            }
+        } catch let error as AIError {
+            return TestResult(
+                success: false,
+                message: "Connection failed",
+                details: error.localizedDescription
+            )
+        } catch {
+            return TestResult(
+                success: false,
+                message: "Connection failed",
+                details: error.localizedDescription
+            )
+        }
+    }
+
     // MARK: - Skill Support
 
     /// Send a raw chat request (used by SkillAnalyzer and other components)

@@ -126,6 +126,23 @@ struct SettingView: View {
                 } footer: {
                     Divider()
                 }
+                Section {
+                    NavigationLink(destination: AISettingsView()) {
+                        HStack {
+                            Image(systemName: "brain.head.profile")
+                                .foregroundColor(.accentColor)
+                            Text("AI Assistant")
+                                .font(.system(.headline, design: .rounded))
+                        }
+                    }
+                    Text("Configure OpenAI API and AI assistant features for terminal assistance.")
+                        .font(.system(.subheadline, design: .rounded))
+                } header: {
+                    Text("AI")
+                        .font(.system(.headline, design: .rounded))
+                } footer: {
+                    Divider()
+                }
                 Label("EOF", systemImage: "text.append")
                     .font(.system(.caption2, design: .rounded))
             }
