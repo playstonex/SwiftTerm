@@ -275,6 +275,13 @@ public class AIAssistant: ObservableObject {
 
         throw AIError.invalidResponse
     }
+
+    // MARK: - Skill Support
+
+    /// Send a raw chat request (used by SkillAnalyzer and other components)
+    public func sendRawChatRequest(_ prompt: String) async throws -> String {
+        try await sendChatRequest(prompt)
+    }
 }
 
 // MARK: - Errors

@@ -25,12 +25,14 @@ class AssistantManager: ObservableObject {
         case history
         case status
         case ai
+        case skills
 
         var displayName: LocalizedStringKey {
             switch self {
             case .history: return "History"
             case .status: return "Status"
             case .ai: return "AI"
+            case .skills: return "Skills"
             }
         }
 
@@ -39,6 +41,7 @@ class AssistantManager: ObservableObject {
             case .history: return "clock.arrow.circlepath"
             case .status: return "chart.line.uptrend.xyaxis"
             case .ai: return "brain"
+            case .skills: return "sparkles"
             }
         }
     }

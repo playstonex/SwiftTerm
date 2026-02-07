@@ -280,4 +280,49 @@ public class RayonStore: ObservableObject {
             )
         }
     }
+
+    // MARK: - Skills
+
+    private let skillRegistry = SkillRegistry.shared
+
+    public var skillGroup: SkillGroup {
+        get { skillRegistry.skillGroup }
+        set { skillRegistry.skillGroup = newValue }
+    }
+
+    public var allSkills: [Skill] {
+        skillRegistry.allEnabledSkills
+    }
+
+    public var skillExecutionHistory: [SkillExecution.Summary] {
+        skillRegistry.executionHistory
+    }
+
+    public func registerSkill(_ skill: Skill) {
+        skillRegistry.registerSkill(skill)
+    }
+
+    public func updateSkill(_ skill: Skill) {
+        skillRegistry.updateSkill(skill)
+    }
+
+    public func deleteSkill(_ skill: Skill) {
+        skillRegistry.deleteSkill(skill)
+    }
+
+    public func skill(id: UUID) -> Skill? {
+        skillRegistry.skill(id: id)
+    }
+
+    public func skills(in category: SkillCategory) -> [Skill] {
+        skillRegistry.skills(in: category)
+    }
+
+    public func searchSkills(_ query: String) -> [Skill] {
+        skillRegistry.searchSkills(query)
+    }
+
+    public func recentSkillExecutions(limit: Int = 10) -> [SkillExecution.Summary] {
+        skillRegistry.recentExecutions(limit: limit)
+    }
 }

@@ -61,6 +61,11 @@ extension TerminalManager {
         private var _dataBuffer: String = ""
         private var bufferAccessLock = NSLock()
 
+        // Persistent history for copy and AI analysis (keeps last 50000 chars)
+        private var outputHistory: String = ""
+        private let maxHistorySize = 50000
+        private let historyLock = NSLock()
+
         func getBuffer() -> String {
             bufferAccessLock.lock()
             defer { bufferAccessLock.unlock() }
@@ -73,10 +78,34 @@ extension TerminalManager {
             bufferAccessLock.lock()
             defer { bufferAccessLock.unlock() }
             guard !closed else { return }
+
+            // Add to data buffer (for SSH)
             _dataBuffer += str
+
+            // Add to persistent history (for copy and AI analysis)
+            historyLock.lock()
+            outputHistory += str
+            // Keep history at max size by removing old content
+            if outputHistory.count > maxHistorySize {
+                let removeCount = outputHistory.count - maxHistorySize
+                outputHistory = String(outputHistory.dropFirst(removeCount))
+            }
+            historyLock.unlock()
+
             Context.queue.async { [weak self] in
                 self?.shell.explicitRequestStatusPickup()
             }
+        }
+
+        func getOutputHistory() -> String {
+            historyLock.lock()
+            defer { historyLock.unlock() }
+            return outputHistory
+        }
+
+        func getOutputHistoryStrippedANSI() -> String {
+            let history = getOutputHistory()
+            return history.stripANSIEscapeCodes()
         }
 
         var continueDecision: Bool = true {
@@ -261,5 +290,72 @@ extension TerminalManager {
                 self.shell.requestDisconnectAndWait()
             }
         }
+
+        // MARK: - SKILL EXECUTION
+
+        /// Execute command and capture output within skill context
+        func executeCommandForSkill(_ command: String, timeout: Int = 30) async throws -> (output: String, exitCode: Int?) {
+            var output = ""
+
+            return try await withCheckedThrowingContinuation { continuation in
+                self.shell.beginExecute(
+                    withCommand: " \(command)",
+                    withTimeout: NSNumber(value: timeout),
+                    withOnCreate: {},
+                    withOutput: { chunk in
+                        output.append(chunk)
+                    },
+                    withContinuationHandler: {
+                        continuation.resume(returning: (output, 0))
+                        return true
+                    }
+                )
+            }
+        }
+
+        /// Stream output for real-time analysis
+        func streamOutputForSkill(duration: TimeInterval, handler: @escaping (String) -> Void) async {
+            let startTime = Date()
+            var buffer = ""
+
+            while Date().timeIntervalSince(startTime) < duration {
+                let chunk = self.getBuffer()
+                if !chunk.isEmpty {
+                    buffer.append(chunk)
+                    handler(buffer)
+                }
+                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            }
+        }
+    }
+}
+
+extension String {
+    /// Strip ANSI escape codes from terminal output
+    func stripANSIEscapeCodes() -> String {
+        var result = self
+
+        // Remove OSC sequences (Operating System Command) like ]2;title<BEL> or ]1;title<BEL>
+        // ESC] is \u{1B}\], BEL is \u{07}
+        result = result.replacingOccurrences(of: "\u{1B}\\][^\u{07}]*\u{07}", with: "", options: .regularExpression)
+        result = result.replacingOccurrences(of: "\u{1B}\\][^\u{1B}]*\u{1B}\\\\", with: "", options: .regularExpression)
+
+        // Remove CSI sequences (Control Sequence Introducer) like [1m, [31;1m, [?2004h, [K, [A
+        result = result.replacingOccurrences(of: "\u{1B}\\[[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)
+
+        // Remove bracket sequences without ESC (sometimes captured separately)
+        result = result.replacingOccurrences(of: "\\[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)
+
+        // Remove character set designation sequences like (B or (0
+        result = result.replacingOccurrences(of: "\u{1B}\\([0-9A-Za-z]", with: "", options: .regularExpression)
+
+        // Remove backspace characters (used for character-by-character input rendering)
+        result = result.replacingOccurrences(of: "\u{08}", with: "")
+
+        // Clean up carriage returns - keep only linefeeds
+        result = result.replacingOccurrences(of: "\r\n", with: "\n")
+        result = result.replacingOccurrences(of: "\r", with: "")
+
+        return result
     }
 }
