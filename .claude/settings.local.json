@@ -23,7 +23,11 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "Skill(swiftui-expert-skill)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(tee:*)",
+      "Bash(security:*)",
+      "Bash(sudo killall:*)",
+      "Bash(codesign:*)"
     ]
   }
 }
