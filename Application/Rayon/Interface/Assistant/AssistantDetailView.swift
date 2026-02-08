@@ -513,7 +513,9 @@ struct AssistantAIView: View {
             }
         }
         .sheet(isPresented: $showingSettings) {
-            AISettingsView()
+            NavigationView {
+                AISettingsView()
+            }
         }
     }
 
@@ -1088,117 +1090,115 @@ struct AISettingsView: View {
     @State private var testResult: AIAssistant.TestResult?
 
     var body: some View {
-        NavigationView {
-            Form {
-                Section {
-                    Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
-                } header: {
-                    Text("Status")
+        Form {
+            Section {
+                Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
+            } header: {
+                Text("Status")
+            }
+
+            Section {
+                Picker("AI Provider", selection: $aiAssistant.provider) {
+                    ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
                 }
 
-                Section {
-                    Picker("AI Provider", selection: $aiAssistant.provider) {
-                        ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
-                            Text(provider.displayName).tag(provider)
+                SecureField("API Key", text: $aiAssistant.apiKey)
+
+                TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
+                    .disableAutocorrection(true)
+
+                TextField("Custom Model (optional)", text: $aiAssistant.customModel)
+                    .disableAutocorrection(true)
+
+                // Test Connection Button
+                Button(action: {
+                    Task {
+                        await testAPIConnection()
+                    }
+                }) {
+                    HStack {
+                        if isTesting {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Testing...")
+                        } else {
+                            Image(systemName: "checkmark.circle")
+                            Text("Test Connection")
                         }
                     }
+                }
+                .disabled(isTesting || aiAssistant.apiKey.isEmpty)
 
-                    SecureField("API Key", text: $aiAssistant.apiKey)
+                // Test Result
+                if let result = testResult {
+                    HStack(spacing: 12) {
+                        Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(result.success ? .green : .red)
+                            .font(.title2)
 
-                    TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
-                        .disableAutocorrection(true)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(result.message)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
 
-                    TextField("Custom Model (optional)", text: $aiAssistant.customModel)
-                        .disableAutocorrection(true)
-
-                    // Test Connection Button
-                    Button(action: {
-                        Task {
-                            await testAPIConnection()
-                        }
-                    }) {
-                        HStack {
-                            if isTesting {
-                                ProgressView()
-                                    .scaleEffect(0.7)
-                                Text("Testing...")
-                            } else {
-                                Image(systemName: "checkmark.circle")
-                                Text("Test Connection")
+                            if let details = result.details {
+                                Text(details)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                         }
                     }
-                    .disabled(isTesting || aiAssistant.apiKey.isEmpty)
-
-                    // Test Result
-                    if let result = testResult {
-                        HStack(spacing: 12) {
-                            Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundColor(result.success ? .green : .red)
-                                .font(.title2)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(result.message)
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-
-                                if let details = result.details {
-                                    Text(details)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 12)
-                        .background((result.success ? Color.green : Color.red).opacity(0.1))
-                        .cornerRadius(8)
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Leave custom fields empty to use defaults.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("Your API key is stored locally and never sent to our servers.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
-                            Text("Get OpenAI API Key →")
-                                .font(.caption)
-                        }
-                    }
-                } header: {
-                    Text("Configuration")
-                } footer: {
-                    Text("AI features require an API key. Your key is stored securely on your device.\n\nCustom base URL and model name allow you to use compatible OpenAI API endpoints or self-hosted models.")
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background((result.success ? Color.green : Color.red).opacity(0.1))
+                    .cornerRadius(8)
                 }
 
-                Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Supported Features:")
-                            .font(.headline)
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label("Command explanation", systemImage: "info.circle")
-                            Label("Smart suggestions", systemImage: "lightbulb")
-                            Label("Error diagnosis", systemImage: "stethoscope")
-                            Label("Natural language to command", systemImage: "wand.and.stars")
-                            Label("Command history analysis", systemImage: "chart.bar")
-                        }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Leave custom fields empty to use defaults.")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    Text("Your API key is stored locally and never sent to our servers.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
+                        Text("Get OpenAI API Key →")
+                            .font(.caption)
                     }
-                } header: {
-                    Text("Features")
                 }
+            } header: {
+                Text("Configuration")
+            } footer: {
+                Text("AI features require an API key. Your key is stored securely on your device.\n\nCustom base URL and model name allow you to use compatible OpenAI API endpoints or self-hosted models.")
             }
-            .navigationTitle("AI Settings")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
+
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Supported Features:")
+                        .font(.headline)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("Command explanation", systemImage: "info.circle")
+                        Label("Smart suggestions", systemImage: "lightbulb")
+                        Label("Error diagnosis", systemImage: "stethoscope")
+                        Label("Natural language to command", systemImage: "wand.and.stars")
+                        Label("Command history analysis", systemImage: "chart.bar")
                     }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
+            } header: {
+                Text("Features")
+            }
+        }
+        .navigationTitle("AI Settings")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") {
+                    dismiss()
                 }
             }
         }

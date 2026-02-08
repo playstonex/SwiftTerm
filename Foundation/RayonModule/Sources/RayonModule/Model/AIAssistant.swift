@@ -6,20 +6,113 @@
 //
 
 import Foundation
+import Keychain
 
 @MainActor
 public class AIAssistant: ObservableObject {
     public static let shared = AIAssistant()
 
-    private init() {}
+    // MARK: - Storage
 
-    @Published public var apiKey: String = ""
-    @Published public var provider: AIProvider = .openai
-    @Published public var isEnabled: Bool = false
+    private let keychain = Keychain(service: "com.rayon.assistant")
+    private let userDefaults = UserDefaults.standard
+
+    // UserDefaults keys for non-sensitive data
+    private enum Keys {
+        static let provider = "ai.provider"
+        static let isEnabled = "ai.enabled"
+    }
+
+    // Keychain keys for sensitive data
+    private enum KeychainKeys {
+        static let apiKey = "ai.apikey"
+        static let customBaseURL = "ai.baseurl"
+        static let customModel = "ai.model"
+    }
+
+    private init() {
+        loadSettings()
+    }
+
+    // MARK: - Published Properties
+
+    @Published public var apiKey: String = "" {
+        didSet { saveSecureData() }
+    }
+
+    @Published public var provider: AIProvider = .openai {
+        didSet { saveNonSecureData() }
+    }
+
+    @Published public var isEnabled: Bool = false {
+        didSet { saveNonSecureData() }
+    }
 
     // Customizable configuration
-    @Published public var customBaseURL: String = ""
-    @Published public var customModel: String = ""
+    @Published public var customBaseURL: String = "" {
+        didSet { saveSecureData() }
+    }
+
+    @Published public var customModel: String = "" {
+        didSet { saveSecureData() }
+    }
+
+    // MARK: - Persistence
+
+    private func loadSettings() {
+        // Load non-sensitive data from UserDefaults
+        if let providerRaw = userDefaults.string(forKey: Keys.provider),
+           let savedProvider = AIProvider(rawValue: providerRaw) {
+            provider = savedProvider
+        }
+
+        isEnabled = userDefaults.bool(forKey: Keys.isEnabled)
+
+        // Load sensitive data from Keychain
+        do {
+            apiKey = try keychain.get(KeychainKeys.apiKey) ?? ""
+            customBaseURL = try keychain.get(KeychainKeys.customBaseURL) ?? ""
+            customModel = try keychain.get(KeychainKeys.customModel) ?? ""
+        } catch {
+            print("Failed to load AI settings from Keychain: \(error)")
+        }
+    }
+
+    private func saveSecureData() {
+        do {
+            try keychain.set(apiKey, key: KeychainKeys.apiKey)
+            try keychain.set(customBaseURL, key: KeychainKeys.customBaseURL)
+            try keychain.set(customModel, key: KeychainKeys.customModel)
+        } catch {
+            print("Failed to save AI settings to Keychain: \(error)")
+        }
+    }
+
+    private func saveNonSecureData() {
+        userDefaults.set(provider.rawValue, forKey: Keys.provider)
+        userDefaults.set(isEnabled, forKey: Keys.isEnabled)
+    }
+
+    /// Delete all stored AI settings
+    public func clearAllData() {
+        do {
+            try keychain.remove(KeychainKeys.apiKey)
+            try keychain.remove(KeychainKeys.customBaseURL)
+            try keychain.remove(KeychainKeys.customModel)
+        } catch {
+            print("Failed to clear AI settings from Keychain: \(error)")
+        }
+
+        userDefaults.removeObject(forKey: Keys.provider)
+        userDefaults.removeObject(forKey: Keys.isEnabled)
+
+        // Reset in-memory values
+        apiKey = ""
+        customBaseURL = ""
+        customModel = ""
+        isEnabled = false
+        provider = .openai
+    }
 
     // Get effective base URL (custom or default)
     public var effectiveBaseURL: String {
