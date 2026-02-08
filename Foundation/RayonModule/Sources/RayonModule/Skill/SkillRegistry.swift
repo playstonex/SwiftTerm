@@ -8,14 +8,21 @@
 import Foundation
 
 /// Registry for managing available skills
+@MainActor
 public class SkillRegistry: ObservableObject {
     public static let shared = SkillRegistry()
+
+    // MARK: - Constants
+
+    private static let maxExecutionHistoryCount = 50
+    private static let skillsKey = "wiki.qaq.rayon.skills.v2"
+
+    // MARK: - Properties
 
     @Published public var skillGroup: SkillGroup = SkillGroup()
     @Published public var activeExecutions: [SkillExecution] = []
 
     private let userDefaults = UserDefaults.standard
-    private let skillsKey = "wiki.qaq.rayon.skills"
 
     private init() {
         loadSkills()
@@ -121,8 +128,8 @@ public class SkillRegistry: ObservableObject {
         // Add to history
         skillGroup.skillExecutionHistory.append(execution.summary())
 
-        // Keep only last 50 executions
-        if skillGroup.skillExecutionHistory.count > 50 {
+        // Keep only last N executions
+        if skillGroup.skillExecutionHistory.count > Self.maxExecutionHistoryCount {
             skillGroup.skillExecutionHistory.removeFirst()
         }
 
@@ -143,12 +150,12 @@ public class SkillRegistry: ObservableObject {
 
     private func saveSkills() {
         if let encoded = try? JSONEncoder().encode(skillGroup) {
-            userDefaults.set(encoded, forKey: skillsKey)
+            userDefaults.set(encoded, forKey: Self.skillsKey)
         }
     }
 
     private func loadSkills() {
-        guard let data = userDefaults.data(forKey: skillsKey),
+        guard let data = userDefaults.data(forKey: Self.skillsKey),
               let decoded = try? JSONDecoder().decode(SkillGroup.self, from: data) else {
             // First load - initialize with built-in skills
             initializeBuiltinSkills()
@@ -172,7 +179,7 @@ public class SkillRegistry: ObservableObject {
     public func clearAllData() {
         skillGroup = SkillGroup()
         activeExecutions.removeAll()
-        userDefaults.removeObject(forKey: skillsKey)
+        userDefaults.removeObject(forKey: Self.skillsKey)
         initializeBuiltinSkills()
     }
 

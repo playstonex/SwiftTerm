@@ -16,6 +16,7 @@ public class SkillTriggerDetector {
     }
 
     /// Analyze terminal output and detect matching skills
+    @MainActor
     public func detectSkills(in output: String) -> [SkillSuggestion] {
         let enabledSkills = registry.allEnabledSkills
         var suggestions: [SkillSuggestion] = []
@@ -165,6 +166,7 @@ public class SkillTriggerDetector {
     }
 
     /// Check system state conditions
+    @MainActor
     public func checkSystemState() -> [SkillSuggestion] {
         var suggestions: [SkillSuggestion] = []
 

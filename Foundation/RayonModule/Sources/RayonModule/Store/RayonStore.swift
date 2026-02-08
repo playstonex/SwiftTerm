@@ -285,43 +285,53 @@ public class RayonStore: ObservableObject {
 
     private let skillRegistry = SkillRegistry.shared
 
+    @MainActor
     public var skillGroup: SkillGroup {
         get { skillRegistry.skillGroup }
         set { skillRegistry.skillGroup = newValue }
     }
 
+    @MainActor
     public var allSkills: [Skill] {
         skillRegistry.allEnabledSkills
     }
 
+    @MainActor
     public var skillExecutionHistory: [SkillExecution.Summary] {
         skillRegistry.executionHistory
     }
 
+    @MainActor
     public func registerSkill(_ skill: Skill) {
         skillRegistry.registerSkill(skill)
     }
 
+    @MainActor
     public func updateSkill(_ skill: Skill) {
         skillRegistry.updateSkill(skill)
     }
 
+    @MainActor
     public func deleteSkill(_ skill: Skill) {
         skillRegistry.deleteSkill(skill)
     }
 
+    @MainActor
     public func skill(id: UUID) -> Skill? {
         skillRegistry.skill(id: id)
     }
 
+    @MainActor
     public func skills(in category: SkillCategory) -> [Skill] {
         skillRegistry.skills(in: category)
     }
 
+    @MainActor
     public func searchSkills(_ query: String) -> [Skill] {
         skillRegistry.searchSkills(query)
     }
 
+    @MainActor
     public func recentSkillExecutions(limit: Int = 10) -> [SkillExecution.Summary] {
         skillRegistry.recentExecutions(limit: limit)
     }

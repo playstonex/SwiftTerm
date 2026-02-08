@@ -66,21 +66,37 @@ extension TerminalManager {
         private let maxHistorySize = 50000
         private let historyLock = NSLock()
 
-        func getBuffer() -> String {
-            bufferAccessLock.lock()
-            defer { bufferAccessLock.unlock() }
-            let copy = _dataBuffer
-            _dataBuffer = ""
-            return copy
+        // Output Observers (for Skills and other non-destructive consumers)
+        private var outputObservers: [UUID: (String) -> Void] = [:]
+        private let observerLock = NSLock()
+
+        func addOutputObserver(_ observer: @escaping (String) -> Void) -> UUID {
+            observerLock.lock()
+            defer { observerLock.unlock() }
+            let id = UUID()
+            outputObservers[id] = observer
+            return id
         }
 
-        func insertBuffer(_ str: String) {
-            bufferAccessLock.lock()
-            defer { bufferAccessLock.unlock() }
-            guard !closed else { return }
+        func removeOutputObserver(_ id: UUID) {
+            observerLock.lock()
+            defer { observerLock.unlock() }
+            outputObservers.removeValue(forKey: id)
+        }
 
-            // Add to data buffer (for SSH)
-            _dataBuffer += str
+        // MARK: Output Handling
+
+        /// Handle output received from the shell
+        /// - Parameter str: The output string from the shell
+        func handleShellOutput(_ str: String) {
+            // Notify observers (Skills, etc.)
+            observerLock.lock()
+            let observers = outputObservers.values
+            observerLock.unlock()
+            
+            for observer in observers {
+                observer(str)
+            }
 
             // Add to persistent history (for copy and AI analysis)
             historyLock.lock()
@@ -91,7 +107,22 @@ extension TerminalManager {
                 outputHistory = String(outputHistory.dropFirst(removeCount))
             }
             historyLock.unlock()
+        }
 
+        func getBuffer() -> String {
+            bufferAccessLock.lock()
+            defer { bufferAccessLock.unlock() }
+            let copy = _dataBuffer
+            _dataBuffer = ""
+            return copy
+        }
+
+        func insertBuffer(_ str: String) {
+            bufferAccessLock.lock()
+            // Add to data buffer (for SSH/UI/Shell Input)
+            _dataBuffer += str
+            bufferAccessLock.unlock()
+            
             Context.queue.async { [weak self] in
                 self?.shell.explicitRequestStatusPickup()
             }
@@ -263,12 +294,16 @@ extension TerminalManager {
             } withWriteDataBuffer: { [weak self] in
                 self?.getBuffer() ?? ""
             } withOutputDataBuffer: { [weak self] output in
+                // 1. Process for UI
                 let sem = DispatchSemaphore(value: 0)
                 mainActor {
                     self?.termInterface.write(output)
                     sem.signal()
                 }
                 sem.wait()
+                
+                // 2. Process for Logic (History, Observers)
+                self?.handleShellOutput(output)
             } withContinuationHandler: { [weak self] in
                 self?.continueDecision ?? false
             }
@@ -296,35 +331,77 @@ extension TerminalManager {
         /// Execute command and capture output within skill context
         func executeCommandForSkill(_ command: String, timeout: Int = 30) async throws -> (output: String, exitCode: Int?) {
             var output = ""
+            
+            // Wrap command to capture exit code
+            let wrappedCommand = wrapCommandWithExitCode(command)
 
             return try await withCheckedThrowingContinuation { continuation in
                 self.shell.beginExecute(
-                    withCommand: " \(command)",
+                    withCommand: wrappedCommand,
                     withTimeout: NSNumber(value: timeout),
                     withOnCreate: {},
                     withOutput: { chunk in
                         output.append(chunk)
                     },
                     withContinuationHandler: {
-                        continuation.resume(returning: (output, 0))
+                        // Parse exit code from output
+                        let (cleanOutput, code) = self.parseExitCode(from: output)
+                        
+                        continuation.resume(returning: (cleanOutput, code))
                         return true
                     }
                 )
             }
         }
+        
+        // MARK: - Helpers
+
+        private func wrapCommandWithExitCode(_ command: String) -> String {
+            return " \(command); echo \"\nTYPE_RAYON_EXIT_CODE:$?\""
+        }
+
+        private func parseExitCode(from output: String) -> (String, Int) {
+            var cleanOutput = output
+            var exitCode = 1 // Default to failure if not found
+
+            if let range = output.range(of: "TYPE_RAYON_EXIT_CODE:", options: .backwards) {
+                let exitCodeStr = output[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+                exitCode = Int(exitCodeStr) ?? 1
+                
+                // Remove the exit code marker from output
+                // Try to find the newline before the marker to remove it as well
+                if range.lowerBound > output.startIndex {
+                     let beforeIndex = output.index(before: range.lowerBound)
+                     if output[beforeIndex] == "\n" {
+                         cleanOutput = String(output[..<beforeIndex])
+                     } else {
+                         cleanOutput = String(output[..<range.lowerBound])
+                     }
+                } else {
+                     cleanOutput = String(output[..<range.lowerBound])
+                }
+            }
+
+            return (cleanOutput, exitCode)
+        }
 
         /// Stream output for real-time analysis
         func streamOutputForSkill(duration: TimeInterval, handler: @escaping (String) -> Void) async {
-            let startTime = Date()
-            var buffer = ""
-
-            while Date().timeIntervalSince(startTime) < duration {
-                let chunk = self.getBuffer()
-                if !chunk.isEmpty {
-                    buffer.append(chunk)
-                    handler(buffer)
+            return await withCheckedContinuation { continuation in
+                var observerId: UUID?
+                
+                // Set up observer
+                observerId = self.addOutputObserver { content in
+                    handler(content)
                 }
-                try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+                
+                // Set up timer to end stream
+                DispatchQueue.global().asyncAfter(deadline: .now() + duration) {
+                    if let id = observerId {
+                        self.removeOutputObserver(id)
+                    }
+                    continuation.resume()
+                }
             }
         }
     }
@@ -341,7 +418,15 @@ extension String {
         result = result.replacingOccurrences(of: "\u{1B}\\][^\u{1B}]*\u{1B}\\\\", with: "", options: .regularExpression)
 
         // Remove CSI sequences (Control Sequence Introducer) like [1m, [31;1m, [?2004h, [K, [A
+        // Handles:
+        // - \u{1B}[ ... [a-zA-Z]
+        // - \u{1B}[ ... [0-9]
+        // - \u{1B}[ ... [?] ... [a-zA-Z]
+        // Matches ESC [ followed by any number of parameter bytes (0x30-0x3F) and intermediate bytes (0x20-0x2F), then a final byte (0x40-0x7E)
         result = result.replacingOccurrences(of: "\u{1B}\\[[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)
+        
+        // Remove simple ESC sequences
+        result = result.replacingOccurrences(of: "\u{1B}[=0-9]+[a-zA-Z]", with: "", options: .regularExpression)
 
         // Remove bracket sequences without ESC (sometimes captured separately)
         result = result.replacingOccurrences(of: "\\[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)

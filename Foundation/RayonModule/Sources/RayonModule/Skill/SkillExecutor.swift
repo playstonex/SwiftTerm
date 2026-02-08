@@ -14,8 +14,6 @@ public class SkillExecutor: ObservableObject {
     @Published public var currentExecution: SkillExecution?
     @Published public var isExecuting: Bool = false
 
-    private var executionQueue = DispatchQueue(label: "wiki.qaq.skill.executor", qos: .userInitiated)
-
     private var shell: NSRemoteShell?
 
     public init() {}
@@ -36,37 +34,62 @@ public class SkillExecutor: ObservableObject {
         isExecuting = true
         self.shell = shell
 
-        execution.start { result in
-            DispatchQueue.main.async {
-                self.isExecuting = false
-                completion(result)
+        // Initialize execution with completion handler
+        execution.start(completion: completion)
+
+        // Start execution in task
+        Task {
+            do {
+                // Check privileges before starting
+                try await checkPrivileges(for: skill, shell: shell)
+
+                // Start executing steps
+                await executeNextStep(in: execution, shell: shell)
+            } catch {
+                execution.complete(successfully: false, error: error as? ExecutionError ?? .unknown)
             }
         }
+    }
+    
+    /// Check if the current shell has the required privileges for the skill
+    private func checkPrivileges(for skill: Skill, shell: NSRemoteShell) async throws {
+        for privilege in skill.requiredPrivileges {
+            if privilege == "sudo" {
+                // Check if we can sudo without interaction or if we are already root
+                // "sudo -n true" checks if we have a ticket or can run without password
+                // However, NSRemoteShell might not support non-interactive sudo well if it prompts.
+                // We'll just check if 'sudo' exists for now, as a basic check.
+                // A better check would be trying to run a dummy sudo command.
 
-        // Start executing steps
-        executeNextStep(in: execution, shell: shell)
+                let result = try await CommandExecutor.execute("which sudo", shell: shell, timeout: 5)
+                if result.exitCode != 0 {
+                    // Try checking if we are root
+                    let idResult = try await CommandExecutor.execute("id -u", shell: shell, timeout: 5)
+                    if idResult.exitCode == 0 && idResult.output.trimmingCharacters(in: .whitespacesAndNewlines) == "0" {
+                        continue // We are root, so sudo is implied (or not needed)
+                    }
+                    throw ExecutionError.missingPrivilege("sudo")
+                }
+            }
+        }
     }
 
     /// Execute the next step in the skill
-    private func executeNextStep(in execution: SkillExecution, shell: NSRemoteShell) {
+    private func executeNextStep(in execution: SkillExecution, shell: NSRemoteShell) async {
         guard let step = execution.currentStep else {
             execution.complete(successfully: true)
             return
         }
 
-        executionQueue.async { [weak self] in
-            guard let self = self else { return }
-
-            switch step.stepType {
-            case .executeCommand:
-                self.executeCommandStep(step, in: execution, shell: shell)
-            case .analyzeOutput:
-                self.executeAnalysisStep(step, in: execution)
-            case .userChoice:
-                self.executeUserChoiceStep(step, in: execution)
-            case .manualConfirmation:
-                self.executeManualConfirmationStep(step, in: execution)
-            }
+        switch step.stepType {
+        case .executeCommand:
+            await executeCommandStep(step, in: execution, shell: shell)
+        case .analyzeOutput:
+            executeAnalysisStep(step, in: execution)
+        case .userChoice:
+            executeUserChoiceStep(step, in: execution)
+        case .manualConfirmation:
+            executeManualConfirmationStep(step, in: execution)
         }
     }
 
@@ -75,51 +98,58 @@ public class SkillExecutor: ObservableObject {
         _ step: SkillStep,
         in execution: SkillExecution,
         shell: NSRemoteShell
-    ) {
+    ) async {
         guard let command = step.commandTemplate else {
             execution.advanceToNextStep()
+            await executeNextStep(in: execution, shell: shell)
             return
         }
 
         let startTime = Date()
-        var output = ""
-        var exitCode: Int? = 0
 
-        let semaphore = DispatchSemaphore(value: 0)
+        do {
+            // Execute command using the shared utility
+            let result = try await CommandExecutor.execute(
+                command,
+                shell: shell,
+                timeout: step.timeout
+            )
 
-        shell.beginExecute(
-            withCommand: " \(command)",
-            withTimeout: NSNumber(value: step.timeout),
-            withOnCreate: {},
-            withOutput: { chunk in
-                output.append(chunk)
-            },
-            withContinuationHandler: {
-                exitCode = 0  // Success
-                semaphore.signal()
-                return true
-            }
-        )
+            let executionTime = Date().timeIntervalSince(startTime)
 
-        semaphore.wait()
+            // Determine success: success if exit code is 0 or nil (unknown)
+            let status: StepStatus = (result.exitCode == nil || result.exitCode == 0) ? .success : .failed
 
-        let executionTime = Date().timeIntervalSince(startTime)
+            // Create step result
+            let stepResult = StepResult(
+                stepId: step.id,
+                stepTitle: step.title,
+                status: status,
+                output: result.output,
+                exitCode: result.exitCode,
+                executionTime: executionTime
+            )
 
-        // Create step result
-        let result = StepResult(
-            stepId: step.id,
-            stepTitle: step.title,
-            status: exitCode == 0 ? .success : .failed,
-            output: output,
-            exitCode: exitCode,
-            executionTime: executionTime
-        )
+            execution.addStepResult(stepResult)
+        } catch {
+            // Handle execution errors
+            let executionTime = Date().timeIntervalSince(startTime)
 
-        DispatchQueue.main.async {
-            execution.addStepResult(result)
-            execution.advanceToNextStep()
-            self.executeNextStep(in: execution, shell: shell)
+            let stepResult = StepResult(
+                stepId: step.id,
+                stepTitle: step.title,
+                status: .failed,
+                output: "Command execution failed: \(error.localizedDescription)",
+                exitCode: nil,
+                executionTime: executionTime,
+                error: error.localizedDescription
+            )
+
+            execution.addStepResult(stepResult)
         }
+
+        execution.advanceToNextStep()
+        await self.executeNextStep(in: execution, shell: shell)
     }
 
     /// Execute an analysis step
@@ -177,7 +207,9 @@ public class SkillExecutor: ObservableObject {
             execution.stepResults.removeLast()
         }
 
-        executeNextStep(in: execution, shell: shell)
+        Task {
+            await executeNextStep(in: execution, shell: shell)
+        }
     }
 
     /// Skip to next step
@@ -186,7 +218,9 @@ public class SkillExecutor: ObservableObject {
         guard let shell = shell else { return }
 
         execution.advanceToNextStep()
-        executeNextStep(in: execution, shell: shell)
+        Task {
+            await executeNextStep(in: execution, shell: shell)
+        }
     }
 
     /// Execute a single command outside of skill context
@@ -195,21 +229,6 @@ public class SkillExecutor: ObservableObject {
         shell: NSRemoteShell,
         timeout: TimeInterval = 30
     ) async throws -> (output: String, exitCode: Int?) {
-        return try await withCheckedThrowingContinuation { continuation in
-            var output = ""
-
-            shell.beginExecute(
-                withCommand: " \(command)",
-                withTimeout: NSNumber(value: timeout),
-                withOnCreate: {},
-                withOutput: { chunk in
-                    output.append(chunk)
-                },
-                withContinuationHandler: {
-                    continuation.resume(returning: (output, 0))
-                    return true
-                }
-            )
-        }
+        return try await CommandExecutor.execute(command, shell: shell, timeout: timeout)
     }
 }

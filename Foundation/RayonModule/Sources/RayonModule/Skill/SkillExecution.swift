@@ -165,6 +165,7 @@ public enum ExecutionError: Error, LocalizedError, Codable {
     case invalidStep
     case cancelled
     case unknown
+    case missingPrivilege(String)
 
     public var errorDescription: String? {
         switch self {
@@ -178,6 +179,8 @@ public enum ExecutionError: Error, LocalizedError, Codable {
             return "Execution was cancelled"
         case .unknown:
             return "Unknown error occurred"
+        case .missingPrivilege(let privilege):
+            return "Missing required privilege: \(privilege)"
         }
     }
 }
