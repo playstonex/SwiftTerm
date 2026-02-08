@@ -512,6 +512,7 @@ struct AssistantAIView: View {
             NavigationView {
                 AISettingsView()
             }
+            .navigationViewStyle(.stack)
         }
     }
 
