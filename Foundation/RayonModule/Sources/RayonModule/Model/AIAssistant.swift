@@ -7,6 +7,7 @@
 
 import Foundation
 import Keychain
+import Combine
 
 @MainActor
 public class AIAssistant: ObservableObject {
@@ -30,36 +31,72 @@ public class AIAssistant: ObservableObject {
         static let customModel = "ai.model"
     }
 
+    // Prevent saves during initialization
+    private var isLoading = false
+
+    // Debounced save cancellables
+    private var secureDataCancellable: AnyCancellable?
+    private var nonSecureDataCancellable: AnyCancellable?
+
     private init() {
         loadSettings()
+        setupDebouncedSaving()
     }
 
     // MARK: - Published Properties
 
     @Published public var apiKey: String = "" {
-        didSet { saveSecureData() }
+        didSet { guard !isLoading else { return } }
     }
 
     @Published public var provider: AIProvider = .openai {
-        didSet { saveNonSecureData() }
+        didSet { guard !isLoading else { return } }
     }
 
     @Published public var isEnabled: Bool = false {
-        didSet { saveNonSecureData() }
+        didSet { guard !isLoading else { return } }
     }
 
     // Customizable configuration
     @Published public var customBaseURL: String = "" {
-        didSet { saveSecureData() }
+        didSet { guard !isLoading else { return } }
     }
 
     @Published public var customModel: String = "" {
-        didSet { saveSecureData() }
+        didSet { guard !isLoading else { return } }
+    }
+
+    // MARK: - Setup
+
+    private func setupDebouncedSaving() {
+        // Debounce secure data saves (API key, base URL, model)
+        secureDataCancellable = Publishers.Merge3(
+            $apiKey.dropFirst().map { _ in () },
+            $customBaseURL.dropFirst().map { _ in () },
+            $customModel.dropFirst().map { _ in () }
+        )
+        .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
+        .sink { [weak self] in
+            self?.saveSecureData()
+        }
+
+        // Save non-secure data with debounce
+        nonSecureDataCancellable = Publishers.Merge(
+            $provider.dropFirst().map { _ in () },
+            $isEnabled.dropFirst().map { _ in () }
+        )
+        .debounce(for: .milliseconds(200), scheduler: RunLoop.main)
+        .sink { [weak self] in
+            self?.saveNonSecureData()
+        }
     }
 
     // MARK: - Persistence
 
     private func loadSettings() {
+        isLoading = true
+        defer { isLoading = false }
+
         // Load non-sensitive data from UserDefaults
         if let providerRaw = userDefaults.string(forKey: Keys.provider),
            let savedProvider = AIProvider(rawValue: providerRaw) {
@@ -79,6 +116,8 @@ public class AIAssistant: ObservableObject {
     }
 
     private func saveSecureData() {
+        guard !isLoading else { return }
+
         do {
             try keychain.set(apiKey, key: KeychainKeys.apiKey)
             try keychain.set(customBaseURL, key: KeychainKeys.customBaseURL)
@@ -89,12 +128,17 @@ public class AIAssistant: ObservableObject {
     }
 
     private func saveNonSecureData() {
+        guard !isLoading else { return }
+
         userDefaults.set(provider.rawValue, forKey: Keys.provider)
         userDefaults.set(isEnabled, forKey: Keys.isEnabled)
     }
 
     /// Delete all stored AI settings
     public func clearAllData() {
+        isLoading = true
+        defer { isLoading = false }
+
         do {
             try keychain.remove(KeychainKeys.apiKey)
             try keychain.remove(KeychainKeys.customBaseURL)
