@@ -15,6 +15,7 @@ import XTerminalUI
 struct AssistantDetailView: View {
     @StateObject var context: TerminalManager.Context
     @ObservedObject var assistantManager = AssistantManager.shared
+    @State private var showingAISettings = false
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -24,7 +25,7 @@ struct AssistantDetailView: View {
 
             // Assistant Panel (floating overlay)
             if assistantManager.isVisible {
-                AssistantInspectorView(context: context)
+                AssistantInspectorView(context: context, showingAISettings: $showingAISettings)
                     .frame(width: 320)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                     .shadow(color: .black.opacity(0.3), radius: 20, x: -10, y: 0)
@@ -39,6 +40,11 @@ struct AssistantDetailView: View {
         .onDisappear {
             assistantManager.clearCurrentContext()
         }
+        .sheet(isPresented: $showingAISettings) {
+            AISettingsView()
+                .frame(minWidth: 550, idealWidth: 600, maxWidth: 700,
+                       minHeight: 500, idealHeight: 600, maxHeight: 700)
+        }
     }
 }
 
@@ -46,6 +52,7 @@ struct AssistantDetailView: View {
 struct AssistantInspectorView: View {
     @StateObject var context: TerminalManager.Context
     @ObservedObject var assistantManager = AssistantManager.shared
+    @Binding var showingAISettings: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,7 +79,7 @@ struct AssistantInspectorView: View {
                     case .status:
                         AssistantStatusView(context: context)
                     case .ai:
-                        AssistantAIView(context: context)
+                        AssistantAIView(context: context, showingAISettings: $showingAISettings)
                     case .skills:
                         SkillsView(context: context)
                     }
@@ -439,6 +446,7 @@ struct AssistantStatusView: View {
 struct AssistantAIView: View {
     @StateObject var context: TerminalManager.Context
     @ObservedObject var aiAssistant = AIAssistant.shared
+    @Binding var showingAISettings: Bool
     @State private var searchText = ""
     @State private var analyzedCommands: [CommandAnalysis] = []
     @State private var isAnalyzing = false
@@ -450,7 +458,6 @@ struct AssistantAIView: View {
     @State private var aiResponse = ""
     @State private var errorMessage = ""
     @State private var showingError = false
-    @State private var showingSettings = false
 
     enum AITab: String, CaseIterable {
         case commands = "Commands"
@@ -474,7 +481,7 @@ struct AssistantAIView: View {
         VStack(spacing: 0) {
             // AI Provider Status
             if !aiAssistant.isEnabled || aiAssistant.apiKey.isEmpty {
-                AIProviderBanner(onTap: { showingSettings = true })
+                AIProviderBanner(onTap: { showingAISettings = true })
             }
 
             // Tab selector
@@ -511,16 +518,6 @@ struct AssistantAIView: View {
             if let command = selectedCommand {
                 CommandDetailView(analysis: command, context: context)
             }
-        }
-        .sheet(isPresented: $showingSettings) {
-            NavigationView {
-                AISettingsView()
-            }
-            #if os(iOS)
-            .navigationViewStyle(.stack)
-            #else
-            .frame(minWidth: 500, minHeight: 400)
-            #endif
         }
     }
 
@@ -588,7 +585,7 @@ struct AssistantAIView: View {
                     CommandStatsView(commands: analyzedCommands)
                         .padding(.horizontal)
                         .padding(.vertical, 8)
-                        .background(Color(NSColor.controlBackgroundColor))
+                        .background(.thickMaterial)
 
                     Divider()
 
@@ -665,7 +662,7 @@ struct AssistantAIView: View {
                             .font(.body)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding()
-                            .background(Color(NSColor.controlBackgroundColor))
+                            .background(.thickMaterial)
                             .cornerRadius(10)
                     }
                 }
@@ -734,7 +731,7 @@ struct AssistantAIView: View {
                                             .foregroundColor(.accentColor)
                                     }
                                     .padding(.vertical, 6)
-                                    .background(Color(NSColor.controlBackgroundColor))
+                                    .background(.thickMaterial)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                             }
@@ -774,7 +771,7 @@ struct AssistantAIView: View {
 
                     TextEditor(text: $errorMessage)
                         .frame(minHeight: 80)
-                        .background(Color(NSColor.controlBackgroundColor))
+                        .background(.thickMaterial)
                         .cornerRadius(8)
                 } else {
                     HStack {
@@ -790,7 +787,7 @@ struct AssistantAIView: View {
 
                     TextEditor(text: $errorMessage)
                         .frame(minHeight: 80)
-                        .background(Color(NSColor.controlBackgroundColor))
+                        .background(.thickMaterial)
                         .cornerRadius(8)
                 }
 
@@ -823,7 +820,7 @@ struct AssistantAIView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
-                        .background(Color(NSColor.controlBackgroundColor))
+                        .background(.thickMaterial)
                         .cornerRadius(10)
                     }
                 }
@@ -1095,118 +1092,154 @@ struct AISettingsView: View {
     @State private var testResult: AIAssistant.TestResult?
 
     var body: some View {
-        Form {
-            Section {
-                Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
-            } header: {
-                Text("Status")
-            }
+        VStack(spacing: 0) {
+            // Custom Title Bar
+            HStack {
+                Text("AI Settings")
+                    .font(.headline)
+                    .foregroundColor(.primary)
 
-            Section {
-                Picker("AI Provider", selection: $aiAssistant.provider) {
-                    ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
-                        Text(provider.displayName).tag(provider)
-                    }
-                }
+                Spacer()
 
-                SecureField("API Key", text: $aiAssistant.apiKey)
-
-                TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
-                    .disableAutocorrection(true)
-
-                TextField("Custom Model (optional)", text: $aiAssistant.customModel)
-                    .disableAutocorrection(true)
-
-                // Test Connection Button
-                Button(action: {
-                    Task {
-                        await testAPIConnection()
-                    }
-                }) {
-                    HStack {
-                        if isTesting {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                            Text("Testing...")
-                        } else {
-                            Image(systemName: "checkmark.circle")
-                            Text("Test Connection")
-                        }
-                    }
-                }
-                .disabled(isTesting || aiAssistant.apiKey.isEmpty)
-
-                // Test Result
-                if let result = testResult {
-                    HStack(spacing: 12) {
-                        Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(result.success ? .green : .red)
-                            .font(.title2)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(result.message)
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-
-                            if let details = result.details {
-                                Text(details)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 12)
-                    .background((result.success ? Color.green : Color.red).opacity(0.1))
-                    .cornerRadius(8)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Leave custom fields empty to use defaults.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("Your API key is stored locally and never sent to our servers.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
-                        Text("Get OpenAI API Key →")
-                            .font(.caption)
-                    }
-                }
-            } header: {
-                Text("Configuration")
-            } footer: {
-                Text("AI features require an API key. Your key is stored securely on your device.\n\nCustom base URL and model name allow you to use compatible OpenAI API endpoints or self-hosted models.")
-            }
-
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Supported Features:")
-                        .font(.headline)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label("Command explanation", systemImage: "info.circle")
-                        Label("Smart suggestions", systemImage: "lightbulb")
-                        Label("Error diagnosis", systemImage: "stethoscope")
-                        Label("Natural language to command", systemImage: "wand.and.stars")
-                        Label("Command history analysis", systemImage: "chart.bar")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                }
-            } header: {
-                Text("Features")
-            }
-        }
-        .navigationTitle("AI Settings")
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
                 Button("Done") {
                     dismiss()
                 }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+            .padding()
+            .background(Color(NSColor.windowBackgroundColor))
+
+            Divider()
+
+            // Content
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // Status Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Status")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
+                    }
+                    .padding()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+
+                    // Configuration Section
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Configuration")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        Picker("AI Provider", selection: $aiAssistant.provider) {
+                            ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
+                                Text(provider.displayName).tag(provider)
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        SecureField("API Key", text: $aiAssistant.apiKey)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
+                            .disableAutocorrection(true)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("Custom Model (optional)", text: $aiAssistant.customModel)
+                            .disableAutocorrection(true)
+                            .textFieldStyle(.roundedBorder)
+
+                        // Test Connection Button
+                        Button(action: {
+                            Task {
+                                await testAPIConnection()
+                            }
+                        }) {
+                            HStack {
+                                if isTesting {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                    Text("Testing...")
+                                } else {
+                                    Image(systemName: "checkmark.circle")
+                                    Text("Test Connection")
+                                }
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isTesting || aiAssistant.apiKey.isEmpty)
+
+                        // Test Result
+                        if let result = testResult {
+                            HStack(spacing: 12) {
+                                Image(systemName: result.success ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundColor(result.success ? .green : .red)
+                                    .font(.title2)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(result.message)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+
+                                    if let details = result.details {
+                                        Text(details)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 12)
+                            .background((result.success ? Color.green : Color.red).opacity(0.1))
+                            .cornerRadius(8)
+                        }
+
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Leave custom fields empty to use defaults.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text("Your API key is stored locally and never sent to our servers.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
+                                Text("Get OpenAI API Key →")
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+
+                    // Features Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Features")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Command explanation", systemImage: "info.circle")
+                            Label("Smart suggestions", systemImage: "lightbulb")
+                            Label("Error diagnosis", systemImage: "stethoscope")
+                            Label("Natural language to command", systemImage: "wand.and.stars")
+                            Label("Command history analysis", systemImage: "chart.bar")
+                        }
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                }
+                .padding()
             }
         }
+        .background(Color(NSColor.windowBackgroundColor))
     }
 
     private func testAPIConnection() async {
