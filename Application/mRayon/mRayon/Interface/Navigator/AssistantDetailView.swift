@@ -512,7 +512,11 @@ struct AssistantAIView: View {
             NavigationView {
                 AISettingsView()
             }
+            #if os(iOS)
             .navigationViewStyle(.stack)
+            #else
+            .frame(minWidth: 500, minHeight: 400)
+            #endif
         }
     }
 
