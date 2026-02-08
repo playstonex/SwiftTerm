@@ -516,7 +516,9 @@ struct AssistantAIView: View {
             NavigationView {
                 AISettingsView()
             }
+            #if os(iOS)
             .navigationViewStyle(.stack)
+            #endif
         }
     }
 
