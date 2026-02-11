@@ -20,15 +20,12 @@ struct TerminalView: View {
     var body: some View {
         Group {
             if context.interfaceToken == interfaceToken {
-                GeometryReader { geometry in
-                    ZStack {
-                        backgroundColor
-                            .frame(width: geometry.size.width, height: geometry.size.height)
-                            .offset(x: 0, y: 0)
+                ZStack {
+                    backgroundColor
+                        .ignoresSafeArea()
 
-                        context.termInterface
-                            .padding(4)
-                    }
+                    context.termInterface
+                        .padding(4)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onChange(of: store.terminalFontSize) { oldValue, newValue in

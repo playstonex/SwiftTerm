@@ -78,7 +78,20 @@ class XTerminalWebViewDelegate: NSObject, WKNavigationDelegate, WKUIDelegate {
     
     func enableSearch(view: WKWebView) {
         DispatchQueue.global().async {
-            let script = "window.manager.enableFeature(\"searchBar\")"
+            let script = """
+            (function() {
+                try {
+                    if (window.manager && typeof window.manager.enableFeature === 'function') {
+                        window.manager.enableFeature("searchBar");
+                        console.log('Search bar enabled successfully');
+                    } else {
+                        console.warn('window.manager.enableFeature not available');
+                    }
+                } catch (e) {
+                    console.error('Error enabling search bar:', e);
+                }
+            })();
+            """
             view.evaluateJavascriptWithRetry(javascript: script)
         }
     }
