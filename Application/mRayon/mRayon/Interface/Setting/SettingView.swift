@@ -111,8 +111,25 @@ struct SettingView: View {
                     Text("JetBrains Mono").tag("JetBrains Mono")
                     Text("Source Code Pro").tag("Source Code Pro")
                 }
+
+                Toggle("Use Tmux Session", isOn: $store.useTmux)
+
+                if store.useTmux {
+                    TextField("Session Name", text: $store.tmuxSessionName)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    Text("Session name to attach or create")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Toggle("Auto-create", isOn: $store.tmuxAutoCreate)
+                }
             } header: {
                 Label("Terminal", systemImage: "arrow.right")
+            } footer: {
+                if store.useTmux {
+                    Text("Enable tmux to preserve session state across reconnections")
+                }
             }
 
             Section {

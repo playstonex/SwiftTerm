@@ -120,6 +120,26 @@ struct SettingView: View {
                     .font(.system(.headline, design: .rounded))
                     Text("Choose terminal font family.")
                         .font(.system(.subheadline, design: .rounded))
+
+                    Divider()
+
+                    Toggle("Use Tmux Session", isOn: $store.useTmux)
+                        .font(.system(.headline, design: .rounded))
+                    Text("Enable tmux to preserve session state across reconnections. Sessions and running programs will be restored when reconnecting.")
+                        .font(.system(.subheadline, design: .rounded))
+
+                    if store.useTmux {
+                        TextField("Tmux Session Name", text: $store.tmuxSessionName)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.body, design: .rounded))
+                        Text("Session name to attach or create. Default: \"rayon\"")
+                            .font(.system(.subheadline, design: .rounded))
+
+                        Toggle("Auto-create Session", isOn: $store.tmuxAutoCreate)
+                            .font(.system(.headline, design: .rounded))
+                        Text("Automatically create a new tmux session if it doesn't exist.")
+                            .font(.system(.subheadline, design: .rounded))
+                    }
                 } header: {
                     Text("Terminal")
                         .font(.system(.headline, design: .rounded))

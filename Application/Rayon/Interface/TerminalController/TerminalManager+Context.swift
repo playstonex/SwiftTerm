@@ -301,11 +301,33 @@ extension TerminalManager {
                     sem.signal()
                 }
                 sem.wait()
-                
+
                 // 2. Process for Logic (History, Observers)
                 self?.handleShellOutput(output)
             } withContinuationHandler: { [weak self] in
                 self?.continueDecision ?? false
+            }
+
+            // Attach to tmux session if enabled
+            if RayonStore.shared.useTmux {
+                let sessionName = RayonStore.shared.tmuxSessionName.isEmpty ? "rayon" : RayonStore.shared.tmuxSessionName
+                let autoCreate = RayonStore.shared.tmuxAutoCreate
+
+                // Build tmux attach command
+                var tmuxCmd = "tmux attach-session -t "
+                if autoCreate {
+                    // -A flag: if session doesn't exist, create it with new-session
+                    tmuxCmd += "'\\(new-session -As \"\(sessionName)\"\\)'"
+                } else {
+                    tmuxCmd += "\"\(sessionName)\""
+                }
+
+                // Small delay to ensure terminal is ready
+                Thread.sleep(forTimeInterval: 0.1)
+
+                // Send tmux command by inserting into buffer
+                putInformation("[*] Attaching to tmux session: \(sessionName)")
+                insertBuffer(tmuxCmd + "\n")
             }
 
             processShutdown()

@@ -38,6 +38,10 @@ public class RayonStore: ObservableObject {
             UDTerminalFontName = fontName
         }
         terminalFontName = fontName
+        // Load tmux preferences
+        useTmux = UDUseTmux
+        tmuxSessionName = UDTmuxSessionName
+        tmuxAutoCreate = UDTmuxAutoCreate
         if timeout <= 0 { timeout = 5 }
 
         if let read = readEncryptedDefault(
@@ -256,6 +260,35 @@ public class RayonStore: ObservableObject {
     @Published public var terminalFontName: String = "Menlo" {
         didSet {
             UDTerminalFontName = terminalFontName
+        }
+    }
+
+    // MARK: - Tmux Settings
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.useTmux", defaultValue: false)
+    private var UDUseTmux: Bool
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.tmuxSessionName", defaultValue: "rayon")
+    private var UDTmuxSessionName: String
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.tmuxAutoCreate", defaultValue: true)
+    private var UDTmuxAutoCreate: Bool
+
+    @Published public var useTmux: Bool = false {
+        didSet {
+            UDUseTmux = useTmux
+        }
+    }
+
+    @Published public var tmuxSessionName: String = "rayon" {
+        didSet {
+            UDTmuxSessionName = tmuxSessionName
+        }
+    }
+
+    @Published public var tmuxAutoCreate: Bool = true {
+        didSet {
+            UDTmuxAutoCreate = tmuxAutoCreate
         }
     }
 

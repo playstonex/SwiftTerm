@@ -30,7 +30,9 @@
       "Bash(codesign:*)",
       "mcp__web-reader__webReader",
       "Bash(git update-index:*)",
-      "mcp__zai-mcp-server__analyze_image"
+      "mcp__zai-mcp-server__analyze_image",
+      "Bash(gh pr create:*)",
+      "Bash(git pull:*)"
     ]
   }
 }
