@@ -132,7 +132,7 @@ struct SettingView: View {
                         TextField("Tmux Session Name", text: $store.tmuxSessionName)
                             .textFieldStyle(.roundedBorder)
                             .font(.system(.body, design: .rounded))
-                        Text("Session name to attach or create. Default: \"rayon\"")
+                        Text("Session name to attach or create. Default: \"default\"")
                             .font(.system(.subheadline, design: .rounded))
 
                         Toggle("Auto-create Session", isOn: $store.tmuxAutoCreate)

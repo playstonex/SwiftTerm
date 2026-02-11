@@ -268,7 +268,7 @@ public class RayonStore: ObservableObject {
     @UserDefaultsWrapper(key: "wiki.qaq.rayon.useTmux", defaultValue: false)
     private var UDUseTmux: Bool
 
-    @UserDefaultsWrapper(key: "wiki.qaq.rayon.tmuxSessionName", defaultValue: "rayon")
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.tmuxSessionName", defaultValue: "default")
     private var UDTmuxSessionName: String
 
     @UserDefaultsWrapper(key: "wiki.qaq.rayon.tmuxAutoCreate", defaultValue: true)
@@ -280,7 +280,7 @@ public class RayonStore: ObservableObject {
         }
     }
 
-    @Published public var tmuxSessionName: String = "rayon" {
+    @Published public var tmuxSessionName: String = "default" {
         didSet {
             UDTmuxSessionName = tmuxSessionName
         }

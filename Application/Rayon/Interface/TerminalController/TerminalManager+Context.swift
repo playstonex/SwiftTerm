@@ -310,7 +310,7 @@ extension TerminalManager {
 
             // Attach to tmux session if enabled
             if RayonStore.shared.useTmux {
-                let sessionName = RayonStore.shared.tmuxSessionName.isEmpty ? "rayon" : RayonStore.shared.tmuxSessionName
+                let sessionName = RayonStore.shared.tmuxSessionName.isEmpty ? "default" : RayonStore.shared.tmuxSessionName
                 let autoCreate = RayonStore.shared.tmuxAutoCreate
 
                 // Build tmux attach command
