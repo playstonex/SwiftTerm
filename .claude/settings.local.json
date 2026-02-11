@@ -29,7 +29,8 @@
       "Bash(sudo killall:*)",
       "Bash(codesign:*)",
       "mcp__web-reader__webReader",
-      "Bash(git update-index:*)"
+      "Bash(git update-index:*)",
+      "mcp__zai-mcp-server__analyze_image"
     ]
   }
 }
