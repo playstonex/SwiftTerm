@@ -57,6 +57,10 @@ public class CommandExecutor {
         let wrappedCommand = wrapCommandWithExitCode(command)
 
         return try await withCheckedThrowingContinuation { continuation in
+            // Track whether we've already resumed to prevent double-resume
+            var resumed = false
+            let lock = NSLock()
+
             shell.beginExecute(
                 withCommand: wrappedCommand,
                 withTimeout: NSNumber(value: timeout),
@@ -64,11 +68,20 @@ public class CommandExecutor {
                 withOutput: { chunk in
                     output.append(chunk)
                 },
-                withContinuationHandler: {
+                withContinuationHandler: { [capturedContinuation = continuation] in
+                    lock.lock()
+                    defer { lock.unlock() }
+
+                    guard !resumed else {
+                        // Already resumed, return true to indicate termination
+                        return true
+                    }
+                    resumed = true
+
                     // Parse exit code from output
                     let result = parseExitCode(from: output)
 
-                    continuation.resume(returning: result)
+                    capturedContinuation.resume(returning: result)
                     return true
                 }
             )

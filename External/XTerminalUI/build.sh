@@ -13,8 +13,8 @@ mkdir -p .build || true
 
 cd .build
 
-# clone from https://github.com/Innei/rayon-terminal if not exists
-GIT_URL="https://github.com/Innei/rayon-terminal"
+# clone from https://github.com/playstonex/rayon-terminal.git if not exists
+GIT_URL="https://github.com/playstonex/rayon-terminal.git"
 GIT_PATH="RayonTerminal"
 
 if [ ! -d "$GIT_PATH" ]; then

@@ -134,7 +134,8 @@
                 let bgColor = UIColor(hex: background)
                 self.backgroundColor = bgColor
                 let webView = self.associatedCore.associatedWebView
-                webView.isOpaque = true
+                // Keep isOpaque = false to prevent white background artifacts
+                webView.isOpaque = false
                 webView.backgroundColor = bgColor
                 webView.scrollView.backgroundColor = bgColor
 

@@ -254,11 +254,20 @@ class XTerminalCore: XTerminal {
                 .replacingOccurrences(of: "'", with: "\\'")
                 .replacingOccurrences(of: "\"", with: "\\\"")
 
-            // Call the global setTerminalFont function
+            // Call the global setTerminalFont function with error handling
             let script = """
-            if (typeof window.setTerminalFont === 'function') {
-                window.setTerminalFont('\(escapedName)');
-            }
+            (function() {
+                try {
+                    if (typeof window.setTerminalFont === 'function') {
+                        window.setTerminalFont('\(escapedName)');
+                        console.log('Font set to: \(escapedName)');
+                    } else {
+                        console.warn('setTerminalFont function not found');
+                    }
+                } catch (e) {
+                    console.error('Error setting font:', e);
+                }
+            })();
             """
             debugPrint("Setting terminal font to: \(name)")
             self.associatedWebView.evaluateJavascriptWithRetry(javascript: script)
@@ -295,31 +304,40 @@ class XTerminalCore: XTerminal {
                 usleep(1000)
             }
 
-            // Call the global setTerminalTheme function
+            // Call the global setTerminalTheme function with error handling
             let script = """
-            if (typeof window.setTerminalTheme === 'function') {
-                window.setTerminalTheme({
-                    foreground: '\(foreground)',
-                    background: '\(background)',
-                    cursor: '\(cursor)',
-                    black: '\(black)',
-                    red: '\(red)',
-                    green: '\(green)',
-                    yellow: '\(yellow)',
-                    blue: '\(blue)',
-                    magenta: '\(magenta)',
-                    cyan: '\(cyan)',
-                    white: '\(white)',
-                    brightBlack: '\(brightBlack)',
-                    brightRed: '\(brightRed)',
-                    brightGreen: '\(brightGreen)',
-                    brightYellow: '\(brightYellow)',
-                    brightBlue: '\(brightBlue)',
-                    brightMagenta: '\(brightMagenta)',
-                    brightCyan: '\(brightCyan)',
-                    brightWhite: '\(brightWhite)'
-                });
-            }
+            (function() {
+                try {
+                    if (typeof window.setTerminalTheme === 'function') {
+                        window.setTerminalTheme({
+                            foreground: '\(foreground)',
+                            background: '\(background)',
+                            cursor: '\(cursor)',
+                            black: '\(black)',
+                            red: '\(red)',
+                            green: '\(green)',
+                            yellow: '\(yellow)',
+                            blue: '\(blue)',
+                            magenta: '\(magenta)',
+                            cyan: '\(cyan)',
+                            white: '\(white)',
+                            brightBlack: '\(brightBlack)',
+                            brightRed: '\(brightRed)',
+                            brightGreen: '\(brightGreen)',
+                            brightYellow: '\(brightYellow)',
+                            brightBlue: '\(brightBlue)',
+                            brightMagenta: '\(brightMagenta)',
+                            brightCyan: '\(brightCyan)',
+                            brightWhite: '\(brightWhite)'
+                        });
+                        console.log('Terminal theme applied successfully');
+                    } else {
+                        console.warn('setTerminalTheme function not found');
+                    }
+                } catch (e) {
+                    console.error('Error setting theme:', e);
+                }
+            })();
             """
             self.associatedWebView.evaluateJavascriptWithRetry(javascript: script)
         }

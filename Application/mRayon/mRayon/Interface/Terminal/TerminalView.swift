@@ -60,10 +60,10 @@ struct TerminalView: View {
                         // Background
                         ColorFromHex(store.terminalTheme.background)
                             .ignoresSafeArea()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         // Terminal view
                         context.termInterface
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .onChange(of: r.size) { _, _ in
                                 guard context.interfaceToken == interfaceToken else { return }
                                 updateTerminalSize()
@@ -87,7 +87,6 @@ struct TerminalView: View {
                                     applyTheme()
                                 }
                             }
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if !context.destroyedSession {

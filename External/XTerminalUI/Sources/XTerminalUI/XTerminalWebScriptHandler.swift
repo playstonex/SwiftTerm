@@ -14,6 +14,7 @@ class XTerminalWebScriptHandler: NSObject, WKScriptMessageHandler {
     var onDataChain: ((String) -> Void)?
     var onSizeChain: ((CGSize) -> Void)?
     var onCopyChain: ((String) -> Void)?
+    var onCommandChain: ((String) -> Void)?  // 新增：支持 rayon-terminal 的 command 消息
 
     func userContentController(
         _: WKUserContentController,
@@ -36,7 +37,14 @@ class XTerminalWebScriptHandler: NSObject, WKScriptMessageHandler {
             if let size = ResizeData.fromString(msg) {
                 onSizeChain?(size)
             }
+        case "command":
+            // 新增：处理 rayon-terminal 的 command 消息
+            if let command = msg as? String {
+                onCommandChain?(command)
+            }
         case "copy":
+            // rayon-terminal 的 copy 命令需要清空输入区，然后写入数据
+            // 这里我们不需要复制功能，保持原有行为
             onCopyChain?(msg)
         default:
             debugPrint("unrecognized message magic")
@@ -58,11 +66,12 @@ class XTerminalWebScriptHandler: NSObject, WKScriptMessageHandler {
     }
 
     deinit {
-        debugPrint("\(self) __deinit__")
+        // debugPrint("\(self) __deinit__")
         onBellChain = nil
         onDataChain = nil
         onTitleChain = nil
         onSizeChain = nil
         onCopyChain = nil
+        onCommandChain = nil  // 新增：清除 command 链
     }
 }

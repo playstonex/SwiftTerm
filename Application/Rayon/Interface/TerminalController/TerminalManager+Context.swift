@@ -331,11 +331,15 @@ extension TerminalManager {
         /// Execute command and capture output within skill context
         func executeCommandForSkill(_ command: String, timeout: Int = 30) async throws -> (output: String, exitCode: Int?) {
             var output = ""
-            
+
             // Wrap command to capture exit code
             let wrappedCommand = wrapCommandWithExitCode(command)
 
             return try await withCheckedThrowingContinuation { continuation in
+                // Track whether we've already resumed to prevent double-resume
+                var resumed = false
+                let lock = NSLock()
+
                 self.shell.beginExecute(
                     withCommand: wrappedCommand,
                     withTimeout: NSNumber(value: timeout),
@@ -343,11 +347,20 @@ extension TerminalManager {
                     withOutput: { chunk in
                         output.append(chunk)
                     },
-                    withContinuationHandler: {
+                    withContinuationHandler: { [capturedContinuation = continuation] in
+                        lock.lock()
+                        defer { lock.unlock() }
+
+                        guard !resumed else {
+                            // Already resumed, return true to indicate termination
+                            return true
+                        }
+                        resumed = true
+
                         // Parse exit code from output
                         let (cleanOutput, code) = self.parseExitCode(from: output)
-                        
-                        continuation.resume(returning: (cleanOutput, code))
+
+                        capturedContinuation.resume(returning: (cleanOutput, code))
                         return true
                     }
                 )
