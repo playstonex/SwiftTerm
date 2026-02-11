@@ -314,12 +314,13 @@ extension TerminalManager {
                 let autoCreate = RayonStore.shared.tmuxAutoCreate
 
                 // Build tmux attach command
-                var tmuxCmd = "tmux attach-session -t "
+                var tmuxCmd = ""
                 if autoCreate {
-                    // -A flag: if session doesn't exist, create it with new-session
-                    tmuxCmd += "'\\(new-session -As \"\(sessionName)\"\\)'"
+                    // Use new-session -A to attach or create in one command
+                    tmuxCmd = "tmux new-session -A -s \"\(sessionName)\""
                 } else {
-                    tmuxCmd += "\"\(sessionName)\""
+                    // Try to attach to existing session only
+                    tmuxCmd = "tmux attach-session -t \"\(sessionName)\""
                 }
 
                 // Small delay to ensure terminal is ready
