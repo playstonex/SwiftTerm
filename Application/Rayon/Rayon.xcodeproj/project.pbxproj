@@ -61,6 +61,8 @@
 		50A8A6AC27B850E9004F6DDC /* BatchSnippetExecContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50A8A6AA27B850E9004F6DDC /* BatchSnippetExecContext.swift */; };
 		50BBA54B27B7F08800CE7BB1 /* MachinePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50BBA54927B7F08800CE7BB1 /* MachinePickerView.swift */; };
 		50BBA54F27B8000900CE7BB1 /* Colorful in Frameworks */ = {isa = PBXBuildFile; productRef = 50BBA54E27B8000900CE7BB1 /* Colorful */; };
+		50C000012F26B01200B4F3DB /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C000022F26B01200B4F3DB /* AssistantManager.swift */; };
+		50C000032F26B01200B4F3DB /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C000042F26B01200B4F3DB /* AssistantDetailView.swift */; };
 		50DB352127DAE999002DEE72 /* PortForwardBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50DB352027DAE999002DEE72 /* PortForwardBackend.swift */; };
 		50DDB33E27B4009800C471C0 /* IdentityPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50DDB33C27B4009800C471C0 /* IdentityPickerView.swift */; };
 		50F64E5A27B3CB35008D52FB /* EditIdentitiesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F64E5827B3CB35008D52FB /* EditIdentitiesView.swift */; };
@@ -68,8 +70,6 @@
 		50FD878827D9CC3300EE3A5C /* PortForwardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */; };
 		ABD999D328A09F0700404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D228A09F0700404E61 /* CloudKit.framework */; };
 		ABD999D728A21E0D00404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D628A21E0D00404E61 /* DataSync */; };
-		50C000012F26B01200B4F3DB /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C000022F26B01200B4F3DB /* AssistantManager.swift */; };
-		50C000032F26B01200B4F3DB /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C000042F26B01200B4F3DB /* AssistantDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -136,14 +136,14 @@
 		50A8A6A727B84EF9004F6DDC /* BatchTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchTerminalView.swift; sourceTree = "<group>"; };
 		50A8A6AA27B850E9004F6DDC /* BatchSnippetExecContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSnippetExecContext.swift; sourceTree = "<group>"; };
 		50BBA54927B7F08800CE7BB1 /* MachinePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachinePickerView.swift; sourceTree = "<group>"; };
+		50C000022F26B01200B4F3DB /* AssistantManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantManager.swift; sourceTree = "<group>"; };
+		50C000042F26B01200B4F3DB /* AssistantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDetailView.swift; sourceTree = "<group>"; };
 		50DB352027DAE999002DEE72 /* PortForwardBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardBackend.swift; sourceTree = "<group>"; };
 		50DDB33C27B4009800C471C0 /* IdentityPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentityPickerView.swift; sourceTree = "<group>"; };
 		50F64E5827B3CB35008D52FB /* EditIdentitiesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditIdentitiesView.swift; sourceTree = "<group>"; };
 		50F64E5D27B3D922008D52FB /* MachineCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineCreateView.swift; sourceTree = "<group>"; };
 		50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardManager.swift; sourceTree = "<group>"; };
 		ABD999D228A09F0700404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
-		50C000022F26B01200B4F3DB /* AssistantManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantManager.swift; sourceTree = "<group>"; };
-		50C000042F26B01200B4F3DB /* AssistantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -334,15 +334,6 @@
 			path = Effects;
 			sourceTree = "<group>";
 		};
-		50C000052F26B01200B4F3DB /* Assistant */ = {
-			isa = PBXGroup;
-			children = (
-				50C000022F26B01200B4F3DB /* AssistantManager.swift */,
-				50C000042F26B01200B4F3DB /* AssistantDetailView.swift */,
-			);
-			path = Assistant;
-			sourceTree = "<group>";
-		};
 		509F7FA127B303E900F28752 /* UIBridge */ = {
 			isa = PBXGroup;
 			children = (
@@ -363,6 +354,15 @@
 				50A8A6A727B84EF9004F6DDC /* BatchTerminalView.swift */,
 			);
 			path = SnippetController;
+			sourceTree = "<group>";
+		};
+		50C000052F26B01200B4F3DB /* Assistant */ = {
+			isa = PBXGroup;
+			children = (
+				50C000022F26B01200B4F3DB /* AssistantManager.swift */,
+				50C000042F26B01200B4F3DB /* AssistantDetailView.swift */,
+			);
+			path = Assistant;
 			sourceTree = "<group>";
 		};
 		50F64E5B27B3D47B008D52FB /* Identity */ = {
@@ -687,7 +687,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 73;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -705,7 +705,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = GoodTerm;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -725,7 +725,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 73;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -743,7 +743,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 3.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = GoodTerm;
 				PROVISIONING_PROFILE_SPECIFIER = "";
