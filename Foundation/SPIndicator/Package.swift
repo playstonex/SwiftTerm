@@ -1,11 +1,11 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.9
 
 import PackageDescription
 
 let package = Package(
     name: "SPIndicator",
     platforms: [
-        .iOS(.v12), .tvOS(.v12),
+        .iOS(.v17)
     ],
     products: [
         .library(

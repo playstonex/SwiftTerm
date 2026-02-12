@@ -1,14 +1,12 @@
-// swift-tools-version:5.3
+// swift-tools-version:5.9
 
 import PackageDescription
 
 let package = Package(
     name: "Colorful",
     platforms: [
-        .iOS(.v13),
-        .tvOS(.v13),
-        .macOS(.v10_15),
-        .watchOS(.v6),
+        .iOS(.v17),
+        .macOS(.v14),
     ],
     products: [
         .library(name: "Colorful", targets: ["Colorful"]),

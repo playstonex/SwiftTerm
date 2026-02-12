@@ -1,11 +1,10 @@
-// swift-tools-version:5.3
-
+// swift-tools-version:5.9
 import PackageDescription
 
 let package = Package(
     name: "DataSync",
     platforms: [
-        .iOS(.v13),
+        .iOS(.v17),
         .tvOS(.v13),
         .macOS(.v10_15),
         .watchOS(.v6),

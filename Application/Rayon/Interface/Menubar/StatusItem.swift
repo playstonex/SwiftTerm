@@ -12,7 +12,7 @@ import NSRemoteShell
 import RayonModule
 import SwiftUI
 
-class MenubarStatusItem: NSObject, Identifiable {
+class MenubarStatusItem: NSObject, Identifiable, ObservableObject {
     let id: UUID = .init()
 
     let machine: RDMachine
@@ -24,6 +24,9 @@ class MenubarStatusItem: NSObject, Identifiable {
     var loopContinue: Bool = true
 
     var representedShell: NSRemoteShell?
+
+    // Reader Mode State
+    @Published var isReaderModeEnabled: Bool = false
 
     init(machine: RDMachine, identity: RDIdentity) {
         self.machine = machine
@@ -40,6 +43,11 @@ class MenubarStatusItem: NSObject, Identifiable {
                     Text(machine.name)
                         .font(.system(.headline, design: .rounded))
                     Spacer()
+                    // Reader Mode button
+                    ReaderModeButton(isEnabled: isReaderModeEnabled) {
+                        self.toggleReaderMode()
+                    }
+                    // Close button
                     Button { [weak self] in
                         self?.closeThisItem()
                     } label: {
@@ -53,8 +61,10 @@ class MenubarStatusItem: NSObject, Identifiable {
                             )
                             .frame(width: 20, height: 20)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    .buttonStyle(.borderless)
                 }
+                .contentShape(Rectangle())
+                .buttonStyle(PlainButtonStyle())
                 Divider()
                 ServerStatusViews
                     .createBaseStatusView(withContext: statusInfo)
@@ -65,6 +75,7 @@ class MenubarStatusItem: NSObject, Identifiable {
             .padding(.bottom, 15)
         }
         .frame(width: 350, height: 700)
+        .contentShape(Rectangle())
         buildPopover.contentViewController = NSHostingController(rootView: contentView)
 
         eventMonitor = EventMonitor(mask: [.leftMouseDown, .rightMouseDown], handler: mouseEventHandler)
@@ -147,5 +158,54 @@ class MenubarStatusItem: NSObject, Identifiable {
         eventMonitor = nil
         NSStatusBar.system.removeStatusItem(statusItem)
         MenubarTool.shared.remove(menubarItem: id)
+    }
+
+    // MARK: - Reader Mode
+
+    func toggleReaderMode() {
+        isReaderModeEnabled.toggle()
+        // Reader mode provides button hover effects - no additional implementation needed
+    }
+}
+
+// MARK: - Reader Mode Button Component
+
+struct ReaderModeButton: View {
+    let isEnabled: Bool
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "book")
+                .font(.system(size: 14, weight: .regular, design: .rounded))
+                .foregroundColor(iconColor)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(backgroundColor)
+                .animation(.easeInOut(duration: 0.15), value: isHovered)
+        )
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+
+    private var iconColor: Color {
+        if isEnabled {
+            return .blue
+        }
+        return isHovered ? .primary : .gray
+    }
+
+    private var backgroundColor: Color {
+        if isHovered {
+            return Color.blue.opacity(0.1)
+        }
+        return Color.clear
     }
 }
