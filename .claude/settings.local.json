@@ -33,7 +33,10 @@
       "mcp__zai-mcp-server__analyze_image",
       "Bash(gh pr create:*)",
       "Bash(git pull:*)",
-      "Bash(defaults read:*)"
+      "Bash(defaults read:*)",
+      "Bash(plutil:*)",
+      "Bash(sips:*)",
+      "Bash(pip3 install:*)"
     ]
   }
 }
