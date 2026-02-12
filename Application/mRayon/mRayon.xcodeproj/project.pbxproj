@@ -40,8 +40,6 @@
 		5082A1C827D09D1700C71C0F /* MonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C727D09D1700C71C0F /* MonitorView.swift */; };
 		5082A1CA27D0A90100C71C0F /* MonitorContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C927D0A90100C71C0F /* MonitorContext.swift */; };
 		5082A1CC27D0AC0900C71C0F /* TerminalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */; };
-		7C9E168838D648E990B6D7FE /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C9E168738D648E990B6D7FD /* AssistantManager.swift */; };
-		8EA7ACF9AB114CB89ED2BB2A /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */; };
 		5082A1D327D0E10000C71C0F /* EULA in Resources */ = {isa = PBXBuildFile; fileRef = 5082A1D127D0E10000C71C0F /* EULA */; };
 		5082A1D427D0E10000C71C0F /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 5082A1D227D0E10000C71C0F /* LICENSE */; };
 		5082A1D627D1228900C71C0F /* UIViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1D527D1228900C71C0F /* UIViewController.swift */; };
@@ -68,6 +66,8 @@
 		50D3AEFD27D063A30085F899 /* PickIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D3AEFC27D063A30085F899 /* PickIdentityView.swift */; };
 		50D77BE727D2F0FB00177190 /* SettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D77BE627D2F0FB00177190 /* SettingView.swift */; };
 		50FD853A27D0445D00F6F01A /* EditSnippetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD853927D0445D00F6F01A /* EditSnippetView.swift */; };
+		7C9E168838D648E990B6D7FE /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C9E168738D648E990B6D7FD /* AssistantManager.swift */; };
+		8EA7ACF9AB114CB89ED2BB2A /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */; };
 		AB47C2FE2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2FA2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf */; };
 		AB47C2FF2F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2F12F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf */; };
 		AB47C3002F282AAC00C7AA60 /* CascadiaCodeNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */; };
@@ -151,15 +151,15 @@
 		ABB80CB72B8EC2B700FDD779 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B1027CF18C100F60B51 /* TerminalView.swift */; };
 		ABB80CB82B8EC2B700FDD779 /* TerminalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B0E27CF18BD00F60B51 /* TerminalManager.swift */; };
 		ABB80CB92B8EC2B700FDD779 /* TerminalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */; };
-		ABB80CC02B8EC2B900FDD77C /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C9E168738D648E990B6D7FD /* AssistantManager.swift */; };
-		ABB80CC12B8EC2BA000FDD7D /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */; };
 		ABB80CBA2B8EC2BB00FDD779 /* FileTransferContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51627E4B14800EF01C4 /* FileTransferContext.swift */; };
 		ABB80CBB2B8EC2BB00FDD779 /* FileTransferManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51427E4B14100EF01C4 /* FileTransferManager.swift */; };
 		ABB80CBC2B8EC2BB00FDD779 /* FileTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5013B51827E4B14E00EF01C4 /* FileTransferView.swift */; };
 		ABB80CBD2B8EC2BF00FDD779 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501B334727DF16AA00EB6261 /* LogView.swift */; };
 		ABB80CBE2B8EC2BF00FDD779 /* SettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D77BE627D2F0FB00177190 /* SettingView.swift */; };
 		ABB80CBF2B8EC2C800FDD779 /* UIWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF627CF12E000F60B51 /* UIWindow.swift */; };
+		ABB80CC02B8EC2B900FDD77C /* AssistantManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C9E168738D648E990B6D7FD /* AssistantManager.swift */; };
 		ABB80CC02B8EC2C800FDD779 /* UIViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1D527D1228900C71C0F /* UIViewController.swift */; };
+		ABB80CC12B8EC2BA000FDD7D /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */; };
 		ABB80CC12B8EC2C800FDD779 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726927CF1C0800149A43 /* View.swift */; };
 		ABB80CC22B8EC2C800FDD779 /* FilePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D727427CF43CE00149A43 /* FilePicker.swift */; };
 		ABB80CC32B8EC2C800FDD779 /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C227D087FB00C71C0F /* Util.swift */; };
@@ -214,8 +214,6 @@
 		5082A1C727D09D1700C71C0F /* MonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorView.swift; sourceTree = "<group>"; };
 		5082A1C927D0A90100C71C0F /* MonitorContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorContext.swift; sourceTree = "<group>"; };
 		5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalContext.swift; sourceTree = "<group>"; };
-		7C9E168738D648E990B6D7FD /* AssistantManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantManager.swift; sourceTree = "<group>"; };
-		8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDetailView.swift; sourceTree = "<group>"; };
 		5082A1D127D0E10000C71C0F /* EULA */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = EULA; path = ../../../../Resources/EULA; sourceTree = "<group>"; };
 		5082A1D227D0E10000C71C0F /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = LICENSE; path = ../../../../Resources/LICENSE; sourceTree = "<group>"; };
 		5082A1D527D1228900C71C0F /* UIViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIViewController.swift; sourceTree = "<group>"; };
@@ -243,6 +241,8 @@
 		50D3AEFC27D063A30085F899 /* PickIdentityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickIdentityView.swift; sourceTree = "<group>"; };
 		50D77BE627D2F0FB00177190 /* SettingView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SettingView.swift; sourceTree = "<group>"; };
 		50FD853927D0445D00F6F01A /* EditSnippetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditSnippetView.swift; sourceTree = "<group>"; };
+		7C9E168738D648E990B6D7FD /* AssistantManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantManager.swift; sourceTree = "<group>"; };
+		8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDetailView.swift; sourceTree = "<group>"; };
 		AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaCodeNF.ttf; sourceTree = "<group>"; };
 		AB47C2EE2F282AAC00C7AA60 /* CascadiaMonoNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaMonoNF.ttf; sourceTree = "<group>"; };
 		AB47C2EF2F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
@@ -520,7 +520,6 @@
 			children = (
 				50C90B0E27CF18BD00F60B51 /* TerminalManager.swift */,
 				5082A1CB27D0AC0900C71C0F /* TerminalContext.swift */,
-				844B8FB4398C41F5BB7A093A /* AssistantView.swift */,
 				50C90B1027CF18C100F60B51 /* TerminalView.swift */,
 			);
 			path = Terminal;
@@ -1034,7 +1033,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 73;
+				CURRENT_PROJECT_VERSION = "";
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_APP_SANDBOX = YES;
@@ -1061,7 +1060,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0;
+				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1086,7 +1085,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 73;
+				CURRENT_PROJECT_VERSION = "";
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_APP_SANDBOX = YES;
@@ -1113,7 +1112,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0;
+				MARKETING_VERSION = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

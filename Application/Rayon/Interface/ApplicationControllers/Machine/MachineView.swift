@@ -10,6 +10,7 @@ import SwiftUI
 
 struct MachineView: View {
     let machine: RDMachine.ID
+    var forceHighlight: Bool = false
 
     @EnvironmentObject var store: RayonStore
 
@@ -29,7 +30,7 @@ struct MachineView: View {
             }
             .background(
                 Color.accentColor
-                    .opacity( hoverd ? 0.1 : 0.05)
+                    .opacity((hoverd || forceHighlight) ? 0.1 : 0.05)
                     .roundedCorner()
             )
             .sheet(isPresented: $openEditSheet) {

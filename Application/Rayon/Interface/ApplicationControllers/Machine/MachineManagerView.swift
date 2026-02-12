@@ -156,34 +156,31 @@ struct MachineManagerView: View {
                 .font(.system(.headline, design: .rounded))
                 LazyVGrid(columns: columns, alignment: .leading, spacing: itemSpacing) {
                     ForEach(searchResultFor(section: section)) { machine in
-//                        Text("Hi")
-                        MachineView(machine: machine.id)
-                            .overlay(
-                                VStack {
-                                    HStack(spacing: 4) {
-                                        Spacer()
-                                        MachineActionView(machine: machine.id)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(4)
-                                .opacity(hoverSelection == machine.id ? 1 : 0)
+                        ZStack(alignment: .topTrailing) {
+                            MachineView(
+                                machine: machine.id,
+                                forceHighlight: hoverSelection == machine.id
                             )
-//                            .border(Color.gray, width: selection.contains(machine.id) ? 0.5 : 0)
-//                            .border(Color.accentColor, width: hoverSelection == machine.id ? 0.5 : 0)
+                            MachineActionView(machine: machine.id)
+                                .offset(x: 6, y: -6)
+                                .opacity(hoverSelection == machine.id ? 1 : 0)
+                        }
+                        .contentShape(Rectangle())
+//                        .border(Color.gray, width: selection.contains(machine.id) ? 0.5 : 0)
+//                        .border(Color.accentColor, width: hoverSelection == machine.id ? 0.5 : 0)
+                        .onHover { hover in
+                            if hover {
+                                hoverSelection = machine.id
+                            } else if hoverSelection == machine.id {
+                                hoverSelection = nil
+                            }
+                        }
                             .onTapGesture {
                                 if selection.contains(machine.id) {
                                     selection = selection
                                         .filter { $0 != machine.id }
                                 } else {
                                     selection.insert(machine.id)
-                                }
-                            }
-                            .onHover { hover in
-                                if hover {
-                                    hoverSelection = machine.id
-                                } else {
-                                    hoverSelection = nil
                                 }
                             }
                     }

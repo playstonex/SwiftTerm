@@ -48,35 +48,31 @@ class MenubarStatusItem: NSObject, Identifiable, ObservableObject {
                         self.toggleReaderMode()
                     }
                     // Close button
-                    Button { [weak self] in
-                        self?.closeThisItem()
-                    } label: {
-                        Circle()
-                            .foregroundColor(.gray)
-                            .opacity(0.5)
-                            .overlay(
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 10, weight: .heavy, design: .rounded))
-                                    .foregroundColor(.white)
-                            )
-                            .frame(width: 20, height: 20)
+                    CloseButton {
+                        self.closeThisItem()
                     }
-                    .buttonStyle(.borderless)
                 }
-                .contentShape(Rectangle())
-                .buttonStyle(PlainButtonStyle())
                 Divider()
                 ServerStatusViews
                     .createBaseStatusView(withContext: statusInfo)
             }
+            .background(Color(NSColor.controlBackgroundColor))
+            .contentShape(Rectangle())
+            .buttonStyle(PlainButtonStyle())
             .textSelection(.enabled)
             .padding(.top, 10)
             .padding(.horizontal, 15)
             .padding(.bottom, 15)
         }
-        .frame(width: 350, height: 700)
+        .background(Color(NSColor.controlBackgroundColor))
         .contentShape(Rectangle())
-        buildPopover.contentViewController = NSHostingController(rootView: contentView)
+        .buttonStyle(PlainButtonStyle())
+        .frame(width: 350, height: 700)
+
+        let hostingController = NSHostingController(rootView: contentView)
+        buildPopover.contentViewController = hostingController
+        buildPopover.behavior = .transient
+        buildPopover.animates = false
 
         eventMonitor = EventMonitor(mask: [.leftMouseDown, .rightMouseDown], handler: mouseEventHandler)
 
@@ -174,38 +170,33 @@ struct ReaderModeButton: View {
     let isEnabled: Bool
     let action: () -> Void
 
-    @State private var isHovered = false
+    var body: some View {
+        Image(systemName: "book")
+            .font(.system(size: 14, weight: .regular, design: .rounded))
+            .foregroundColor(isEnabled ? .blue : .gray)
+            .frame(width: 24, height: 24)
+            .onTapGesture {
+                action()
+            }
+    }
+}
+
+// MARK: - Close Button Component
+
+struct CloseButton: View {
+    let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "book")
-                .font(.system(size: 14, weight: .regular, design: .rounded))
-                .foregroundColor(iconColor)
-                .frame(width: 24, height: 24)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(PlainButtonStyle())
-        .background(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(backgroundColor)
-                .animation(.easeInOut(duration: 0.15), value: isHovered)
-        )
-        .onHover { hovering in
-            isHovered = hovering
-        }
-    }
-
-    private var iconColor: Color {
-        if isEnabled {
-            return .blue
-        }
-        return isHovered ? .primary : .gray
-    }
-
-    private var backgroundColor: Color {
-        if isHovered {
-            return Color.blue.opacity(0.1)
-        }
-        return Color.clear
+        Circle()
+            .foregroundColor(.gray.opacity(0.5))
+            .overlay(
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+            )
+            .frame(width: 20, height: 20)
+            .onTapGesture {
+                action()
+            }
     }
 }
