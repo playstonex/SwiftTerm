@@ -19,6 +19,8 @@ public struct RDAppSettingsSync: Codable, Equatable {
         public var useTmux: Bool
         public var tmuxSessionName: String
         public var tmuxAutoCreate: Bool
+        public var speechInputEngine: String
+        public var speechInputLocaleIdentifier: String
         public var openInterfaceAutomatically: Bool
         public var fileTransferConflictPolicy: String
         public var fileTransferMaxConcurrent: Int
@@ -41,6 +43,8 @@ public struct RDAppSettingsSync: Codable, Equatable {
         useTmux: Bool,
         tmuxSessionName: String,
         tmuxAutoCreate: Bool,
+        speechInputEngine: String,
+        speechInputLocaleIdentifier: String,
         openInterfaceAutomatically: Bool,
         fileTransferConflictPolicy: String,
         fileTransferMaxConcurrent: Int,
@@ -63,6 +67,8 @@ public struct RDAppSettingsSync: Codable, Equatable {
         self.useTmux = useTmux
         self.tmuxSessionName = tmuxSessionName
         self.tmuxAutoCreate = tmuxAutoCreate
+        self.speechInputEngine = speechInputEngine
+        self.speechInputLocaleIdentifier = speechInputLocaleIdentifier
         self.openInterfaceAutomatically = openInterfaceAutomatically
         self.fileTransferConflictPolicy = fileTransferConflictPolicy
         self.fileTransferMaxConcurrent = fileTransferMaxConcurrent
@@ -86,6 +92,8 @@ public struct RDAppSettingsSync: Codable, Equatable {
     public var useTmux: Bool
     public var tmuxSessionName: String
     public var tmuxAutoCreate: Bool
+    public var speechInputEngine: String
+    public var speechInputLocaleIdentifier: String
     public var openInterfaceAutomatically: Bool
     public var fileTransferConflictPolicy: String
     public var fileTransferMaxConcurrent: Int
@@ -109,6 +117,8 @@ public struct RDAppSettingsSync: Codable, Equatable {
             useTmux: useTmux,
             tmuxSessionName: tmuxSessionName,
             tmuxAutoCreate: tmuxAutoCreate,
+            speechInputEngine: speechInputEngine,
+            speechInputLocaleIdentifier: speechInputLocaleIdentifier,
             openInterfaceAutomatically: openInterfaceAutomatically,
             fileTransferConflictPolicy: fileTransferConflictPolicy,
             fileTransferMaxConcurrent: fileTransferMaxConcurrent,
@@ -177,6 +187,8 @@ extension RDAppSettingsSync: iCloudSyncItem {
             useTmux = decoded.useTmux
             tmuxSessionName = decoded.tmuxSessionName
             tmuxAutoCreate = decoded.tmuxAutoCreate
+            speechInputEngine = decoded.speechInputEngine
+            speechInputLocaleIdentifier = decoded.speechInputLocaleIdentifier
             openInterfaceAutomatically = decoded.openInterfaceAutomatically
             fileTransferConflictPolicy = decoded.fileTransferConflictPolicy
             fileTransferMaxConcurrent = decoded.fileTransferMaxConcurrent
@@ -197,6 +209,8 @@ extension RDAppSettingsSync: iCloudSyncItem {
             useTmux = record["useTmux"] as? Bool ?? false
             tmuxSessionName = record["tmuxSessionName"] as? String ?? "default"
             tmuxAutoCreate = record["tmuxAutoCreate"] as? Bool ?? true
+            speechInputEngine = record["speechInputEngine"] as? String ?? "apple"
+            speechInputLocaleIdentifier = record["speechInputLocaleIdentifier"] as? String ?? "system"
             openInterfaceAutomatically = record["openInterfaceAutomatically"] as? Bool ?? true
             fileTransferConflictPolicy = record["fileTransferConflictPolicy"] as? String ?? "rename"
             fileTransferMaxConcurrent = record["fileTransferMaxConcurrent"] as? Int ?? 2
@@ -225,6 +239,8 @@ public extension RayonStore {
             useTmux: useTmux,
             tmuxSessionName: tmuxSessionName,
             tmuxAutoCreate: tmuxAutoCreate,
+            speechInputEngine: speechInputEngine,
+            speechInputLocaleIdentifier: speechInputLocaleIdentifier,
             openInterfaceAutomatically: openInterfaceAutomatically,
             fileTransferConflictPolicy: fileTransferConflictPolicy,
             fileTransferMaxConcurrent: fileTransferMaxConcurrent,
@@ -249,6 +265,8 @@ public extension RayonStore {
         useTmux = settings.useTmux
         tmuxSessionName = settings.tmuxSessionName
         tmuxAutoCreate = settings.tmuxAutoCreate
+        speechInputEngine = settings.speechInputEngine
+        speechInputLocaleIdentifier = settings.speechInputLocaleIdentifier
         openInterfaceAutomatically = settings.openInterfaceAutomatically
         fileTransferConflictPolicy = settings.fileTransferConflictPolicy
         fileTransferMaxConcurrent = settings.fileTransferMaxConcurrent

@@ -15,11 +15,104 @@ public struct SyncSnapshot: Codable, Identifiable {
         public var useTmux: Bool
         public var tmuxSessionName: String
         public var tmuxAutoCreate: Bool
+        public var speechInputEngine: String
+        public var speechInputLocaleIdentifier: String
         public var openInterfaceAutomatically: Bool
         public var fileTransferConflictPolicy: String
         public var fileTransferMaxConcurrent: Int
         public var fileTransferRateLimitKBps: Int
         public var fileTransferResumeEnabled: Bool
+
+        enum CodingKeys: String, CodingKey {
+            case timeout
+            case monitorInterval
+            case reducedViewEffects
+            case disableConformation
+            case storeRecent
+            case saveTemporarySession
+            case terminalFontSize
+            case terminalFontName
+            case themePreference
+            case terminalThemeName
+            case useTmux
+            case tmuxSessionName
+            case tmuxAutoCreate
+            case speechInputEngine
+            case speechInputLocaleIdentifier
+            case openInterfaceAutomatically
+            case fileTransferConflictPolicy
+            case fileTransferMaxConcurrent
+            case fileTransferRateLimitKBps
+            case fileTransferResumeEnabled
+        }
+
+        public init(
+            timeout: Int,
+            monitorInterval: Int,
+            reducedViewEffects: Bool,
+            disableConformation: Bool,
+            storeRecent: Bool,
+            saveTemporarySession: Bool,
+            terminalFontSize: Int,
+            terminalFontName: String,
+            themePreference: String,
+            terminalThemeName: String,
+            useTmux: Bool,
+            tmuxSessionName: String,
+            tmuxAutoCreate: Bool,
+            speechInputEngine: String,
+            speechInputLocaleIdentifier: String,
+            openInterfaceAutomatically: Bool,
+            fileTransferConflictPolicy: String,
+            fileTransferMaxConcurrent: Int,
+            fileTransferRateLimitKBps: Int,
+            fileTransferResumeEnabled: Bool
+        ) {
+            self.timeout = timeout
+            self.monitorInterval = monitorInterval
+            self.reducedViewEffects = reducedViewEffects
+            self.disableConformation = disableConformation
+            self.storeRecent = storeRecent
+            self.saveTemporarySession = saveTemporarySession
+            self.terminalFontSize = terminalFontSize
+            self.terminalFontName = terminalFontName
+            self.themePreference = themePreference
+            self.terminalThemeName = terminalThemeName
+            self.useTmux = useTmux
+            self.tmuxSessionName = tmuxSessionName
+            self.tmuxAutoCreate = tmuxAutoCreate
+            self.speechInputEngine = speechInputEngine
+            self.speechInputLocaleIdentifier = speechInputLocaleIdentifier
+            self.openInterfaceAutomatically = openInterfaceAutomatically
+            self.fileTransferConflictPolicy = fileTransferConflictPolicy
+            self.fileTransferMaxConcurrent = fileTransferMaxConcurrent
+            self.fileTransferRateLimitKBps = fileTransferRateLimitKBps
+            self.fileTransferResumeEnabled = fileTransferResumeEnabled
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            timeout = try container.decode(Int.self, forKey: .timeout)
+            monitorInterval = try container.decode(Int.self, forKey: .monitorInterval)
+            reducedViewEffects = try container.decode(Bool.self, forKey: .reducedViewEffects)
+            disableConformation = try container.decode(Bool.self, forKey: .disableConformation)
+            storeRecent = try container.decode(Bool.self, forKey: .storeRecent)
+            saveTemporarySession = try container.decode(Bool.self, forKey: .saveTemporarySession)
+            terminalFontSize = try container.decode(Int.self, forKey: .terminalFontSize)
+            terminalFontName = try container.decode(String.self, forKey: .terminalFontName)
+            themePreference = try container.decode(String.self, forKey: .themePreference)
+            terminalThemeName = try container.decode(String.self, forKey: .terminalThemeName)
+            useTmux = try container.decode(Bool.self, forKey: .useTmux)
+            tmuxSessionName = try container.decode(String.self, forKey: .tmuxSessionName)
+            tmuxAutoCreate = try container.decode(Bool.self, forKey: .tmuxAutoCreate)
+            speechInputEngine = try container.decodeIfPresent(String.self, forKey: .speechInputEngine) ?? "apple"
+            speechInputLocaleIdentifier = try container.decodeIfPresent(String.self, forKey: .speechInputLocaleIdentifier) ?? "system"
+            openInterfaceAutomatically = try container.decode(Bool.self, forKey: .openInterfaceAutomatically)
+            fileTransferConflictPolicy = try container.decode(String.self, forKey: .fileTransferConflictPolicy)
+            fileTransferMaxConcurrent = try container.decode(Int.self, forKey: .fileTransferMaxConcurrent)
+            fileTransferRateLimitKBps = try container.decode(Int.self, forKey: .fileTransferRateLimitKBps)
+            fileTransferResumeEnabled = try container.decode(Bool.self, forKey: .fileTransferResumeEnabled)
+        }
     }
 
     public let id: UUID
@@ -70,6 +163,8 @@ public extension RayonStore {
             useTmux: useTmux,
             tmuxSessionName: tmuxSessionName,
             tmuxAutoCreate: tmuxAutoCreate,
+            speechInputEngine: speechInputEngine,
+            speechInputLocaleIdentifier: speechInputLocaleIdentifier,
             openInterfaceAutomatically: openInterfaceAutomatically,
             fileTransferConflictPolicy: fileTransferConflictPolicy,
             fileTransferMaxConcurrent: fileTransferMaxConcurrent,
@@ -125,6 +220,8 @@ public extension RayonStore {
             self.useTmux = target.settings.useTmux
             self.tmuxSessionName = target.settings.tmuxSessionName
             self.tmuxAutoCreate = target.settings.tmuxAutoCreate
+            self.speechInputEngine = target.settings.speechInputEngine
+            self.speechInputLocaleIdentifier = target.settings.speechInputLocaleIdentifier
             self.openInterfaceAutomatically = target.settings.openInterfaceAutomatically
             self.fileTransferConflictPolicy = target.settings.fileTransferConflictPolicy
             self.fileTransferMaxConcurrent = target.settings.fileTransferMaxConcurrent

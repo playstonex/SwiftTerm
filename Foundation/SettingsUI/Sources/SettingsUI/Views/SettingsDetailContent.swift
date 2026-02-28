@@ -12,6 +12,9 @@ import DataSync
 import MachineStatus
 import Premium
 import RayonModule
+#if canImport(Speech)
+import Speech
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -145,6 +148,8 @@ public struct SettingsDetailContent: View {
             fileTransferSettingsView
         case .tmuxSettings:
             tmuxSettingsView
+        case .voiceSettings:
+            voiceSettingsView
 
         default:
             Text("Coming Soon")
@@ -849,6 +854,60 @@ public struct SettingsDetailContent: View {
                 }
             }
         }
+    }
+
+    private var voiceSettingsView: some View {
+        Section("Voice Input") {
+            HStack {
+                Text("Engine")
+                Spacer()
+                Picker("Engine", selection: $store.speechInputEngine) {
+                    ForEach(speechEngineOptions, id: \.id) { option in
+                        Text(option.name).tag(option.id)
+                    }
+                }
+                .labelsHidden()
+            }
+
+            HStack {
+                Text("Language")
+                Spacer()
+                Picker("Language", selection: $store.speechInputLocaleIdentifier) {
+                    ForEach(speechLanguageOptions, id: \.id) { option in
+                        Text(option.name).tag(option.id)
+                    }
+                }
+                .labelsHidden()
+            }
+
+            Text("Changes apply to terminal voice input immediately.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var speechEngineOptions: [(id: String, name: String)] {
+        [
+            ("apple", "Apple Speech"),
+            ("disabled", "Disabled"),
+        ]
+    }
+
+    private var speechLanguageOptions: [(id: String, name: String)] {
+        var options: [(id: String, name: String)] = [("system", "System Default")]
+        #if canImport(Speech)
+        let locales = SFSpeechRecognizer.supportedLocales().sorted {
+            $0.identifier.localizedCaseInsensitiveCompare($1.identifier) == .orderedAscending
+        }
+        options.append(contentsOf: locales.map { locale in
+            let localized = Locale.current.localizedString(forIdentifier: locale.identifier) ?? locale.identifier
+            return (locale.identifier, localized)
+        })
+        #endif
+        if options.contains(where: { $0.id == store.speechInputLocaleIdentifier }) == false {
+            options.append((store.speechInputLocaleIdentifier, store.speechInputLocaleIdentifier))
+        }
+        return options
     }
 
     // MARK: - Helper Methods

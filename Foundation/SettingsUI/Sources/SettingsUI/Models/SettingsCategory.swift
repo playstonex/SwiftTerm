@@ -44,7 +44,7 @@ public enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         case .ai:
             return [.aiConfiguration]
         case .advanced:
-            return [.applicationSettings, .connectionSettings, .fileTransferSettings, .tmuxSettings]
+            return [.applicationSettings, .connectionSettings, .fileTransferSettings, .tmuxSettings, .voiceSettings]
         }
     }
 }
@@ -78,6 +78,7 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
     case connectionSettings = "Connection Settings"
     case fileTransferSettings = "File Transfer Settings"
     case tmuxSettings = "Tmux Settings"
+    case voiceSettings = "Voice Input"
 
     public var id: String { rawValue }
 
@@ -99,6 +100,7 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
         case .connectionSettings: return "network"
         case .fileTransferSettings: return "arrow.up.arrow.down"
         case .tmuxSettings: return "terminal.fill"
+        case .voiceSettings: return "waveform"
         }
     }
 
@@ -120,6 +122,7 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
         case .connectionSettings: return "Connection preferences"
         case .fileTransferSettings: return "File transfer options"
         case .tmuxSettings: return "Tmux session settings"
+        case .voiceSettings: return "Speech engine and language"
         }
     }
 }
