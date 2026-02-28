@@ -14,7 +14,9 @@ public struct RDSnippet: Codable, Identifiable, Equatable {
         group: String = "",
         code: String = "",
         comment: String = "",
-        attachment: [String: String] = [:]
+        attachment: [String: String] = [:],
+        lastModifiedDate: Date = Date(),
+        isDeleted: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -22,6 +24,8 @@ public struct RDSnippet: Codable, Identifiable, Equatable {
         self.code = code
         self.comment = comment
         self.attachment = attachment
+        self.lastModifiedDate = lastModifiedDate
+        self.isDeleted = isDeleted
     }
 
     public var id: UUID
@@ -32,6 +36,8 @@ public struct RDSnippet: Codable, Identifiable, Equatable {
     public var comment: String
 
     public var attachment: [String: String]
+    public var lastModifiedDate: Date
+    public var isDeleted: Bool
 
     public func isQualifiedForSearch(text: String) -> Bool {
         let searchText = text.lowercased()

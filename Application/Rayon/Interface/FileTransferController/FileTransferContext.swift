@@ -58,6 +58,38 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
     @Published var currentSpeed: Int = 0
     @Published var currentProgressCancelable = false
     var continueCurrentProgress: Bool = false
+    @Published var pendingTransferCount: Int = 0
+
+    enum ConflictPolicy: String {
+        case rename
+        case overwrite
+        case skip
+    }
+
+    struct TransferTask: Identifiable, Hashable {
+        enum Kind: Hashable {
+            case upload(local: URL, remoteDirectory: URL)
+            case download(remote: URL, localDirectory: URL)
+        }
+
+        let id: UUID
+        let kind: Kind
+        let createdAt: Date
+
+        init(id: UUID = UUID(), kind: Kind, createdAt: Date = Date()) {
+            self.id = id
+            self.kind = kind
+            self.createdAt = createdAt
+        }
+    }
+
+    private var failedTransferQueue: [TransferTask] = [] {
+        didSet {
+            mainActor {
+                self.pendingTransferCount = self.failedTransferQueue.count
+            }
+        }
+    }
 
     struct RemoteFile: Identifiable, Equatable, Hashable {
         var id: RemoteFile { self }
@@ -234,6 +266,130 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
         loadCurrentFileList()
     }
 
+    private var conflictPolicy: ConflictPolicy {
+        ConflictPolicy(rawValue: RayonStore.shared.fileTransferConflictPolicy) ?? .rename
+    }
+
+    private var rateLimitKBps: Int {
+        RayonStore.shared.fileTransferRateLimitKBps
+    }
+
+    private func throttleIfNeeded(speed: Int) {
+        guard rateLimitKBps > 0 else { return }
+        let limit = rateLimitKBps * 1024
+        guard speed > limit else { return }
+        let ratio = min(Double(speed) / Double(limit), 4.0)
+        let delay = UInt32(max(20_000, Int(200_000 * (ratio - 1))))
+        usleep(delay)
+    }
+
+    private func buildUniqueLocalPath(initial: String) -> String {
+        var target = initial
+        let base = URL(fileURLWithPath: target)
+        let ext = base.pathExtension
+        var duplicate = 1
+        while FileManager.default.fileExists(atPath: target) {
+            duplicate += 1
+            target = base.deletingPathExtension().path + ".\(duplicate)"
+            if !ext.isEmpty { target += ".\(ext)" }
+        }
+        return target
+    }
+
+    private func resolveRemoteUploadPath(for localURL: URL, base: URL) -> String? {
+        let filename = localURL.lastPathComponent
+        let exists = (shell.requestFileList(at: base.path) ?? []).contains { $0.name == filename }
+
+        if !exists {
+            return base.appendingPathComponent(filename).path
+        }
+
+        switch conflictPolicy {
+        case .skip:
+            return nil
+        case .overwrite:
+            let path = base.appendingPathComponent(filename).path
+            _ = shell.requestDelete(forFileAndWait: path, withProgressBlock: { _ in }, withContinuationHandler: { true })
+            return path
+        case .rename:
+            var candidate = base.appendingPathComponent(filename).path
+            let url = URL(fileURLWithPath: candidate)
+            let ext = url.pathExtension
+            var duplicate = 1
+            let names = Set((shell.requestFileList(at: base.path) ?? []).map(\.name))
+            while names.contains(URL(fileURLWithPath: candidate).lastPathComponent) {
+                duplicate += 1
+                candidate = url.deletingPathExtension().path + ".\(duplicate)"
+                if !ext.isEmpty { candidate += ".\(ext)" }
+            }
+            return candidate
+        }
+    }
+
+    private func enqueueFailedTransfer(_ task: TransferTask) {
+        failedTransferQueue.append(task)
+    }
+
+    func resumeFailedTransfers() {
+        guard !failedTransferQueue.isEmpty else { return }
+        let pending = failedTransferQueue
+        failedTransferQueue.removeAll()
+
+        for task in pending {
+            switch task.kind {
+            case .upload(let local, let remoteDir):
+                navigate(path: remoteDir.path)
+                upload(urls: [local])
+            case .download(let remote, let localDir):
+                download(from: remote, toDir: localDir)
+            }
+        }
+    }
+
+    func syncLocalDirectoryToRemote(localDirectory: URL, remoteDirectory: String? = nil) {
+        guard connectionAvailableCheckPassed() else { return }
+        let base = remoteDirectory.map { URL(fileURLWithPath: $0) } ?? currentUrl
+        let fm = FileManager.default
+        guard let enumerator = fm.enumerator(at: localDirectory, includingPropertiesForKeys: [.isRegularFileKey]) else {
+            return
+        }
+        let files: [URL] = enumerator.compactMap { item in
+            guard let url = item as? URL else { return nil }
+            let values = try? url.resourceValues(forKeys: [.isRegularFileKey])
+            return values?.isRegularFile == true ? url : nil
+        }
+
+        if files.isEmpty { return }
+        let maxConcurrent = max(1, RayonStore.shared.fileTransferMaxConcurrent)
+        let semaphore = DispatchSemaphore(value: maxConcurrent)
+        let group = DispatchGroup()
+
+        for file in files {
+            semaphore.wait()
+            group.enter()
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.upload(urls: [file])
+                semaphore.signal()
+                group.leave()
+            }
+        }
+        group.wait()
+        navigate(path: base.path)
+    }
+
+    func syncRemoteDirectoryToLocal(remoteDirectory: String? = nil, localDirectory: URL) {
+        guard connectionAvailableCheckPassed() else { return }
+        let path = remoteDirectory ?? currentDir
+        let files = shell.requestFileList(at: path) ?? []
+        for file in files {
+            if file.isDirectory {
+                continue
+            }
+            let remoteURL = URL(fileURLWithPath: path).appendingPathComponent(file.name)
+            download(from: remoteURL, toDir: localDirectory)
+        }
+    }
+
     func upload(urls: [URL]) {
         guard connectionAvailableCheckPassed() else { return }
         let base = currentUrl
@@ -253,13 +409,17 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
                     progress.completedUnitCount = Int64(current)
                     self.totalProgress = progress
                 }
+                guard let targetPath = resolveRemoteUploadPath(for: url, base: base) else {
+                    continue
+                }
                 let done = shell.requestUpload(
                     forFileAndWait: url.path,
-                    toDirectory: base.path
+                    toDirectory: URL(fileURLWithPath: targetPath).deletingLastPathComponent().path
                 ) { file, progress, speed in
                     self.currentProcessingFile = file
                     self.currentProgress = progress
                     self.currentSpeed = speed
+                    self.throttleIfNeeded(speed: speed)
                 } withContinuationHandler: {
                     self.continueCurrentProgress
                 }
@@ -267,7 +427,17 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
                     let error = shell.getLastFileTransferError()
                     UIBridge.presentError(with: "Error Occurred")
                     print("SFTP \(machine.name) Error: \(error ?? "Unknown")")
+                    if RayonStore.shared.fileTransferResumeEnabled {
+                        enqueueFailedTransfer(.init(kind: .upload(local: url, remoteDirectory: base)))
+                    }
                     break
+                }
+                let uploadedName = url.lastPathComponent
+                let desiredName = URL(fileURLWithPath: targetPath).lastPathComponent
+                if desiredName != uploadedName {
+                    let source = base.appendingPathComponent(uploadedName).path
+                    let destination = base.appendingPathComponent(desiredName).path
+                    _ = shell.requestRenameFileAndWait(source, withNewPath: destination)
                 }
             }
             putInformation("Uploade Completed")
@@ -326,13 +496,16 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
         if !to.hasSuffix("/") { to += "/" }
         // now let's put that file name into to
         to += from.lastPathComponent
-        let toBase = URL(fileURLWithPath: to)
-        let ext = toBase.pathExtension
-        var duplicate = 1
-        while FileManager.default.fileExists(atPath: to) {
-            duplicate += 1
-            to = toBase.deletingPathExtension().path + ".\(duplicate)"
-            if !ext.isEmpty { to += ".\(ext)" }
+        if FileManager.default.fileExists(atPath: to) {
+            switch conflictPolicy {
+            case .skip:
+                putInformation("Skipped \(from.lastPathComponent)")
+                return
+            case .overwrite:
+                try? FileManager.default.removeItem(atPath: to)
+            case .rename:
+                to = buildUniqueLocalPath(initial: to)
+            }
         }
         guard connectionAvailableCheckPassed() else { return }
         continueCurrentProgress = true
@@ -349,6 +522,7 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
                 self.currentProcessingFile = file
                 self.currentProgress = progress
                 self.currentSpeed = speed
+                self.throttleIfNeeded(speed: speed)
             } withContinuationHandler: {
                 self.continueCurrentProgress
             }
@@ -361,6 +535,9 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
                 let error = shell.getLastFileTransferError()
                 UIBridge.presentError(with: "Error Occurred")
                 print("SFTP \(machine.name) Error: \(error ?? "Unknown")")
+                if RayonStore.shared.fileTransferResumeEnabled {
+                    enqueueFailedTransfer(.init(kind: .download(remote: from, localDirectory: toDir)))
+                }
             }
             loadCurrentFileList()
         }

@@ -7,6 +7,8 @@
 
 import RayonModule
 import SwiftUI
+import AVFoundation
+import Speech
 import UIKit
 import XTerminalUI
 
@@ -23,6 +25,9 @@ struct TerminalView: View {
     @Environment(\.presentationMode) var presentationMode
 
     @State private var isShowingToolbarSettings = false
+    @StateObject private var speechInputController = TerminalSpeechInputController()
+    @State private var liveTranscriptPreview: String = ""
+    private let terminalContentPadding = EdgeInsets(top: 10, leading: 12, bottom: 6, trailing: 12)
 
     // Helper function to create Color from hex string
     private func ColorFromHex(_ hex: String) -> Color {
@@ -64,6 +69,7 @@ struct TerminalView: View {
                         // Terminal view
                         context.termInterface
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(terminalContentPadding)
                             .onChange(of: r.size) { _, _ in
                                 guard context.interfaceToken == interfaceToken else { return }
                                 updateTerminalSize()
@@ -71,10 +77,8 @@ struct TerminalView: View {
                             .onAppear {
                                 context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
                                 context.termInterface.setTerminalFontName(with: store.terminalFontName)
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                    self.applyTheme()
-                                    self.applyFont()
-                                }
+                                // Apply theme immediately without delay
+                                applyTheme()
                             }
                             .onChange(of: store.terminalFontSize) { _, newValue in
                                 context.termInterface.setTerminalFontSize(with: newValue)
@@ -90,55 +94,98 @@ struct TerminalView: View {
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if !context.destroyedSession {
-                            AccessoryBar(
-                                isReconnecting: context.closed,
-                                controlKey: .constant(""),
-                                isShowingControlPopover: .constant(false),
-                                isShowingToolbarSettings: $isShowingToolbarSettings,
-                                keyStore: ToolbarKeyStore.shared,
-                                onReconnect: {
-                                    DispatchQueue.global().async {
-                                        context.putInformation("[i] Reconnect will use the information you provide previously,")
-                                        context.putInformation("    if the machine was edited, create a new terminal.")
-                                        context.processBootstrap()
-                                    }
-                                },
-                                onClose: {
-                                    if context.closed {
-                                        presentationMode.wrappedValue.dismiss()
-                                        TerminalManager.shared.end(for: context.id)
-                                    } else {
-                                        UIBridge.requiresConfirmation(
-                                            message: "Are you sure you want to close this session?"
-                                        ) { yes in
-                                            if yes { context.processShutdown() }
+                            VStack(spacing: 6) {
+                                if speechInputController.isRecording || !liveTranscriptPreview.isEmpty {
+                                    LiveTranscriptBar(
+                                        text: liveTranscriptPreview,
+                                        onSendWithReturn: {
+                                            let payload = liveTranscriptPreview.trimmingCharacters(in: .whitespacesAndNewlines)
+                                            guard !payload.isEmpty else { return }
+                                            self.safeWrite(payload + "\n")
+                                            liveTranscriptPreview = ""
+                                            speechInputController.clearCurrentBuffer()
+                                            UIBridge.presentSuccess(with: "Sent+Enter")
+                                        },
+                                        onSendWithoutReturn: {
+                                            let payload = liveTranscriptPreview.trimmingCharacters(in: .whitespacesAndNewlines)
+                                            guard !payload.isEmpty else { return }
+                                            self.safeWrite(payload)
+                                            liveTranscriptPreview = ""
+                                            speechInputController.clearCurrentBuffer()
+                                            UIBridge.presentSuccess(with: "Sent")
+                                        },
+                                        onClear: {
+                                            liveTranscriptPreview = ""
+                                            speechInputController.clearCurrentBuffer()
                                         }
-                                    }
-                                },
-                                onPaste: {
-                                    guard let str = UIPasteboard.general.string else {
-                                        UIBridge.presentError(with: "Empty Pasteboard")
-                                        return
-                                    }
-                                    UIBridge.requiresConfirmation(
-                                        message: "Are you sure you want to paste following string?\n\n\(str)"
-                                    ) { yes in
-                                        if yes { self.safeWrite(str) }
-                                    }
-                                },
-                                onCopy: {
-                                    let cleanHistory = context.getOutputHistoryStrippedANSI()
-                                    if !cleanHistory.isEmpty {
-                                        UIPasteboard.general.string = cleanHistory
-                                        UIBridge.presentSuccess(with: "已复制")
-                                    } else {
-                                        UIBridge.presentError(with: "终端内容为空")
-                                    }
-                                },
-                                onSendKey: { key in
-                                    self.safeWrite(key)
+                                    )
                                 }
-                            )
+                                AccessoryBar(
+                                    isReconnecting: context.closed,
+                                    isVoiceRecording: speechInputController.isRecording,
+                                    controlKey: .constant(""),
+                                    isShowingControlPopover: .constant(false),
+                                    isShowingToolbarSettings: $isShowingToolbarSettings,
+                                    keyStore: ToolbarKeyStore.shared,
+                                    onReconnect: {
+                                        DispatchQueue.global().async {
+                                            context.putInformation("[i] Reconnect will use the information you provide previously,")
+                                            context.putInformation("    if the machine was edited, create a new terminal.")
+                                            context.processBootstrap()
+                                        }
+                                    },
+                                    onClose: {
+                                        if context.closed {
+                                            presentationMode.wrappedValue.dismiss()
+                                            TerminalManager.shared.end(for: context.id)
+                                        } else {
+                                            UIBridge.requiresConfirmation(
+                                                message: "Are you sure you want to close this session?"
+                                            ) { yes in
+                                                if yes { context.processShutdown() }
+                                            }
+                                        }
+                                    },
+                                    onPaste: {
+                                        guard let str = UIPasteboard.general.string else {
+                                            UIBridge.presentError(with: "Empty Pasteboard")
+                                            return
+                                        }
+                                        UIBridge.requiresConfirmation(
+                                            message: "Are you sure you want to paste following string?\n\n\(str)"
+                                        ) { yes in
+                                            if yes { self.safeWrite(str) }
+                                        }
+                                    },
+                                    onCopy: {
+                                        let cleanHistory = context.getOutputHistoryStrippedANSI()
+                                        if !cleanHistory.isEmpty {
+                                            UIPasteboard.general.string = cleanHistory
+                                            UIBridge.presentSuccess(with: "已复制")
+                                        } else {
+                                            UIBridge.presentError(with: "终端内容为空")
+                                        }
+                                    },
+                                    onSendKey: { key in
+                                        self.safeWrite(key)
+                                    },
+                                    onVoiceInput: {
+                                        if speechInputController.isRecording {
+                                            speechInputController.stopAndCommit()
+                                            return
+                                        }
+                                        speechInputController.startRecognition(
+                                            onPartialTranscript: { partial in
+                                                liveTranscriptPreview = partial
+                                            },
+                                            onFinalTranscript: { transcript in
+                                                let payload = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                                                liveTranscriptPreview = payload
+                                            }
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -174,6 +221,10 @@ struct TerminalView: View {
         }
         .sheet(isPresented: $isShowingToolbarSettings) {
             ToolbarSettingsView(keyStore: ToolbarKeyStore.shared)
+        }
+        .onDisappear {
+            speechInputController.stopAndDiscard()
+            liveTranscriptPreview = ""
         }
     }
 
@@ -238,6 +289,7 @@ struct TerminalView: View {
 
 private struct AccessoryBar: View {
     let isReconnecting: Bool
+    let isVoiceRecording: Bool
     @Binding var controlKey: String
     @Binding var isShowingControlPopover: Bool
     @Binding var isShowingToolbarSettings: Bool
@@ -247,6 +299,7 @@ private struct AccessoryBar: View {
     let onPaste: () -> Void
     let onCopy: () -> Void
     let onSendKey: (String) -> Void
+    let onVoiceInput: () -> Void
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -332,6 +385,12 @@ private struct AccessoryBar: View {
                     onSend: { onSendKey($0) }
                 )
             }
+        case "voice":
+            AccessoryBarButton(
+                icon: isVoiceRecording ? "mic.fill" : key.icon,
+                label: isVoiceRecording ? "Listening" : key.label,
+                action: onVoiceInput
+            )
         default:
             EmptyView()
         }
@@ -367,6 +426,51 @@ private struct Separator: View {
             .frame(width: 1)
             .padding(.horizontal, 4)
             .padding(.vertical, 8)
+    }
+}
+
+private struct LiveTranscriptBar: View {
+    let text: String
+    let onSendWithReturn: () -> Void
+    let onSendWithoutReturn: () -> Void
+    let onClear: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Button(action: onSendWithReturn) {
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Text(text.isEmpty ? "Listening..." : text)
+                        .font(.system(size: 13))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Spacer(minLength: 0)
+            Button(action: onClear) {
+                Image(systemName: "xmark.circle")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.borderless)
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            Button(action: onSendWithoutReturn) {
+                Image(systemName: "arrow.turn.up.left")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 28, height: 28)
+            }
+            .buttonStyle(.borderless)
+            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 8)
     }
 }
 
@@ -487,6 +591,7 @@ class ToolbarKeyStore: ObservableObject {
         // Control keys
         ToolbarKey(id: "ctrl", icon: "keyboard", label: "Ctrl", keySequence: "", isEnabled: true, category: .control),
         ToolbarKey(id: "esc", icon: "escape", label: "Esc", keySequence: "\u{001B}", isEnabled: true, category: .control),
+        ToolbarKey(id: "voice", icon: "mic", label: "Voice", keySequence: "", isEnabled: ToolbarKeyStore.isSpeechRecognitionAvailable(), category: .control),
 
         // Custom keys
         ToolbarKey(id: "tab", icon: "arrow.right", label: "Tab", keySequence: "\u{0009}", isEnabled: true, category: .custom),
@@ -513,6 +618,14 @@ class ToolbarKeyStore: ObservableObject {
 
     private init() {
         loadKeys()
+    }
+
+    private static func isSpeechRecognitionAvailable() -> Bool {
+        // Check if speech recognition is supported and available for the current locale
+        guard let recognizer = SFSpeechRecognizer(locale: .current) else {
+            return false
+        }
+        return recognizer.isAvailable
     }
 
     private func loadKeys() {
@@ -542,6 +655,177 @@ class ToolbarKeyStore: ObservableObject {
 
     func enabledKeys() -> [ToolbarKey] {
         return availableKeys.filter { $0.isEnabled }
+    }
+}
+
+@MainActor
+final class TerminalSpeechInputController: NSObject, ObservableObject {
+    @Published private(set) var isRecording = false
+
+    private let audioEngine = AVAudioEngine()
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var speechRecognizer: SFSpeechRecognizer?
+    private var fullTranscript = ""
+    private var committedPrefix = ""
+    private var liveTranscript = ""
+    private var onPartialTranscript: ((String) -> Void)?
+    private var onFinalTranscript: ((String) -> Void)?
+
+    func startRecognition(
+        onPartialTranscript: @escaping (String) -> Void,
+        onFinalTranscript: @escaping (String) -> Void
+    ) {
+        guard !isRecording else { return }
+        guard RayonStore.shared.speechInputEngine != "disabled" else {
+            UIBridge.presentError(with: "Voice disabled")
+            return
+        }
+        self.onPartialTranscript = onPartialTranscript
+        self.onFinalTranscript = onFinalTranscript
+        self.onPartialTranscript?("")
+
+        Task {
+            do {
+                try await requestPermissions()
+                try configureAndStart()
+            } catch {
+                UIBridge.presentError(with: "Mic/Speech denied")
+            }
+        }
+    }
+
+    func stopAndCommit() {
+        stop(commit: true)
+    }
+
+    func stopAndDiscard() {
+        stop(commit: false)
+    }
+
+    func clearCurrentBuffer() {
+        guard isRecording else {
+            liveTranscript = ""
+            onPartialTranscript?("")
+            return
+        }
+        committedPrefix = fullTranscript
+        liveTranscript = ""
+        onPartialTranscript?("")
+    }
+
+    private func stop(commit: Bool) {
+        guard isRecording || !liveTranscript.isEmpty else { return }
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        isRecording = false
+
+        if commit {
+            let payload = currentDeltaTranscript().trimmingCharacters(in: .whitespacesAndNewlines)
+            if !payload.isEmpty {
+                onFinalTranscript?(payload)
+            }
+        } else {
+            onPartialTranscript?("")
+        }
+        fullTranscript = ""
+        committedPrefix = ""
+        liveTranscript = ""
+    }
+
+    private func requestPermissions() async throws {
+        let recordPermission = await withCheckedContinuation { continuation in
+            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                continuation.resume(returning: granted)
+            }
+        }
+        guard recordPermission else { throw SpeechError.permissionDenied }
+
+        let speechPermission = await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status)
+            }
+        }
+        guard speechPermission == .authorized else { throw SpeechError.permissionDenied }
+    }
+
+    private func configureAndStart() throws {
+        let localeIdentifier = RayonStore.shared.speechInputLocaleIdentifier
+        let targetLocale: Locale
+        if localeIdentifier == "system" {
+            targetLocale = .current
+        } else {
+            targetLocale = Locale(identifier: localeIdentifier)
+        }
+        speechRecognizer = SFSpeechRecognizer(locale: targetLocale)
+        if speechRecognizer == nil {
+            speechRecognizer = SFSpeechRecognizer(locale: .current)
+        }
+        guard let speechRecognizer else { throw SpeechError.unavailable }
+        guard speechRecognizer.isAvailable else { throw SpeechError.unavailable }
+
+        fullTranscript = ""
+        committedPrefix = ""
+        liveTranscript = ""
+        recognitionTask?.cancel()
+        recognitionTask = nil
+
+        let audioSession = AVAudioSession.sharedInstance()
+        try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        recognitionRequest = request
+
+        let inputNode = audioEngine.inputNode
+        inputNode.removeTap(onBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputNode.outputFormat(forBus: 0)) { [weak self] buffer, _ in
+            self?.recognitionRequest?.append(buffer)
+        }
+
+        audioEngine.prepare()
+        try audioEngine.start()
+        isRecording = true
+        UIBridge.presentSuccess(with: "Voice started")
+
+        recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
+            guard let self else { return }
+            if let result {
+                self.fullTranscript = result.bestTranscription.formattedString
+                self.liveTranscript = self.currentDeltaTranscript()
+                self.onPartialTranscript?(self.liveTranscript)
+                if result.isFinal {
+                    Task { @MainActor in
+                        self.stop(commit: true)
+                    }
+                    return
+                }
+            }
+            if error != nil {
+                Task { @MainActor in
+                    self.stop(commit: true)
+                }
+            }
+        }
+    }
+
+    private enum SpeechError: Error {
+        case permissionDenied
+        case unavailable
+    }
+
+    private func currentDeltaTranscript() -> String {
+        if committedPrefix.isEmpty { return fullTranscript }
+        guard fullTranscript.hasPrefix(committedPrefix) else {
+            committedPrefix = ""
+            return fullTranscript
+        }
+        return String(fullTranscript.dropFirst(committedPrefix.count))
     }
 }
 
@@ -630,4 +914,3 @@ struct ToolbarSettingsView: View {
         }
     }
 }
-

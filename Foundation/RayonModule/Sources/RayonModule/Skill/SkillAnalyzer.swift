@@ -14,8 +14,12 @@ public class SkillAnalyzer: ObservableObject {
 
     private let aiAssistant: AIAssistant
 
-    public init(aiAssistant: AIAssistant = .shared) {
+    public init(aiAssistant: AIAssistant) {
         self.aiAssistant = aiAssistant
+    }
+
+    public convenience init() {
+        self.init(aiAssistant: .shared)
     }
 
     /// Analyze command output in skill context

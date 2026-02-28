@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000CFF5835B0D8D /* SettingsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0000000000005306EABAF4A4 /* SettingsUI */; };
 		500D726827CF1BC000149A43 /* MachineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726727CF1BC000149A43 /* MachineElement.swift */; };
 		500D726A27CF1C0800149A43 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726927CF1C0800149A43 /* View.swift */; };
 		500D726D27CF269700149A43 /* PlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726C27CF269700149A43 /* PlaceholderView.swift */; };
@@ -172,6 +173,11 @@
 		ABBE62932B917F2400B347B9 /* Launch Screen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = ABBE62922B917F2400B347B9 /* Launch Screen.storyboard */; };
 		ABD999D528A09F3F00404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D428A09F3F00404E61 /* CloudKit.framework */; };
 		ABD999D928A21E1800404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D828A21E1800404E61 /* DataSync */; };
+		ABF821072F41E308006A8F60 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = ABF821062F41E308006A8F60 /* RevenueCat */; };
+		ABF821092F41E308006A8F60 /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = ABF821082F41E308006A8F60 /* RevenueCatUI */; };
+		ABF8210D2F41E5E2006A8F60 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABF8210C2F41E5E2006A8F60 /* StoreKit.framework */; };
+		ABF821112F41F69A006A8F60 /* PremiumSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF821102F41F69A006A8F60 /* PremiumSettingsView.swift */; };
+		ABF821122F41F69A006A8F60 /* PremiumSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF821102F41F69A006A8F60 /* PremiumSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -271,6 +277,8 @@
 		ABBE628F2B90B45A00B347B9 /* ThanksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThanksView.swift; sourceTree = "<group>"; };
 		ABBE62922B917F2400B347B9 /* Launch Screen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Launch Screen.storyboard"; sourceTree = "<group>"; };
 		ABD999D428A09F3F00404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
+		ABF8210C2F41E5E2006A8F60 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		ABF821102F41F69A006A8F60 /* PremiumSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumSettingsView.swift; sourceTree = "<group>"; };
 		CCFD199B27EACC53005DF0A6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CCFD19A627EACC53005DF0A6 /* mRayonApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = mRayonApp.swift; sourceTree = "<group>"; };
 		CCFD19A827EACC53005DF0A6 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -289,6 +297,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				505E326327D2602E00054573 /* XTerminalUI in Frameworks */,
+				ABF8210D2F41E5E2006A8F60 /* StoreKit.framework in Frameworks */,
+				ABF821092F41E308006A8F60 /* RevenueCatUI in Frameworks */,
 				505E326727D2626900054573 /* MachineStatus in Frameworks */,
 				ABD999D928A21E1800404E61 /* DataSync in Frameworks */,
 				501B334427DF138200EB6261 /* StripedTextTable in Frameworks */,
@@ -296,9 +306,11 @@
 				5047BE9F27DECE48008887A7 /* SPIndicator in Frameworks */,
 				ABD999D528A09F3F00404E61 /* CloudKit.framework in Frameworks */,
 				501FF79D27CEFC6700380D59 /* Colorful in Frameworks */,
+				ABF821072F41E308006A8F60 /* RevenueCat in Frameworks */,
 				501B334A27DF1B6F00EB6261 /* SymbolPicker in Frameworks */,
 				505E326927D2642700054573 /* MachineStatusView in Frameworks */,
 				501FF79B27CEFC6300380D59 /* RayonModule in Frameworks */,
+				000000000000CFF5835B0D8D /* SettingsUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -387,6 +399,7 @@
 		501FF79927CEFC6300380D59 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				ABF8210C2F41E5E2006A8F60 /* StoreKit.framework */,
 				ABB80CC82B8EDB2B00FDD779 /* CloudKit.framework */,
 				ABD999D428A09F3F00404E61 /* CloudKit.framework */,
 			);
@@ -528,6 +541,7 @@
 		50D77BE527D2F0FB00177190 /* Setting */ = {
 			isa = PBXGroup;
 			children = (
+				ABF821102F41F69A006A8F60 /* PremiumSettingsView.swift */,
 				50D77BE627D2F0FB00177190 /* SettingView.swift */,
 				501B334727DF16AA00EB6261 /* LogView.swift */,
 				ABBE628F2B90B45A00B347B9 /* ThanksView.swift */,
@@ -648,6 +662,9 @@
 				501B334927DF1B6F00EB6261 /* SymbolPicker */,
 				50420730287D967300D62044 /* CodeEditorUI */,
 				ABD999D828A21E1800404E61 /* DataSync */,
+				ABF821062F41E308006A8F60 /* RevenueCat */,
+				ABF821082F41E308006A8F60 /* RevenueCatUI */,
+				0000000000005306EABAF4A4 /* SettingsUI */,
 			);
 			productName = mRayon;
 			productReference = 501FF78727CEFADD00380D59 /* mRayon.app */;
@@ -714,6 +731,9 @@
 				Base,
 			);
 			mainGroup = 501FF77E27CEFADD00380D59;
+			packageReferences = (
+				ABF821052F41E308006A8F60 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
 			productRefGroup = 501FF78827CEFADD00380D59 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -832,6 +852,7 @@
 				5082A1CC27D0AC0900C71C0F /* TerminalContext.swift in Sources */,
 				7C9E168838D648E990B6D7FE /* AssistantManager.swift in Sources */,
 				8EA7ACF9AB114CB89ED2BB2A /* AssistantDetailView.swift in Sources */,
+				ABF821112F41F69A006A8F60 /* PremiumSettingsView.swift in Sources */,
 				500D727127CF40CC00149A43 /* EditIdentityView.swift in Sources */,
 				5082A1E027D1ED5800C71C0F /* AgreementView.swift in Sources */,
 			);
@@ -889,6 +910,7 @@
 				ABB80CB42B8EC2B300FDD779 /* MonitorManager.swift in Sources */,
 				ABB80CBD2B8EC2BF00FDD779 /* LogView.swift in Sources */,
 				ABB80CAA2B8EC2A700FDD779 /* SnippetView.swift in Sources */,
+				ABF821122F41F69A006A8F60 /* PremiumSettingsView.swift in Sources */,
 				ABB80C9A2B8EC29900FDD779 /* PlaceholderView.swift in Sources */,
 				ABBE62912B91528600B347B9 /* ThanksView.swift in Sources */,
 			);
@@ -1061,7 +1083,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1114,7 +1136,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1139,7 +1161,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 74;
+				CURRENT_PROJECT_VERSION = 89;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
@@ -1154,7 +1176,7 @@
 					"@executable_path/Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 3.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = xros;
@@ -1177,7 +1199,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = vRayon/vRayon.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 74;
+				CURRENT_PROJECT_VERSION = 89;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "\"vRayon/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
@@ -1192,7 +1214,7 @@
 					"@executable_path/Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 3.0;
+				MARKETING_VERSION = 3.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = xros;
@@ -1236,7 +1258,22 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		ABF821052F41E308006A8F60 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.59.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		0000000000005306EABAF4A4 /* SettingsUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SettingsUI;
+		};
 		501B334327DF138200EB6261 /* StripedTextTable */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StripedTextTable;
@@ -1336,6 +1373,16 @@
 		ABD999D828A21E1800404E61 /* DataSync */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DataSync;
+		};
+		ABF821062F41E308006A8F60 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ABF821052F41E308006A8F60 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		ABF821082F41E308006A8F60 /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ABF821052F41E308006A8F60 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

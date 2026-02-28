@@ -10,7 +10,193 @@ import MachineStatusView
 import NSRemoteShell
 import RayonModule
 import SwiftUI
+import UserNotifications
 import XTerminalUI
+
+struct MonitorThresholdProfile: Codable, Equatable {
+    var cpuPercent: Float
+    var memoryPercent: Float
+    var diskPercent: Float
+
+    static let `default` = MonitorThresholdProfile(cpuPercent: 85, memoryPercent: 90, diskPercent: 90)
+}
+
+struct MonitorTelemetrySample: Codable, Identifiable, Equatable {
+    let id: UUID
+    let machineId: UUID
+    let machineName: String
+    let timestamp: Date
+    let cpuPercent: Float
+    let memoryPercent: Float
+    let diskPercent: Float
+    let load1: Float
+
+    init(
+        id: UUID = UUID(),
+        machineId: UUID,
+        machineName: String,
+        timestamp: Date = Date(),
+        cpuPercent: Float,
+        memoryPercent: Float,
+        diskPercent: Float,
+        load1: Float
+    ) {
+        self.id = id
+        self.machineId = machineId
+        self.machineName = machineName
+        self.timestamp = timestamp
+        self.cpuPercent = cpuPercent
+        self.memoryPercent = memoryPercent
+        self.diskPercent = diskPercent
+        self.load1 = load1
+    }
+}
+
+final class MonitorTelemetryManager {
+    static let shared = MonitorTelemetryManager()
+
+    private let queue = DispatchQueue(label: "wiki.qaq.rayon.monitor.telemetry", qos: .utility)
+    private let sampleStoreKey = "wiki.qaq.rayon.monitor.samples.v1"
+    private let thresholdStoreKey = "wiki.qaq.rayon.monitor.thresholds.v1"
+    private let maxSamples = 5000
+    private let alertCooldown: TimeInterval = 10 * 60
+
+    private var samples: [MonitorTelemetrySample] = []
+    private var thresholds: [UUID: MonitorThresholdProfile] = [:]
+    private var lastAlertAt: [String: Date] = [:]
+
+    private init() {
+        load()
+        requestNotificationPermissionIfNeeded()
+    }
+
+    func appendSample(machineId: UUID, machineName: String, status: ServerStatus) {
+        let diskPercent = status.fileSystem.elements.map(\.percent).max() ?? 0
+        let sample = MonitorTelemetrySample(
+            machineId: machineId,
+            machineName: machineName,
+            cpuPercent: status.processor.summary.sumUsed,
+            memoryPercent: status.memory.phyUsed * 100,
+            diskPercent: diskPercent,
+            load1: status.system.load1
+        )
+
+        queue.async {
+            self.samples.append(sample)
+            if self.samples.count > self.maxSamples {
+                self.samples.removeFirst(self.samples.count - self.maxSamples)
+            }
+            self.persistSamples()
+            self.checkAlerts(for: sample)
+        }
+    }
+
+    func setThreshold(machineId: UUID, profile: MonitorThresholdProfile) {
+        queue.async {
+            self.thresholds[machineId] = profile
+            self.persistThresholds()
+        }
+    }
+
+    func threshold(for machineId: UUID) -> MonitorThresholdProfile {
+        queue.sync {
+            thresholds[machineId] ?? .default
+        }
+    }
+
+    func trend(for machineId: UUID, within hours: Int) -> [MonitorTelemetrySample] {
+        let cutoff = Date().addingTimeInterval(-Double(hours) * 3600)
+        return queue.sync {
+            samples.filter { $0.machineId == machineId && $0.timestamp >= cutoff }
+        }
+    }
+
+    func exportCSV(for machineId: UUID, to url: URL) throws {
+        let lines = queue.sync {
+            var rows = ["timestamp,machine,cpu_percent,memory_percent,disk_percent,load1"]
+            let formatter = ISO8601DateFormatter()
+            let selected = samples.filter { $0.machineId == machineId }.sorted { $0.timestamp < $1.timestamp }
+            for item in selected {
+                rows.append("\(formatter.string(from: item.timestamp)),\(item.machineName),\(item.cpuPercent),\(item.memoryPercent),\(item.diskPercent),\(item.load1)")
+            }
+            return rows
+        }
+
+        let csv = lines.joined(separator: "\n")
+        try csv.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    func exportJSON(for machineId: UUID, to url: URL) throws {
+        let selected = queue.sync {
+            samples.filter { $0.machineId == machineId }.sorted { $0.timestamp < $1.timestamp }
+        }
+        let data = try JSONEncoder().encode(selected)
+        try data.write(to: url)
+    }
+
+    private func checkAlerts(for sample: MonitorTelemetrySample) {
+        let profile = thresholds[sample.machineId] ?? .default
+
+        if sample.cpuPercent >= profile.cpuPercent {
+            notifyIfNeeded(key: "\(sample.machineId)-cpu", title: "High CPU Alert", body: "\(sample.machineName): CPU \(Int(sample.cpuPercent))%")
+        }
+
+        if sample.memoryPercent >= profile.memoryPercent {
+            notifyIfNeeded(key: "\(sample.machineId)-mem", title: "High Memory Alert", body: "\(sample.machineName): Memory \(Int(sample.memoryPercent))%")
+        }
+
+        if sample.diskPercent >= profile.diskPercent {
+            notifyIfNeeded(key: "\(sample.machineId)-disk", title: "High Disk Alert", body: "\(sample.machineName): Disk \(Int(sample.diskPercent))%")
+        }
+    }
+
+    private func notifyIfNeeded(key: String, title: String, body: String) {
+        let now = Date()
+        if let last = lastAlertAt[key], now.timeIntervalSince(last) < alertCooldown {
+            return
+        }
+        lastAlertAt[key] = now
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
+    }
+
+    private func requestNotificationPermissionIfNeeded() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    private func load() {
+        if let data = UserDefaults.standard.data(forKey: sampleStoreKey),
+           let decoded = try? JSONDecoder().decode([MonitorTelemetrySample].self, from: data)
+        {
+            samples = decoded
+        }
+
+        if let data = UserDefaults.standard.data(forKey: thresholdStoreKey),
+           let decoded = try? JSONDecoder().decode([UUID: MonitorThresholdProfile].self, from: data)
+        {
+            thresholds = decoded
+        }
+    }
+
+    private func persistSamples() {
+        if let data = try? JSONEncoder().encode(samples) {
+            UserDefaults.standard.set(data, forKey: sampleStoreKey)
+        }
+    }
+
+    private func persistThresholds() {
+        if let data = try? JSONEncoder().encode(thresholds) {
+            UserDefaults.standard.set(data, forKey: thresholdStoreKey)
+        }
+    }
+}
 
 struct AssistantDetailView: View {
     @StateObject var context: TerminalManager.Context
@@ -427,6 +613,11 @@ struct AssistantStatusView: View {
             if shell.isConnected, shell.isAuthenticated {
                 // Update status on background thread, then update UI on main thread
                 self.serverStatus.requestInfoAndWait(with: shell)
+                MonitorTelemetryManager.shared.appendSample(
+                    machineId: machine.id,
+                    machineName: machine.name,
+                    status: self.serverStatus
+                )
                 shell.requestDisconnectAndWait()
 
                 // Update UI on main thread after status is fetched
@@ -928,7 +1119,10 @@ struct AssistantAIView: View {
         aiResponse = ""
 
         do {
-            let response = try await aiAssistant.explainCommand(searchText)
+            let response = try await aiAssistant.explainCommand(
+                searchText,
+                sessionId: context.machine.id.uuidString
+            )
             aiResponse = response
         } catch {
             aiResponse = "Error: \(error.localizedDescription)"
@@ -944,7 +1138,8 @@ struct AssistantAIView: View {
         do {
             let suggestions = try await aiAssistant.getSuggestions(
                 currentDirectory: nil,
-                recentCommands: analyzedCommands.prefix(5).map { $0.text }
+                recentCommands: analyzedCommands.prefix(5).map { $0.text },
+                sessionId: context.machine.id.uuidString
             )
             aiResponse = suggestions.joined(separator: "\n")
         } catch {
@@ -959,7 +1154,10 @@ struct AssistantAIView: View {
         aiResponse = ""
 
         do {
-            let response = try await aiAssistant.diagnoseError(errorMessage)
+            let response = try await aiAssistant.diagnoseError(
+                errorMessage,
+                sessionId: context.machine.id.uuidString
+            )
             aiResponse = response
         } catch {
             aiResponse = "Error: \(error.localizedDescription)"
@@ -975,7 +1173,8 @@ struct AssistantAIView: View {
         do {
             let command = try await aiAssistant.naturalLanguageToCommand(
                 nlInput,
-                context: "Current directory: user's home directory"
+                context: "Current directory: user's home directory",
+                sessionId: context.machine.id.uuidString
             )
             aiResponse = command
         } catch {

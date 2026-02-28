@@ -9,6 +9,7 @@ import MachineStatus
 import MachineStatusView
 import NSRemoteShell
 import RayonModule
+import SettingsUI
 import SwiftUI
 
 struct AssistantDetailView: View {
@@ -416,6 +417,11 @@ struct AssistantStatusView: View {
             if shell.isConnected, shell.isAuthenticated {
                 // Update status on background thread, then update UI on main thread
                 self.serverStatus.requestInfoAndWait(with: shell)
+                MonitorTelemetryManager.shared.appendSample(
+                    machineId: machine.id,
+                    machineName: machine.name,
+                    status: self.serverStatus
+                )
                 shell.requestDisconnectAndWait()
 
                 // Update UI on main thread after status is fetched
@@ -929,7 +935,10 @@ struct AssistantAIView: View {
         aiResponse = ""
 
         do {
-            let response = try await aiAssistant.explainCommand(searchText)
+            let response = try await aiAssistant.explainCommand(
+                searchText,
+                sessionId: context.machine.id.uuidString
+            )
             aiResponse = response
         } catch {
             aiResponse = "Error: \(error.localizedDescription)"
@@ -945,7 +954,8 @@ struct AssistantAIView: View {
         do {
             let suggestions = try await aiAssistant.getSuggestions(
                 currentDirectory: nil,
-                recentCommands: analyzedCommands.prefix(5).map { $0.text }
+                recentCommands: analyzedCommands.prefix(5).map { $0.text },
+                sessionId: context.machine.id.uuidString
             )
             aiResponse = suggestions.joined(separator: "\n")
         } catch {
@@ -960,7 +970,10 @@ struct AssistantAIView: View {
         aiResponse = ""
 
         do {
-            let response = try await aiAssistant.diagnoseError(errorMessage)
+            let response = try await aiAssistant.diagnoseError(
+                errorMessage,
+                sessionId: context.machine.id.uuidString
+            )
             aiResponse = response
         } catch {
             aiResponse = "Error: \(error.localizedDescription)"
@@ -976,7 +989,8 @@ struct AssistantAIView: View {
         do {
             let command = try await aiAssistant.naturalLanguageToCommand(
                 nlInput,
-                context: "Current directory: user's home directory"
+                context: "Current directory: user's home directory",
+                sessionId: context.machine.id.uuidString
             )
             aiResponse = command
         } catch {

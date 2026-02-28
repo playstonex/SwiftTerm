@@ -6,9 +6,12 @@
 //
 
 import CodeEditorUI
+import DataSync
 import RayonModule
 import SwiftUI
 import XTerminalUI
+import RevenueCat
+
 
 @main
 struct mRayonApp: App {
@@ -19,9 +22,12 @@ struct mRayonApp: App {
             NSLog("\nCommand Arguments:\n" + CommandLine.arguments.joined(separator: "\n"))
         #endif
 
+        Purchases.configure(withAPIKey: "appl_VwjwBtwnKAECZPoUJvvJRNQTfhZ")
+        
         _ = LogRedirect.shared
         _ = RayonStore.shared
 
+        AutomationManager.shared.startScheduler()
         NSLog("static main completed")
     }
 
@@ -35,6 +41,11 @@ struct mRayonApp: App {
                     nil
                 )
                 .onAppear {
+                    // Trigger automatic sync on app launch
+                    Task {
+                        await AutoSyncManager.shared.syncOnAppLaunch()
+                    }
+
                     // optimize later on flight exp
                     let editor = SCodeEditor()
                     let xterm = STerminalView()
