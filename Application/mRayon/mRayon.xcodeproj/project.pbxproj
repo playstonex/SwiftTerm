@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000CFF5835B0D8D /* SettingsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0000000000005306EABAF4A4 /* SettingsUI */; };
 		500D726827CF1BC000149A43 /* MachineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726727CF1BC000149A43 /* MachineElement.swift */; };
 		500D726A27CF1C0800149A43 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726927CF1C0800149A43 /* View.swift */; };
 		500D726D27CF269700149A43 /* PlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726C27CF269700149A43 /* PlaceholderView.swift */; };
@@ -177,7 +178,6 @@
 		ABF8210D2F41E5E2006A8F60 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABF8210C2F41E5E2006A8F60 /* StoreKit.framework */; };
 		ABF821112F41F69A006A8F60 /* PremiumSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF821102F41F69A006A8F60 /* PremiumSettingsView.swift */; };
 		ABF821122F41F69A006A8F60 /* PremiumSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF821102F41F69A006A8F60 /* PremiumSettingsView.swift */; };
-		000000000000CFF5835B0D8D /* SettingsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0000000000005306EABAF4A4 /* SettingsUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -1083,7 +1083,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1136,7 +1136,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 3.0.0;
+				MARKETING_VERSION = 3.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.playstone.bigserver;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1270,6 +1270,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0000000000005306EABAF4A4 /* SettingsUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SettingsUI;
+		};
 		501B334327DF138200EB6261 /* StripedTextTable */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StripedTextTable;
@@ -1379,10 +1383,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = ABF821052F41E308006A8F60 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
 			productName = RevenueCatUI;
-		};
-		0000000000005306EABAF4A4 /* SettingsUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = SettingsUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
