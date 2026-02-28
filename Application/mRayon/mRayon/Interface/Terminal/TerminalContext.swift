@@ -188,6 +188,41 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         termInterface.write(message)
     }
 
+    private func normalizedTmuxSessionName(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return "default" }
+        let sanitized = trimmed.replacingOccurrences(
+            of: #"[^A-Za-z0-9_-]"#,
+            with: "_",
+            options: .regularExpression
+        )
+        return sanitized.isEmpty ? "default" : sanitized
+    }
+
+    private func singleQuotedShellString(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+    }
+
+    private func buildTmuxBootstrapCommand(sessionName: String, autoCreate: Bool) -> String {
+        let quotedSession = singleQuotedShellString(sessionName)
+        let tmuxAction = autoCreate
+            ? "\"$TMUX_BIN\" new-session -A -s \(quotedSession)"
+            : "\"$TMUX_BIN\" attach-session -t \(quotedSession)"
+        return """
+        TMUX_BIN="$(command -v tmux 2>/dev/null || true)"; \
+        if [ -z "$TMUX_BIN" ]; then \
+          for p in /opt/homebrew/bin/tmux /usr/local/bin/tmux /usr/bin/tmux; do \
+            [ -x "$p" ] && TMUX_BIN="$p" && break; \
+          done; \
+        fi; \
+        if [ -z "$TMUX_BIN" ]; then \
+          echo '[!] tmux not found in PATH or common install paths'; \
+        else \
+          \(tmuxAction); \
+        fi
+        """
+    }
+
     func processBootstrap() {
         defer {
             DispatchQueue.main.async { self.processShutdown(exitFromShell: true) }
@@ -294,6 +329,21 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
                 read.lastBanner = self.shell.remoteBanner ?? "No Banner"
                 RayonStore.shared.machineGroup[self.machine.id] = read
             }
+        }
+
+        // Prepare tmux bootstrap command before entering the terminal loop.
+        if RayonStore.shared.useTmux {
+            let configuredSessionName = RayonStore.shared.tmuxSessionName
+            let sessionName = normalizedTmuxSessionName(configuredSessionName)
+            let autoCreate = RayonStore.shared.tmuxAutoCreate
+
+            let tmuxCmd = buildTmuxBootstrapCommand(sessionName: sessionName, autoCreate: autoCreate)
+
+            if configuredSessionName.trimmingCharacters(in: .whitespacesAndNewlines) != sessionName {
+                putInformation("[i] Normalized tmux session name to: \(sessionName)")
+            }
+            putInformation("[*] Attaching to tmux session: \(sessionName)")
+            insertBuffer(tmuxCmd + "\n")
         }
 
         shell.begin(

@@ -11,8 +11,13 @@ import Foundation
 public class SkillTriggerDetector {
     private let registry: SkillRegistry
 
-    public init(registry: SkillRegistry = .shared) {
+    public init(registry: SkillRegistry) {
         self.registry = registry
+    }
+
+    @MainActor
+    public convenience init() {
+        self.init(registry: .shared)
     }
 
     /// Analyze terminal output and detect matching skills

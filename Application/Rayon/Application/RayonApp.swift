@@ -7,9 +7,11 @@
 
 import AppKit
 import CodeEditorUI
+import DataSync
 import RayonModule
 import SwiftUI
 import XTerminalUI
+import RevenueCat
 
 @main
 struct RayonApp: App {
@@ -23,7 +25,8 @@ struct RayonApp: App {
         #endif
         _ = RayonStore.shared
 //        requiresMenubarSetup = MenubarTool.shared.requireMenubarSetup()
-
+        Purchases.configure(withAPIKey: "appl_VwjwBtwnKAECZPoUJvvJRNQTfhZ")
+        AutomationManager.shared.startScheduler()
         NSLog("static main completed")
     }
 
@@ -70,6 +73,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 window.titleVisibility = .hidden
                 window.styleMask.insert(.fullSizeContentView)
             }
+        }
+
+        // Trigger automatic sync on app launch
+        Task {
+            await AutoSyncManager.shared.syncOnAppLaunch()
         }
     }
 

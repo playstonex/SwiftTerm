@@ -25,9 +25,10 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "PropertyWrapper", path: "../PropertyWrapper"),
-        .package(name: "NSRemoteShell", path: "../NSRemoteShell"),
+        .package(name: "NSRemoteShell", path: "../../External/NSRemoteShell"),
         .package(name: "Keychain", path: "../Keychain"),
-        .package(name: "DataSync", path: "../DataSync")
+        .package(name: "DataSync", path: "../DataSync"),
+        .package(name: "Premium", path: "../Premium")
     ],
     targets: [
         .target(
@@ -36,7 +37,8 @@ let package = Package(
                 "PropertyWrapper",
                 "NSRemoteShell",
                 "Keychain",
-                "DataSync"
+                "DataSync",
+                "Premium"
             ]
         ),
     ]

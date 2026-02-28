@@ -22,6 +22,7 @@ public class AIAssistant: ObservableObject {
     private enum Keys {
         static let provider = "ai.provider"
         static let isEnabled = "ai.enabled"
+        static let memory = "ai.memory.v1"
     }
 
     // Keychain keys for sensitive data
@@ -37,6 +38,8 @@ public class AIAssistant: ObservableObject {
     // Debounced save cancellables
     private var secureDataCancellable: AnyCancellable?
     private var nonSecureDataCancellable: AnyCancellable?
+    private var sessionMemory: [String: [MemoryTurn]] = [:]
+    private let maxTurnsPerSession = 12
 
     private init() {
         loadSettings()
@@ -104,6 +107,10 @@ public class AIAssistant: ObservableObject {
         }
 
         isEnabled = userDefaults.bool(forKey: Keys.isEnabled)
+        if let memoryData = userDefaults.data(forKey: Keys.memory),
+           let decoded = try? JSONDecoder().decode([String: [MemoryTurn]].self, from: memoryData) {
+            sessionMemory = decoded
+        }
 
         // Load sensitive data from Keychain
         do {
@@ -132,6 +139,13 @@ public class AIAssistant: ObservableObject {
 
         userDefaults.set(provider.rawValue, forKey: Keys.provider)
         userDefaults.set(isEnabled, forKey: Keys.isEnabled)
+        persistMemory()
+    }
+
+    private func persistMemory() {
+        if let memoryData = try? JSONEncoder().encode(sessionMemory) {
+            userDefaults.set(memoryData, forKey: Keys.memory)
+        }
     }
 
     /// Delete all stored AI settings
@@ -149,6 +163,8 @@ public class AIAssistant: ObservableObject {
 
         userDefaults.removeObject(forKey: Keys.provider)
         userDefaults.removeObject(forKey: Keys.isEnabled)
+        userDefaults.removeObject(forKey: Keys.memory)
+        sessionMemory.removeAll()
 
         // Reset in-memory values
         apiKey = ""
@@ -206,7 +222,7 @@ public class AIAssistant: ObservableObject {
 
     // MARK: - Command Explanation
 
-    public func explainCommand(_ command: String) async throws -> String {
+    public func explainCommand(_ command: String, sessionId: String? = nil) async throws -> String {
         guard isEnabled, !apiKey.isEmpty else {
             throw AIError.disabled
         }
@@ -224,12 +240,12 @@ public class AIAssistant: ObservableObject {
         Keep it concise and beginner-friendly.
         """
 
-        return try await sendChatRequest(prompt)
+        return try await sendChatRequest(prompt, sessionId: sessionId)
     }
 
     // MARK: - Natural Language to Command
 
-    public func naturalLanguageToCommand(_ input: String, context: String? = nil) async throws -> String {
+    public func naturalLanguageToCommand(_ input: String, context: String? = nil, sessionId: String? = nil) async throws -> String {
         guard isEnabled, !apiKey.isEmpty else {
             throw AIError.disabled
         }
@@ -251,12 +267,12 @@ public class AIAssistant: ObservableObject {
         Command:
         """
 
-        return try await sendChatRequest(prompt)
+        return try await sendChatRequest(prompt, sessionId: sessionId)
     }
 
     // MARK: - Error Diagnosis
 
-    public func diagnoseError(_ errorMessage: String, command: String? = nil) async throws -> String {
+    public func diagnoseError(_ errorMessage: String, command: String? = nil, sessionId: String? = nil) async throws -> String {
         guard isEnabled, !apiKey.isEmpty else {
             throw AIError.disabled
         }
@@ -277,12 +293,12 @@ public class AIAssistant: ObservableObject {
         Be practical and specific.
         """
 
-        return try await sendChatRequest(prompt)
+        return try await sendChatRequest(prompt, sessionId: sessionId)
     }
 
     // MARK: - Command Suggestions
 
-    public func getSuggestions(currentDirectory: String? = nil, recentCommands: [String] = []) async throws -> [String] {
+    public func getSuggestions(currentDirectory: String? = nil, recentCommands: [String] = [], sessionId: String? = nil) async throws -> [String] {
         guard isEnabled, !apiKey.isEmpty else {
             throw AIError.disabled
         }
@@ -303,7 +319,7 @@ public class AIAssistant: ObservableObject {
         Focus on practical, commonly-used commands.
         """
 
-        let response = try await sendChatRequest(prompt)
+        let response = try await sendChatRequest(prompt, sessionId: sessionId)
         return response.components(separatedBy: "\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -311,15 +327,62 @@ public class AIAssistant: ObservableObject {
 
     // MARK: - API Communication
 
-    private func sendChatRequest(_ prompt: String) async throws -> String {
+    private func sendChatRequest(_ prompt: String, sessionId: String? = nil) async throws -> String {
+        let finalPrompt = buildPromptWithMemory(prompt: prompt, sessionId: sessionId)
+        let response: String
         switch provider {
         case .openai:
-            return try await sendOpenAIRequest(prompt)
+            response = try await sendOpenAIRequest(finalPrompt)
         case .anthropic:
-            return try await sendAnthropicRequest(prompt)
+            response = try await sendAnthropicRequest(finalPrompt)
         case .local:
-            return try await sendLocalRequest(prompt)
+            response = try await sendLocalRequest(finalPrompt)
         }
+        appendMemory(userPrompt: prompt, response: response, sessionId: sessionId)
+        return response
+    }
+
+    public func clearMemory(sessionId: String? = nil) {
+        if let sessionId {
+            sessionMemory.removeValue(forKey: sessionId)
+        } else {
+            sessionMemory.removeAll()
+        }
+        persistMemory()
+    }
+
+    private func buildPromptWithMemory(prompt: String, sessionId: String?) -> String {
+        guard let sessionId,
+              let history = sessionMemory[sessionId],
+              !history.isEmpty
+        else {
+            return prompt
+        }
+
+        let contextLines = history.suffix(maxTurnsPerSession).map { turn in
+            "[\(turn.role)]: \(turn.content)"
+        }.joined(separator: "\n")
+
+        return """
+        You are helping with an ongoing troubleshooting session.
+        Session history:
+        \(contextLines)
+
+        Current request:
+        \(prompt)
+        """
+    }
+
+    private func appendMemory(userPrompt: String, response: String, sessionId: String?) {
+        guard let sessionId, !sessionId.isEmpty else { return }
+        var turns = sessionMemory[sessionId] ?? []
+        turns.append(.init(role: "user", content: userPrompt, timestamp: Date()))
+        turns.append(.init(role: "assistant", content: response, timestamp: Date()))
+        if turns.count > maxTurnsPerSession * 2 {
+            turns.removeFirst(turns.count - maxTurnsPerSession * 2)
+        }
+        sessionMemory[sessionId] = turns
+        persistMemory()
     }
 
     private func sendOpenAIRequest(_ prompt: String) async throws -> String {
@@ -476,6 +539,12 @@ public class AIAssistant: ObservableObject {
     public func sendRawChatRequest(_ prompt: String) async throws -> String {
         try await sendChatRequest(prompt)
     }
+}
+
+private struct MemoryTurn: Codable {
+    let role: String
+    let content: String
+    let timestamp: Date
 }
 
 // MARK: - Errors

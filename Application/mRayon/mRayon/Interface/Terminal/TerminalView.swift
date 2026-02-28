@@ -23,6 +23,7 @@ struct TerminalView: View {
     @Environment(\.presentationMode) var presentationMode
 
     @State private var isShowingToolbarSettings = false
+    private let terminalContentPadding = EdgeInsets(top: 10, leading: 12, bottom: 6, trailing: 12)
 
     // Helper function to create Color from hex string
     private func ColorFromHex(_ hex: String) -> Color {
@@ -64,6 +65,7 @@ struct TerminalView: View {
                         // Terminal view
                         context.termInterface
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(terminalContentPadding)
                             .onChange(of: r.size) { _, _ in
                                 guard context.interfaceToken == interfaceToken else { return }
                                 updateTerminalSize()
@@ -630,4 +632,3 @@ struct ToolbarSettingsView: View {
         }
     }
 }
-

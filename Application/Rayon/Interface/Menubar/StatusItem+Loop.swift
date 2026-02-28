@@ -89,6 +89,11 @@ extension MenubarStatusItem {
         identity.callAuthenticationWith(remote: shell)
         while loopContinue, shell.isConnected, shell.isAuthenticated {
             statusInfo.requestInfoAndWait(with: shell)
+            MonitorTelemetryManager.shared.appendSample(
+                machineId: machine.id,
+                machineName: machine.name,
+                status: statusInfo
+            )
             let cpuPercent = statusInfo.processor.summary.sumUsed
             var newSpeed = CatSpeed.broken
             if false {

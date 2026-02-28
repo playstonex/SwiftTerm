@@ -198,6 +198,41 @@ extension TerminalManager {
             termInterface.write(str + "\r\n")
         }
 
+        private func normalizedTmuxSessionName(_ raw: String) -> String {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { return "default" }
+            let sanitized = trimmed.replacingOccurrences(
+                of: #"[^A-Za-z0-9_-]"#,
+                with: "_",
+                options: .regularExpression
+            )
+            return sanitized.isEmpty ? "default" : sanitized
+        }
+
+        private func singleQuotedShellString(_ value: String) -> String {
+            "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+        }
+
+        private func buildTmuxBootstrapCommand(sessionName: String, autoCreate: Bool) -> String {
+            let quotedSession = singleQuotedShellString(sessionName)
+            let tmuxAction = autoCreate
+                ? "\"$TMUX_BIN\" new-session -A -s \(quotedSession)"
+                : "\"$TMUX_BIN\" attach-session -t \(quotedSession)"
+            return """
+            TMUX_BIN="$(command -v tmux 2>/dev/null || true)"; \
+            if [ -z "$TMUX_BIN" ]; then \
+              for p in /opt/homebrew/bin/tmux /usr/local/bin/tmux /usr/bin/tmux; do \
+                [ -x "$p" ] && TMUX_BIN="$p" && break; \
+              done; \
+            fi; \
+            if [ -z "$TMUX_BIN" ]; then \
+              echo '[!] tmux not found in PATH or common install paths'; \
+            else \
+              \(tmuxAction); \
+            fi
+            """
+        }
+
         func processBootstrap() {
             defer {
                 DispatchQueue.main.async { self.processShutdown(exitFromShell: true) }
@@ -282,6 +317,21 @@ extension TerminalManager {
                 }
             }
 
+            // Prepare tmux bootstrap command before entering the terminal loop.
+            if RayonStore.shared.useTmux {
+                let configuredSessionName = RayonStore.shared.tmuxSessionName
+                let sessionName = normalizedTmuxSessionName(configuredSessionName)
+                let autoCreate = RayonStore.shared.tmuxAutoCreate
+
+                let tmuxCmd = buildTmuxBootstrapCommand(sessionName: sessionName, autoCreate: autoCreate)
+
+                if configuredSessionName.trimmingCharacters(in: .whitespacesAndNewlines) != sessionName {
+                    putInformation("[i] Normalized tmux session name to: \(sessionName)")
+                }
+                putInformation("[*] Attaching to tmux session: \(sessionName)")
+                insertBuffer(tmuxCmd + "\n")
+            }
+
             shell.begin(withTerminalType: "xterm") {
                 // Channel opened
             } withTerminalSize: { [weak self] in
@@ -306,29 +356,6 @@ extension TerminalManager {
                 self?.handleShellOutput(output)
             } withContinuationHandler: { [weak self] in
                 self?.continueDecision ?? false
-            }
-
-            // Attach to tmux session if enabled
-            if RayonStore.shared.useTmux {
-                let sessionName = RayonStore.shared.tmuxSessionName.isEmpty ? "default" : RayonStore.shared.tmuxSessionName
-                let autoCreate = RayonStore.shared.tmuxAutoCreate
-
-                // Build tmux attach command
-                var tmuxCmd = ""
-                if autoCreate {
-                    // Use new-session -A to attach or create in one command
-                    tmuxCmd = "tmux new-session -A -s \"\(sessionName)\""
-                } else {
-                    // Try to attach to existing session only
-                    tmuxCmd = "tmux attach-session -t \"\(sessionName)\""
-                }
-
-                // Small delay to ensure terminal is ready
-                Thread.sleep(forTimeInterval: 0.1)
-
-                // Send tmux command by inserting into buffer
-                putInformation("[*] Attaching to tmux session: \(sessionName)")
-                insertBuffer(tmuxCmd + "\n")
             }
 
             processShutdown()

@@ -9,6 +9,7 @@ import Combine
 import Foundation
 import NSRemoteShell
 import PropertyWrapper
+import DataSync
 
 public class RayonStore: ObservableObject {
     public init() {
@@ -42,6 +43,10 @@ public class RayonStore: ObservableObject {
         useTmux = UDUseTmux
         tmuxSessionName = UDTmuxSessionName
         tmuxAutoCreate = UDTmuxAutoCreate
+        fileTransferConflictPolicy = UDFileTransferConflictPolicy
+        fileTransferMaxConcurrent = UDFileTransferMaxConcurrent
+        fileTransferRateLimitKBps = UDFileTransferRateLimitKBps
+        fileTransferResumeEnabled = UDFileTransferResumeEnabled
         if timeout <= 0 { timeout = 5 }
 
         if let read = readEncryptedDefault(
@@ -86,6 +91,48 @@ public class RayonStore: ObservableObject {
         ) {
             portForwardGroup = read
         }
+
+        // Setup auto-sync for data changes
+        setupAutoSync()
+        Task { @MainActor in
+            self.configureAutoSync()
+        }
+    }
+
+    // MARK: - Auto Sync
+
+    private var autoSyncCancellables = Set<AnyCancellable>()
+
+    private func setupAutoSync() {
+        // Subscribe to changes in synced groups and settings
+        // Debounce to avoid excessive sync operations
+        Publishers.MergeMany(
+            $machineGroup.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $identityGroup.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $snippetGroup.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $timeout.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $monitorInterval.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $reducedViewEffects.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $disableConformation.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $storeRecent.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $saveTemporarySession.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $terminalFontSize.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $terminalFontName.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $themePreference.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $terminalThemeName.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $useTmux.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $tmuxSessionName.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $tmuxAutoCreate.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $openInterfaceAutomatically.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        )
+        .debounce(for: .seconds(2), scheduler: RunLoop.main)
+        .sink { [weak self] in
+            guard self != nil else { return }
+            Task { @MainActor in
+                AutoSyncManager.shared.triggerSync()
+            }
+        }
+        .store(in: &autoSyncCancellables)
     }
 
     public static let shared = RayonStore()
@@ -292,6 +339,54 @@ public class RayonStore: ObservableObject {
         }
     }
 
+    // MARK: - File Transfer Pro Settings
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.fileTransferConflictPolicy", defaultValue: "rename")
+    private var UDFileTransferConflictPolicy: String
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.fileTransferMaxConcurrent", defaultValue: 2)
+    private var UDFileTransferMaxConcurrent: Int
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.fileTransferRateLimitKBps", defaultValue: 0)
+    private var UDFileTransferRateLimitKBps: Int
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.fileTransferResumeEnabled", defaultValue: true)
+    private var UDFileTransferResumeEnabled: Bool
+
+    @Published public var fileTransferConflictPolicy: String = "rename" {
+        didSet {
+            UDFileTransferConflictPolicy = fileTransferConflictPolicy
+        }
+    }
+
+    @Published public var fileTransferMaxConcurrent: Int = 2 {
+        didSet {
+            let clamped = min(max(fileTransferMaxConcurrent, 1), 8)
+            if clamped != fileTransferMaxConcurrent {
+                fileTransferMaxConcurrent = clamped
+                return
+            }
+            UDFileTransferMaxConcurrent = fileTransferMaxConcurrent
+        }
+    }
+
+    @Published public var fileTransferRateLimitKBps: Int = 0 {
+        didSet {
+            let clamped = max(fileTransferRateLimitKBps, 0)
+            if clamped != fileTransferRateLimitKBps {
+                fileTransferRateLimitKBps = clamped
+                return
+            }
+            UDFileTransferRateLimitKBps = fileTransferRateLimitKBps
+        }
+    }
+
+    @Published public var fileTransferResumeEnabled: Bool = true {
+        didSet {
+            UDFileTransferResumeEnabled = fileTransferResumeEnabled
+        }
+    }
+
     public var terminalTheme: TerminalTheme {
         TerminalTheme.allThemes.first { $0.name == terminalThemeName } ?? .default
     }
@@ -316,7 +411,9 @@ public class RayonStore: ObservableObject {
 
     // MARK: - Skills
 
-    private let skillRegistry = SkillRegistry.shared
+    @MainActor private var skillRegistry: SkillRegistry {
+        .shared
+    }
 
     @MainActor
     public var skillGroup: SkillGroup {
