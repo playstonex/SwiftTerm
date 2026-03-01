@@ -43,6 +43,8 @@ public class RayonStore: ObservableObject {
         useTmux = UDUseTmux
         tmuxSessionName = UDTmuxSessionName
         tmuxAutoCreate = UDTmuxAutoCreate
+        speechInputEngine = UDSpeechInputEngine
+        speechInputLocaleIdentifier = UDSpeechInputLocaleIdentifier
         fileTransferConflictPolicy = UDFileTransferConflictPolicy
         fileTransferMaxConcurrent = UDFileTransferMaxConcurrent
         fileTransferRateLimitKBps = UDFileTransferRateLimitKBps
@@ -106,7 +108,7 @@ public class RayonStore: ObservableObject {
     private func setupAutoSync() {
         // Subscribe to changes in synced groups and settings
         // Debounce to avoid excessive sync operations
-        Publishers.MergeMany(
+        let syncPublishers: [AnyPublisher<Void, Never>] = [
             $machineGroup.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $identityGroup.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $snippetGroup.dropFirst().map { _ in () }.eraseToAnyPublisher(),
@@ -123,8 +125,11 @@ public class RayonStore: ObservableObject {
             $useTmux.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $tmuxSessionName.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $tmuxAutoCreate.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $speechInputEngine.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $speechInputLocaleIdentifier.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $openInterfaceAutomatically.dropFirst().map { _ in () }.eraseToAnyPublisher()
-        )
+        ]
+        Publishers.MergeMany(syncPublishers)
         .debounce(for: .seconds(2), scheduler: RunLoop.main)
         .sink { [weak self] in
             guard self != nil else { return }
@@ -144,12 +149,27 @@ public class RayonStore: ObservableObject {
     }
 
     @Published public var globalProgressInPresent: Bool = false
-    public var globalProgressCount: Int = 0 {
-        didSet {
-            if globalProgressCount == 0 {
-                globalProgressInPresent = false
+    private let globalProgressLock = NSLock()
+    private var _globalProgressCount: Int = 0
+
+    public var globalProgressCount: Int {
+        get {
+            globalProgressLock.lock()
+            defer { globalProgressLock.unlock() }
+            return _globalProgressCount
+        }
+        set {
+            globalProgressLock.lock()
+            _globalProgressCount = newValue
+            let shouldPresent = newValue != 0
+            globalProgressLock.unlock()
+
+            if Thread.isMainThread {
+                globalProgressInPresent = shouldPresent
             } else {
-                globalProgressInPresent = true
+                DispatchQueue.main.async {
+                    self.globalProgressInPresent = shouldPresent
+                }
             }
         }
     }
@@ -338,6 +358,46 @@ public class RayonStore: ObservableObject {
             UDTmuxAutoCreate = tmuxAutoCreate
         }
     }
+
+    // MARK: - Speech Settings
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.speechInputEngine", defaultValue: "apple")
+    private var UDSpeechInputEngine: String
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.speechInputLocaleIdentifier", defaultValue: "system")
+    private var UDSpeechInputLocaleIdentifier: String
+
+    @Published public var speechInputEngine: String = "apple" {
+        didSet {
+            let normalized = speechInputEngine.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if normalized != speechInputEngine {
+                speechInputEngine = normalized
+                return
+            }
+            if !Self.supportedSpeechInputEngines.contains(normalized) {
+                speechInputEngine = "apple"
+                return
+            }
+            UDSpeechInputEngine = normalized
+        }
+    }
+
+    @Published public var speechInputLocaleIdentifier: String = "system" {
+        didSet {
+            let normalized = speechInputLocaleIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)
+            if normalized.isEmpty {
+                speechInputLocaleIdentifier = "system"
+                return
+            }
+            if normalized != speechInputLocaleIdentifier {
+                speechInputLocaleIdentifier = normalized
+                return
+            }
+            UDSpeechInputLocaleIdentifier = normalized
+        }
+    }
+
+    public static let supportedSpeechInputEngines: Set<String> = ["apple", "disabled"]
 
     // MARK: - File Transfer Pro Settings
 

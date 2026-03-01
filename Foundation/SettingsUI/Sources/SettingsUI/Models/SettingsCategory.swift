@@ -36,7 +36,7 @@ public enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         case .about:
             return [.appInfo, .documents]
         case .appearance:
-            return [.appTheme, .terminalTheme, .effects]
+            return [.appTheme, .terminalTheme, .voiceSettings, .effects]
         case .premium:
             return [.subscriptionStatus, .premiumFeatures]
         case .sync:
@@ -58,6 +58,7 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
     // Appearance
     case appTheme = "App Theme"
     case terminalTheme = "Terminal Theme"
+    case voiceSettings = "Voice Input"
     case effects = "Effects"
 
     // Premium
@@ -87,6 +88,7 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
         case .documents: return "doc.text"
         case .appTheme: return "paintbrush"
         case .terminalTheme: return "terminal"
+        case .voiceSettings: return "waveform.badge.mic"
         case .effects: return "sparkles"
         case .subscriptionStatus: return "crown.fill"
         case .premiumFeatures: return "star.fill"
@@ -108,6 +110,7 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
         case .documents: return "Thanks and license"
         case .appTheme: return "Appearance preferences"
         case .terminalTheme: return "Terminal appearance and font"
+        case .voiceSettings: return "Speech input engine and language"
         case .effects: return "Visual effects settings"
         case .subscriptionStatus: return "Manage your subscription"
         case .premiumFeatures: return "View premium features"

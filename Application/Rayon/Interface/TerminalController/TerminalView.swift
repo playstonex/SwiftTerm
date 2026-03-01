@@ -5,7 +5,10 @@
 //  Created by Lakr Aream on 2022/3/10.
 //
 
+import AVFoundation
+import AppKit
 import RayonModule
+import Speech
 import SwiftUI
 import XTerminalUI
 
@@ -16,6 +19,8 @@ struct TerminalView: View {
     @StateObject var store = RayonStore.shared
     @State var interfaceToken = UUID()
     @State var backgroundColor: Color = .black
+    @StateObject private var speechInputController = TerminalSpeechInputController()
+    @State private var liveTranscriptPreview: String = ""
 
     var body: some View {
         Group {
@@ -26,6 +31,30 @@ struct TerminalView: View {
 
                     context.termInterface
                         .padding(4)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if speechInputController.isRecording || !liveTranscriptPreview.isEmpty {
+                        HStack(spacing: 8) {
+                            Image(systemName: speechInputController.isRecording ? "waveform.circle.fill" : "waveform.circle")
+                                .foregroundStyle(speechInputController.isRecording ? .red : .secondary)
+                            Text(
+                                liveTranscriptPreview.isEmpty
+                                    ? (speechInputController.isRecording ? "Listening..." : "Ready")
+                                    : liveTranscriptPreview
+                            )
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Button("Clear") {
+                                liveTranscriptPreview = ""
+                                speechInputController.clearCurrentBuffer()
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onChange(of: store.terminalFontSize) { oldValue, newValue in
@@ -86,6 +115,33 @@ struct TerminalView: View {
             }
             ToolbarItem {
                 Button {
+                    guard !context.closed else { return }
+                    if speechInputController.isRecording {
+                        speechInputController.stopAndCommit()
+                    } else {
+                        speechInputController.startRecognition(
+                            onPartialTranscript: { partial in
+                                liveTranscriptPreview = partial
+                            },
+                            onFinalTranscript: { transcript in
+                                let payload = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                                guard !payload.isEmpty else { return }
+                                safeWrite(payload)
+                                liveTranscriptPreview = ""
+                            }
+                        )
+                    }
+                } label: {
+                    Label(
+                        speechInputController.isRecording ? "Stop Voice Input" : "Start Voice Input",
+                        systemImage: speechInputController.isRecording ? "mic.fill" : "mic"
+                    )
+                }
+                .help(speechInputController.isRecording ? "Stop Voice Input" : "Start Voice Input")
+                .disabled(context.closed)
+            }
+            ToolbarItem {
+                Button {
                     assistantManager.toggle()
                 } label: {
                     Image(systemName: "sidebar.right")
@@ -117,6 +173,10 @@ struct TerminalView: View {
         }
         .navigationTitle(context.navigationTitle)
         .navigationSubtitle(context.navigationSubtitle)
+        .onDisappear {
+            speechInputController.stopAndDiscard()
+            liveTranscriptPreview = ""
+        }
     }
 
     func safeWriteBase64(_ base64: String) {
@@ -186,6 +246,215 @@ struct TerminalView: View {
     func applyFont() {
         let fontName = store.terminalFontName
         context.termInterface.setTerminalFontName(with: fontName)
+    }
+}
+
+@MainActor
+final class TerminalSpeechInputController: NSObject, ObservableObject {
+    @Published private(set) var isRecording = false
+
+    private let audioEngine = AVAudioEngine()
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var speechRecognizer: SFSpeechRecognizer?
+    private var fullTranscript = ""
+    private var committedPrefix = ""
+    private var onPartialTranscript: ((String) -> Void)?
+    private var onFinalTranscript: ((String) -> Void)?
+
+    func startRecognition(
+        onPartialTranscript: @escaping (String) -> Void,
+        onFinalTranscript: @escaping (String) -> Void
+    ) {
+        guard !isRecording else { return }
+        guard RayonStore.shared.speechInputEngine != "disabled" else {
+            UIBridge.presentError(with: "Voice disabled in Settings")
+            return
+        }
+        self.onPartialTranscript = onPartialTranscript
+        self.onFinalTranscript = onFinalTranscript
+        self.onPartialTranscript?("")
+
+        Task {
+            do {
+                try await requestPermissions()
+                try configureAndStart()
+            } catch {
+                handlePermissionError(error)
+            }
+        }
+    }
+
+    func stopAndCommit() {
+        stop(commit: true)
+    }
+
+    func stopAndDiscard() {
+        stop(commit: false)
+    }
+
+    func clearCurrentBuffer() {
+        if isRecording {
+            committedPrefix = fullTranscript
+        }
+        onPartialTranscript?("")
+    }
+
+    private func stop(commit: Bool) {
+        guard isRecording || !fullTranscript.isEmpty else { return }
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        recognitionRequest?.endAudio()
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest = nil
+        isRecording = false
+
+        if commit {
+            let payload = currentDeltaTranscript().trimmingCharacters(in: .whitespacesAndNewlines)
+            if !payload.isEmpty {
+                onFinalTranscript?(payload)
+            }
+        } else {
+            onPartialTranscript?("")
+        }
+        fullTranscript = ""
+        committedPrefix = ""
+    }
+
+    private func requestPermissions() async throws {
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            break
+        case .notDetermined:
+            let granted = await withCheckedContinuation { continuation in
+                AVCaptureDevice.requestAccess(for: .audio) { permission in
+                    continuation.resume(returning: permission)
+                }
+            }
+            guard granted else { throw SpeechError.micDeniedAfterPrompt }
+        case .denied, .restricted:
+            throw SpeechError.micDeniedNeedsSettings
+        @unknown default:
+            throw SpeechError.micDeniedNeedsSettings
+        }
+
+        switch await withCheckedContinuation({ continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: status)
+            }
+        }) {
+        case .authorized:
+            break
+        case .notDetermined:
+            throw SpeechError.speechDeniedAfterPrompt
+        case .denied, .restricted:
+            throw SpeechError.speechDeniedNeedsSettings
+        @unknown default:
+            throw SpeechError.speechDeniedNeedsSettings
+        }
+    }
+
+    private func configureAndStart() throws {
+        let localeIdentifier = RayonStore.shared.speechInputLocaleIdentifier
+        let targetLocale = localeIdentifier == "system" ? Locale.current : Locale(identifier: localeIdentifier)
+        speechRecognizer = SFSpeechRecognizer(locale: targetLocale) ?? SFSpeechRecognizer(locale: .current)
+        guard let speechRecognizer else { throw SpeechError.unavailable }
+        guard speechRecognizer.isAvailable else { throw SpeechError.unavailable }
+
+        fullTranscript = ""
+        committedPrefix = ""
+        recognitionTask?.cancel()
+        recognitionTask = nil
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        recognitionRequest = request
+
+        let inputNode = audioEngine.inputNode
+        inputNode.removeTap(onBus: 0)
+        inputNode.installTap(
+            onBus: 0,
+            bufferSize: 1024,
+            format: inputNode.outputFormat(forBus: 0)
+        ) { [weak self] buffer, _ in
+            self?.recognitionRequest?.append(buffer)
+        }
+
+        audioEngine.prepare()
+        try audioEngine.start()
+        isRecording = true
+
+        recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
+            guard let self else { return }
+            if let result {
+                self.fullTranscript = result.bestTranscription.formattedString
+                self.onPartialTranscript?(self.currentDeltaTranscript())
+                if result.isFinal {
+                    Task { @MainActor in
+                        self.stop(commit: true)
+                    }
+                    return
+                }
+            }
+            if error != nil {
+                Task { @MainActor in
+                    self.stop(commit: true)
+                }
+            }
+        }
+    }
+
+    private enum SpeechError: Error {
+        case micDeniedAfterPrompt
+        case micDeniedNeedsSettings
+        case speechDeniedAfterPrompt
+        case speechDeniedNeedsSettings
+        case unavailable
+    }
+
+    private func handlePermissionError(_ error: Error) {
+        guard let speechError = error as? SpeechError else {
+            UIBridge.presentError(with: "Voice input is unavailable")
+            return
+        }
+        switch speechError {
+        case .micDeniedAfterPrompt:
+            UIBridge.presentError(with: "Microphone access is required for voice input.")
+        case .speechDeniedAfterPrompt:
+            UIBridge.presentError(with: "Speech recognition access is required for voice input.")
+        case .micDeniedNeedsSettings:
+            promptOpenPrivacySettings(
+                message: "Microphone access is denied. Open System Settings to enable it?",
+                privacyAnchor: "Privacy_Microphone"
+            )
+        case .speechDeniedNeedsSettings:
+            promptOpenPrivacySettings(
+                message: "Speech recognition access is denied. Open System Settings to enable it?",
+                privacyAnchor: "Privacy_SpeechRecognition"
+            )
+        case .unavailable:
+            UIBridge.presentError(with: "Speech recognizer is currently unavailable.")
+        }
+    }
+
+    private func promptOpenPrivacySettings(message: String, privacyAnchor: String) {
+        UIBridge.requiresConfirmation(message: message) { confirmed in
+            guard confirmed else { return }
+            guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(privacyAnchor)") else {
+                return
+            }
+            UIBridge.open(url: url)
+        }
+    }
+
+    private func currentDeltaTranscript() -> String {
+        if committedPrefix.isEmpty { return fullTranscript }
+        guard fullTranscript.hasPrefix(committedPrefix) else {
+            committedPrefix = ""
+            return fullTranscript
+        }
+        return String(fullTranscript.dropFirst(committedPrefix.count))
     }
 }
 

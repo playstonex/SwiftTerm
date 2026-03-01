@@ -12,6 +12,7 @@ import DataSync
 import MachineStatus
 import Premium
 import RayonModule
+import Speech
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -113,6 +114,8 @@ public struct SettingsDetailContent: View {
             appThemeView
         case .terminalTheme:
             terminalThemeView
+        case .voiceSettings:
+            voiceSettingsView
         case .effects:
             effectsView
 
@@ -249,6 +252,33 @@ public struct SettingsDetailContent: View {
                 Spacer()
                 Toggle("", isOn: $store.reducedViewEffects)
                     .labelsHidden()
+            }
+        }
+    }
+
+    private var voiceSettingsView: some View {
+        Section("Voice Input") {
+            HStack {
+                Text("Engine")
+                Spacer()
+                Picker("Engine", selection: $store.speechInputEngine) {
+                    Text("Apple (On-device/API)").tag("apple")
+                    Text("Disabled").tag("disabled")
+                }
+                .labelsHidden()
+            }
+
+            HStack {
+                Text("Language")
+                Spacer()
+                Picker("Language", selection: $store.speechInputLocaleIdentifier) {
+                    Text("System Default").tag("system")
+                    ForEach(Self.supportedSpeechLocaleIdentifiers, id: \.self) { identifier in
+                        Text(Self.displayName(for: identifier)).tag(identifier)
+                    }
+                }
+                .labelsHidden()
+                .disabled(store.speechInputEngine == "disabled")
             }
         }
     }
@@ -976,6 +1006,21 @@ public struct MonitorThresholdProfile: Codable, Equatable {
         self.cpuPercent = cpuPercent
         self.memoryPercent = memoryPercent
         self.diskPercent = diskPercent
+    }
+}
+
+extension SettingsDetailContent {
+    private static var supportedSpeechLocaleIdentifiers: [String] {
+        SFSpeechRecognizer
+            .supportedLocales()
+            .map(\.identifier)
+            .sorted()
+    }
+
+    private static func displayName(for localeIdentifier: String) -> String {
+        let name = Locale.current.localizedString(forIdentifier: localeIdentifier)
+            ?? localeIdentifier
+        return "\(name) (\(localeIdentifier))"
     }
 }
 
