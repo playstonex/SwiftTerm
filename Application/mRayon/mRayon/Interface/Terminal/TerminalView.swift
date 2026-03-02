@@ -219,6 +219,14 @@ struct TerminalView: View {
         .onChange(of: store.terminalThemeName) { _, _ in
             // Force toolbar update when theme changes
         }
+        .onChange(of: store.speechInputEngine) { _, _ in
+            // Update voice key availability when speech input setting changes
+            ToolbarKeyStore.shared.updateVoiceKeyAvailability()
+        }
+        .onChange(of: store.speechInputLocaleIdentifier) { _, _ in
+            // Update voice key availability when locale setting changes
+            ToolbarKeyStore.shared.updateVoiceKeyAvailability()
+        }
         .sheet(isPresented: $isShowingToolbarSettings) {
             ToolbarSettingsView(keyStore: ToolbarKeyStore.shared)
         }
@@ -618,14 +626,29 @@ class ToolbarKeyStore: ObservableObject {
 
     private init() {
         loadKeys()
+        // Update voice key availability after loading to respect current settings
+        updateVoiceKeyAvailability()
     }
 
     private static func isSpeechRecognitionAvailable() -> Bool {
-        // Check if speech recognition is supported and available for the current locale
+        // First check if user has enabled voice input in settings
+        guard RayonStore.shared.speechInputEngine != "disabled" else {
+            return false
+        }
+        // Then check if speech recognition is supported and available for the current locale
         guard let recognizer = SFSpeechRecognizer(locale: .current) else {
             return false
         }
         return recognizer.isAvailable
+    }
+
+    /// Update voice key enabled state when settings change
+    func updateVoiceKeyAvailability() {
+        let isAvailable = Self.isSpeechRecognitionAvailable()
+        if let index = availableKeys.firstIndex(where: { $0.id == "voice" }) {
+            availableKeys[index].isEnabled = isAvailable
+            saveKeys()
+        }
     }
 
     private func loadKeys() {
