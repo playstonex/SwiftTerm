@@ -24,13 +24,35 @@ xcodebuild -workspace App.xcworkspace -scheme mRayon build
 
 # Build visionOS variant
 xcodebuild -workspace App.xcworkspace -scheme vRayon build
+
+# Build individual Foundation packages for isolated testing
+xcodebuild -workspace App.xcworkspace -scheme RayonModule build
+xcodebuild -workspace App.xcworkspace -scheme MachineStatus build
+```
+
+### Testing
+
+```bash
+# Run all tests for a scheme
+xcodebuild -workspace App.xcworkspace -scheme RayonModule test
+
+# Run a specific test class
+xcodebuild -workspace App.xcworkspace -scheme RayonModule test \
+  -only-testing:RayonModuleTests/CommandExecutorTests
+
+# Run a specific test method
+xcodebuild -workspace App.xcworkspace -scheme RayonModule test \
+  -only-testing:RayonModuleTests/CommandExecutorTests/testContinuationSingleResume
+
+# Run tests with code coverage
+xcodebuild -workspace App.xcworkspace -scheme RayonModule test \
+  -enableCodeCoverage YES
 ```
 
 ### Code Formatting
 
-The project uses swiftformat with Swift 6:
-
 ```bash
+# Format all Swift code (Application/ and Foundation/ directories)
 ./Workflow/Scripts/fmt.sh
 ```
 
@@ -64,7 +86,9 @@ Foundation/           # Shared Swift packages (business logic)
 ├── PropertyWrapper/  # Custom property wrappers
 ├── SPIndicator/      # Toast notifications
 ├── StripedTextTable/ # Text table formatting
-└── SymbolPicker/     # Symbol picker UI
+├── SymbolPicker/     # Symbol picker UI
+├── SettingsUI/       # Common settings UI components
+└── Premium/          # Premium features and automation
 
 External/             # Third-party integrations
 ├── NSRemoteShell/    # SSH/Terminal functionality (libssh2)
@@ -112,6 +136,38 @@ The `App.xcworkspace` file references all projects and packages. When working on
 - **iOS**: mRayon - SwiftUI app
 - **watchOS**: Companion extension via mRayon
 - **visionOS**: vRayon - Variant of iOS app
+
+## Code Style Guidelines
+
+### Swift Version
+- **Swift 6.0** with strict concurrency checking enabled
+- Use Swift Concurrency (`async`/`await`) over completion handlers where practical
+
+### Naming Conventions
+- **Types/Classes/Enums**: `PascalCase` (e.g., `RDMachine`, `ServerStatus`)
+- **Functions/Methods**: `camelCase` (e.g., `update(to:)`, `syncAllDataToCloud`)
+- **Properties/Variables**: `camelCase` (e.g., `remoteAddress`, `lastConnection`)
+- **File Names**: Match the main type name (e.g., `RDMachine.swift`)
+
+### Import Organization
+```swift
+import Foundation       // Standard library first
+import Combine          // then reactive frameworks
+import CloudKit         // then platform frameworks
+import DataSync         // then project modules
+import NSRemoteShell
+```
+
+### Error Handling
+- Prefer `throws` for functions that can fail
+- Use `try?` for optional error handling when appropriate
+- Create custom error enums for domain-specific errors
+
+### Concurrency Patterns
+- Use `async`/`await` for asynchronous operations
+- Use `Task` for spawning background work
+- Use `@MainActor` for UI-related code when needed
+- Use `@Observable` (Swift 6) or `@Published` for observable state
 
 ## Data Persistence
 
