@@ -306,7 +306,7 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
     }
 
     private func stop(commit: Bool) {
-        guard isRecording || !liveTranscript.isEmpty else { return }
+        guard isRecording || !liveTranscript.isEmpty || !fullTranscript.isEmpty else { return }
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
