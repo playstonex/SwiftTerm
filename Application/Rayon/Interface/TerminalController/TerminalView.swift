@@ -259,6 +259,7 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
     private var speechRecognizer: SFSpeechRecognizer?
     private var fullTranscript = ""
     private var committedPrefix = ""
+    private var liveTranscript = ""
     private var onPartialTranscript: ((String) -> Void)?
     private var onFinalTranscript: ((String) -> Void)?
 
@@ -294,14 +295,18 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
     }
 
     func clearCurrentBuffer() {
-        if isRecording {
-            committedPrefix = fullTranscript
+        if !isRecording {
+            liveTranscript = ""
+            onPartialTranscript?("")
+            return
         }
+        committedPrefix = fullTranscript
+        liveTranscript = ""
         onPartialTranscript?("")
     }
 
     private func stop(commit: Bool) {
-        guard isRecording || !fullTranscript.isEmpty else { return }
+        guard isRecording || !liveTranscript.isEmpty else { return }
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest?.endAudio()
@@ -320,6 +325,7 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
         }
         fullTranscript = ""
         committedPrefix = ""
+        liveTranscript = ""
     }
 
     private func requestPermissions() async throws {
@@ -364,6 +370,7 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
 
         fullTranscript = ""
         committedPrefix = ""
+        liveTranscript = ""
         recognitionTask?.cancel()
         recognitionTask = nil
 
@@ -389,7 +396,8 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
             guard let self else { return }
             if let result {
                 self.fullTranscript = result.bestTranscription.formattedString
-                self.onPartialTranscript?(self.currentDeltaTranscript())
+                self.liveTranscript = self.currentDeltaTranscript()
+                self.onPartialTranscript?(self.liveTranscript)
                 if result.isFinal {
                     Task { @MainActor in
                         self.stop(commit: true)
