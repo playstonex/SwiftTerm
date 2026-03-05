@@ -10,7 +10,7 @@ import SwiftUI
 import AVFoundation
 import Speech
 import UIKit
-import XTerminalUI
+import SwiftTerminal
 
 struct TerminalView: View {
     @StateObject var context: TerminalContext

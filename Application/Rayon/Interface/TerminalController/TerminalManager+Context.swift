@@ -9,7 +9,7 @@ import Foundation
 import NSRemoteShell
 import RayonModule
 import SwiftUI
-import XTerminalUI
+import SwiftTerminal
 
 extension TerminalManager {
     class Context: ObservableObject, Identifiable, Equatable {

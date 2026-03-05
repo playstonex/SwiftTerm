@@ -9,7 +9,7 @@ import NSRemoteShell
 import RayonModule
 import SwiftUI
 import UIKit
-import XTerminalUI
+import SwiftTerminal
 
 class TerminalContext: ObservableObject, Identifiable, Equatable {
     var id: UUID = .init()
