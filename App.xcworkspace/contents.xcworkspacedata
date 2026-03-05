@@ -55,4 +55,7 @@
    <FileRef
       location = "group:Foundation/Premium">
    </FileRef>
+   <FileRef
+      location = "group:Foundation/SwiftTerminal">
+   </FileRef>
 </Workspace>
