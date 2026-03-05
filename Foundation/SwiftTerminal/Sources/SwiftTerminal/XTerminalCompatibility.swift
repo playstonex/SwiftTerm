@@ -205,7 +205,7 @@ public class NativeTerminalView: NSView, XTerminal {
     }
 
     public func write(_ str: String) {
-        terminalView.getTerminal().feed(text: str)
+        terminalView.feed(text: str)
     }
 
     public func requestTerminalSize() -> CGSize {
@@ -476,7 +476,7 @@ public class NativeTerminalView: UIView, XTerminal {
     }
 
     public func write(_ str: String) {
-        terminalView.getTerminal().feed(text: str)
+        terminalView.feed(text: str)
     }
 
     public func requestTerminalSize() -> CGSize {

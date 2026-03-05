@@ -123,11 +123,11 @@ public class SwiftTerminalView: UIView {
 
     public func feed(data: Data) {
         let array = Array(data)
-        terminalView.getTerminal().feed(byteArray: array)
+        terminalView.feed(byteArray: Array(data)[...])
     }
 
     public func feed(text: String) {
-        terminalView.getTerminal().feed(text: text)
+        terminalView.feed(text: text)
     }
 
     public func getTerminal() -> Terminal {

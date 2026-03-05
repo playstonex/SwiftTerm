@@ -153,12 +153,15 @@ public class SwiftTerminalView: NSView {
     }
 
     public func feed(data: Data) {
-        let array = Array(data)
-        terminalView.getTerminal().feed(byteArray: array)
+        // Use TerminalView.feed() which handles display updates via queuePendingDisplay()
+        // Don't use terminalView.getTerminal().feed() which bypasses display refresh
+        terminalView.feed(byteArray: Array(data)[...])
     }
 
     public func feed(text: String) {
-        terminalView.getTerminal().feed(text: text)
+        // Use TerminalView.feed() which handles display updates via queuePendingDisplay()
+        // Don't use terminalView.getTerminal().feed() which bypasses display refresh
+        terminalView.feed(text: text)
     }
 
     public func getTerminal() -> Terminal {
