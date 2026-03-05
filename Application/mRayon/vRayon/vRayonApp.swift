@@ -8,7 +8,7 @@
 import CodeEditorUI
 import RayonModule
 import SwiftUI
-import XTerminalUI
+import SwiftTerminal
 @main
 struct vRayonApp: App {
     

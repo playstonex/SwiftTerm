@@ -7,7 +7,7 @@
 
 import RayonModule
 import SwiftUI
-import XTerminalUI
+import SwiftTerminal
 
 struct BatchTerminalView: View {
     let machine: RDMachine.ID
