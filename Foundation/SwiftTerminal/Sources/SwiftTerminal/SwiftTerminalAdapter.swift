@@ -136,9 +136,9 @@ public final class SwiftTerminalAdapter: NativeTerminalProtocol {
     }
 
     public func write(_ str: String) {
-        // This will be implemented by the platform-specific view
-        // The view will call this to notify the adapter that data was written
-        bufferCallback?(str)
+        // This method is for displaying output to the terminal
+        // It should NOT call bufferCallback which is for user input
+        // The platform-specific view implements write using terminal.feed()
     }
 
     public func requestTerminalSize() -> CGSize {

@@ -89,6 +89,31 @@ public class NativeTerminalView: NSView, XTerminal {
         terminalView.trailingAnchor.constraint(equalTo: trailingAnchor).isActive = true
     }
 
+    // MARK: - First Responder Handling
+
+    public override var acceptsFirstResponder: Bool { true }
+
+    public override func becomeFirstResponder() -> Bool {
+        // Forward first responder status to terminal view for keyboard input
+        // TerminalView implements NSTextInputClient and handles keyboard input
+        return window?.makeFirstResponder(terminalView) ?? false
+    }
+
+    public override func resignFirstResponder() -> Bool {
+        return true
+    }
+
+    public override var canBecomeKeyView: Bool { true }
+
+    public override var needsPanelToBecomeKey: Bool { true }
+
+    /// Make the internal terminal view the first responder
+    public func makeTerminalFirstResponder() {
+        if let window = window {
+            _ = window.makeFirstResponder(terminalView)
+        }
+    }
+
     private func setupDelegates() {
         viewDelegate = ViewDelegateHandler(adapter: adapter)
         terminalView.terminalDelegate = viewDelegate

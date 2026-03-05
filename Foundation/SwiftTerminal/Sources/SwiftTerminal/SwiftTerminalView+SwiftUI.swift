@@ -75,7 +75,10 @@ public struct STerminalView: NativeTerminalProtocol {
     }
 
     public func write(_ str: String) {
-        terminalView.feed(text: str)
+        // Must be called on main thread for UI updates
+        DispatchQueue.main.async {
+            self.terminalView.feed(text: str)
+        }
     }
 
     public func requestTerminalSize() -> CGSize {
@@ -85,12 +88,16 @@ public struct STerminalView: NativeTerminalProtocol {
 
     public func setTerminalFontSize(with size: Int) {
         adapter.setTerminalFontSize(with: size)
-        terminalView.updateFont()
+        DispatchQueue.main.async {
+            self.terminalView.updateFont()
+        }
     }
 
     public func setTerminalFontName(with name: String) {
         adapter.setTerminalFontName(with: name)
-        terminalView.updateFont()
+        DispatchQueue.main.async {
+            self.terminalView.updateFont()
+        }
     }
 
     public func setTerminalTheme(
@@ -135,7 +142,9 @@ public struct STerminalView: NativeTerminalProtocol {
             brightCyan: brightCyan,
             brightWhite: brightWhite
         )
-        terminalView.updateTheme()
+        DispatchQueue.main.async {
+            self.terminalView.updateTheme()
+        }
     }
 
     public func getSelection(completion: @escaping (String?) -> Void) {
@@ -149,11 +158,20 @@ public struct STerminalView: NativeTerminalProtocol {
 #if canImport(AppKit)
 extension STerminalView: NSViewRepresentable {
     public func makeNSView(context: Context) -> SwiftTerminalView {
+        // Set up the view to become first responder when the window becomes key
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.terminalView.makeTerminalFirstResponder()
+        }
         return terminalView
     }
 
     public func updateNSView(_ nsView: SwiftTerminalView, context: Context) {
-        // Updates are handled through the adapter
+        // Don't interfere with focus during updates
+        // The terminal view handles its own display updates via SwiftTerm
+    }
+
+    public static func dismantleNSView(_ nsView: SwiftTerminalView, coordinator: ()) {
+        // Clean up if needed
     }
 }
 #endif
@@ -166,6 +184,10 @@ extension STerminalView: UIViewRepresentable {
 
     public func updateUIView(_ uiView: SwiftTerminalView, context: Context) {
         // Updates are handled through the adapter
+    }
+
+    public static func dismantleUIView(_ uiView: SwiftTerminalView, coordinator: ()) {
+        // Clean up if needed
     }
 }
 #endif

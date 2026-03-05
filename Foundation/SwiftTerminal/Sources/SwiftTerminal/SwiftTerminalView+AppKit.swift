@@ -14,7 +14,7 @@ public class SwiftTerminalView: NSView {
 
     // MARK: - Properties
 
-    private var terminalView: TerminalView!
+    private(set) public var terminalView: TerminalView!
     private let adapter: SwiftTerminalAdapter
     private var viewDelegate: ViewDelegateHandler?
 
@@ -61,6 +61,36 @@ public class SwiftTerminalView: NSView {
         viewDelegate = ViewDelegateHandler(adapter: adapter)
         terminalView.terminalDelegate = viewDelegate
     }
+
+    // MARK: - First Responder Handling
+
+    // The internal TerminalView handles keyboard input.
+    // We need to forward first responder status to it.
+
+    public override var acceptsFirstResponder: Bool { true }
+
+    public override func becomeFirstResponder() -> Bool {
+        // Forward first responder status to internal TerminalView
+        // TerminalView implements NSTextInputClient and handles keyboard input
+        if let window = window {
+            return window.makeFirstResponder(terminalView)
+        }
+        return false
+    }
+
+    public override func resignFirstResponder() -> Bool {
+        return true
+    }
+
+    public override func mouseDown(with event: NSEvent) {
+        // When clicked, make the terminal view first responder
+        makeTerminalFirstResponder()
+        super.mouseDown(with: event)
+    }
+
+    public override var canBecomeKeyView: Bool { true }
+
+    public override var needsPanelToBecomeKey: Bool { true }
 
     // MARK: - Theme & Font
 
@@ -164,6 +194,13 @@ public class SwiftTerminalView: NSView {
 
     public func updateFont() {
         applyFont()
+    }
+
+    /// Make the internal terminal view the first responder
+    public func makeTerminalFirstResponder() {
+        if let window = window {
+            _ = window.makeFirstResponder(terminalView)
+        }
     }
 }
 
