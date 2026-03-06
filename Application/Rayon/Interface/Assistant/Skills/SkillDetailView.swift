@@ -10,7 +10,7 @@ import MachineStatusView
 import NSRemoteShell
 import RayonModule
 import SwiftUI
-import XTerminalUI
+import SwiftTerminal
 
 // MARK: - Skill Detail View
 

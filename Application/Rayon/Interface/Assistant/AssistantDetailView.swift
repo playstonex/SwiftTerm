@@ -11,7 +11,7 @@ import NSRemoteShell
 import RayonModule
 import SwiftUI
 import UserNotifications
-import XTerminalUI
+import SwiftTerminal
 
 struct MonitorThresholdProfile: Codable, Equatable {
     var cpuPercent: Float

@@ -28,7 +28,9 @@ let package = Package(
         .package(name: "NSRemoteShell", path: "../../External/NSRemoteShell"),
         .package(name: "Keychain", path: "../Keychain"),
         .package(name: "DataSync", path: "../DataSync"),
-        .package(name: "Premium", path: "../Premium")
+        .package(name: "Premium", path: "../Premium"),
+        .package(name: "NMMoshShell", path: "../NMMoshShell"),
+        .package(name: "SwiftTerminal", path: "../SwiftTerminal")
     ],
     targets: [
         .target(
@@ -38,7 +40,9 @@ let package = Package(
                 "NSRemoteShell",
                 "Keychain",
                 "DataSync",
-                "Premium"
+                "Premium",
+                "NMMoshShell",
+                "SwiftTerminal"
             ]
         ),
     ]

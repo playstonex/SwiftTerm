@@ -9,7 +9,7 @@ import CodeEditorUI
 import DataSync
 import RayonModule
 import SwiftUI
-import XTerminalUI
+import SwiftTerminal
 import RevenueCat
 
 

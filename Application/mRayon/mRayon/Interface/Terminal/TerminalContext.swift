@@ -6,10 +6,11 @@
 //
 
 import NSRemoteShell
+import NMMoshShell
 import RayonModule
 import SwiftUI
 import UIKit
-import XTerminalUI
+import SwiftTerminal
 
 class TerminalContext: ObservableObject, Identifiable, Equatable {
     var id: UUID = .init()
@@ -51,6 +52,11 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
     let command: SSHCommandReader?
     var shell: NSRemoteShell = .init()
 
+    // Mosh session (optional, used when connectionType is Mosh)
+    private var moshSession: NMSession?
+    private var moshConnected: Bool = false
+    private var moshModeActive: Bool { machine.connectionType == .mosh }
+
     // MARK: - SHELL CONTEXT
 
     var closed: Bool { !continueDecision }
@@ -62,7 +68,15 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     var terminalSize: CGSize = defaultTerminalSize {
         didSet {
-            shell.explicitRequestStatusPickup()
+            // Send resize to Mosh if connected
+            if moshConnected, let mosh = moshSession {
+                let rows = UInt16(terminalSize.height)
+                let cols = UInt16(terminalSize.width)
+                mosh.sendResize(rows: rows, cols: cols)
+            }
+            if !moshConnected {
+                shell.explicitRequestStatusPickup()
+            }
         }
     }
 
@@ -89,11 +103,17 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     func insertBuffer(_ str: String) {
         bufferAccessLock.lock()
-        defer { bufferAccessLock.unlock() }
-        guard !closed else { return }
+        if closed {
+            bufferAccessLock.unlock()
+            return
+        }
 
-        // Add to data buffer (for SSH)
-        _dataBuffer += str
+        let shouldRouteToMosh = moshConnected && moshSession != nil
+        if !shouldRouteToMosh {
+            // Add to data buffer (for SSH)
+            _dataBuffer += str
+        }
+        bufferAccessLock.unlock()
 
         // Add to persistent history (for copy)
         historyLock.lock()
@@ -106,7 +126,13 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         historyLock.unlock()
 
         debugPrint("[TerminalContext] insertBuffer: \(str.prefix(50)), history size: \(outputHistory.count)")
-        shell.explicitRequestStatusPickup()
+
+        // Route to Mosh if connected, otherwise use SSH
+        if shouldRouteToMosh, let mosh = moshSession {
+            mosh.sendString(str)
+        } else {
+            shell.explicitRequestStatusPickup()
+        }
     }
 
     func getOutputHistory() -> String {
@@ -131,6 +157,21 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
     func getOutputHistoryStrippedANSI() -> String {
         let history = getOutputHistory()
         return history.stripANSIEscapeCodes()
+    }
+
+    /// Handle output received from Mosh UDP session
+    /// - Parameter str: The output string from Mosh
+    func handleMoshOutput(_ str: String) {
+        // Write to terminal interface on main thread (matching SSH output path)
+        let sem = DispatchSemaphore(value: 0)
+        mainActor {
+            self.termInterface.write(str)
+            sem.signal()
+        }
+        sem.wait()
+
+        // Add to history
+        addToHistory(str)
     }
 
     var continueDecision: Bool = true {
@@ -221,6 +262,108 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
           \(tmuxAction); \
         fi
         """
+    }
+
+    // MARK: - Mosh Bootstrap
+
+    private struct MoshServerParams {
+        let ip: String
+        let port: String
+        let key: String
+    }
+
+    private func startMoshServer() -> MoshServerParams? {
+        let serverCmd = [
+            "mosh-server", "new", "-s",
+            "-c", "256",
+            "-l", "LC_ALL=en_US.UTF-8"
+        ].joined(separator: " ")
+
+        var capturedOutput = ""
+        let timeout = NSNumber(value: 10)
+
+        putInformation("[*] Executing: \(serverCmd)")
+
+        shell.beginExecute(
+            withCommand: serverCmd,
+            withTimeout: timeout,
+            withOnCreate: {},
+            withOutput: { output in
+                // Capture and log each chunk of output
+                capturedOutput += output
+                print("[Mosh Debug] Output chunk: \(output.prefix(100))")
+            },
+            withContinuationHandler: {
+                print("[Mosh Debug] Complete output: \(capturedOutput)")
+                // Parse output for connection parameters
+                if let params = self.parseMoshServerOutput(capturedOutput) {
+                    print("[Mosh Debug] Parsed params: IP=\(params.ip), PORT=\(params.port), KEY=\(params.key.prefix(10))...")
+                    return true
+                }
+                print("[Mosh Debug] Failed to parse mosh-server output")
+                return true
+            }
+        )
+
+        // Wait longer for command to complete and capture output
+        Thread.sleep(forTimeInterval: 2.0)
+
+        print("[Mosh Debug] After sleep, captured output length: \(capturedOutput.count)")
+
+        let params = parseMoshServerOutput(capturedOutput)
+        if params == nil {
+            putInformation("[!] No mosh-server response received")
+            putInformation("[i] Output: \(capturedOutput.prefix(200))")
+        }
+        return params
+    }
+
+    private func parseMoshServerOutput(_ output: String) -> MoshServerParams? {
+        let lines = output.split(separator: "\n")
+
+        var ip: String?
+        var port: String?
+        var key: String?
+
+        for line in lines {
+            let stringLine = String(line).trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Look for IP address
+            if stringLine.contains("Connected") {
+                if let range = stringLine.range(of: "Connected to\\s+(\\S+)", options: .regularExpression) {
+                    let after = String(stringLine[range.upperBound...])
+                    ip = after.components(separatedBy: .whitespacesAndNewlines).first
+                }
+            }
+
+            // Look for MOSH CONNECT line
+            if stringLine.contains("MOSH CONNECT") {
+                let pattern = "MOSH\\s+CONNECT\\s+(\\d+)\\s+(\\S+)"
+                if let regex = try? NSRegularExpression(pattern: pattern),
+                   let match = regex.firstMatch(in: stringLine, range: NSRange(stringLine.startIndex..., in: stringLine)) {
+
+                    if let portRange = Range(match.range(at: 1), in: stringLine) {
+                        port = String(stringLine[portRange])
+                    }
+                    if let keyRange = Range(match.range(at: 2), in: stringLine) {
+                        key = String(stringLine[keyRange])
+                    }
+                }
+            }
+        }
+
+        // Fallback: use remoteHost as IP if not found
+        if ip == nil {
+            ip = machine.remoteAddress
+        }
+
+        guard let finalIP = ip,
+              let finalPort = port,
+              let finalKey = key else {
+            return nil
+        }
+
+        return MoshServerParams(ip: finalIP, port: finalPort, key: finalKey)
     }
 
     func processBootstrap() {
@@ -331,6 +474,58 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
             }
         }
 
+        // Mosh bootstrap: start mosh-server via SSH
+        putInformation("[*] Connection type: \(machine.connectionType.rawValue.uppercased())")
+        if moshModeActive {
+            putInformation("[*] Starting Mosh session")
+            if let moshParams = self.startMoshServer() {
+                putInformation("[i] Mosh server available at \(moshParams.ip):\(moshParams.port)")
+                putInformation("[*] Connecting via UDP...")
+
+                // Create and connect Mosh session
+                let session = NMSession()
+                moshSession = session
+
+                session.connect(
+                    host: moshParams.ip,
+                    port: UInt16(moshParams.port) ?? 60001,
+                    key: moshParams.key,
+                    initialRows: UInt16(self.terminalSize.height),
+                    initialCols: UInt16(self.terminalSize.width),
+                    stateHandler: { [weak self] state in
+                        switch state {
+                        case .connecting:
+                            self?.putInformation("[i] UDP connecting...")
+                        case .connected:
+                            DispatchQueue.main.async {
+                                self?.moshConnected = true
+                            }
+                            self?.putInformation("[+] UDP socket ready")
+                        case .disconnected:
+                            self?.putInformation("[!] UDP disconnected")
+                        case .failed(let error):
+                            self?.putInformation("[!] UDP connection failed: \(error)")
+                        }
+                    },
+                    receiveHandler: { [weak self] output in
+                        // Handle Mosh terminal output
+                        self?.handleMoshOutput(output)
+                    }
+                )
+            } else {
+                putInformation("[i] mosh-server not available, using SSH")
+                moshConnected = false
+            }
+        }
+
+        if moshModeActive, moshConnected {
+            putInformation("[+] Mosh session active (SSH bootstrap detached)")
+            while continueDecision {
+                Thread.sleep(forTimeInterval: 0.05)
+            }
+            return
+        }
+
         // Prepare tmux bootstrap command before entering the terminal loop.
         if RayonStore.shared.useTmux {
             let configuredSessionName = RayonStore.shared.tmuxSessionName
@@ -372,11 +567,13 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         } withContinuationHandler: { [weak self] in
             self?.continueDecision ?? false
         }
-
-        processShutdown()
     }
 
     func processShutdown(exitFromShell: Bool = false) {
+        moshSession?.disconnect()
+        moshSession = nil
+        moshConnected = false
+
         if exitFromShell {
             putInformation("")
             putInformation("[*] Connection Closed")
@@ -386,6 +583,13 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
             putInformation("    " + lastError)
         }
         continueDecision = false
+
+        // Disconnect Mosh session if active
+        if let mosh = moshSession {
+            mosh.disconnect()
+            moshSession = nil
+        }
+
         let shell = shell
         DispatchQueue.global().async { [weak shell] in
             shell?.requestDisconnectAndWait()

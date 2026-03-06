@@ -23,7 +23,7 @@
 		5027F25D27B8210300F422BB /* LicenseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5027F25B27B8210300F422BB /* LicenseView.swift */; };
 		5038AAAC27B5297F00BFDF55 /* EditSnippetSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5038AAAA27B5297F00BFDF55 /* EditSnippetSheetView.swift */; };
 		5042072F287D953D00D62044 /* CodeEditorUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5042072E287D953D00D62044 /* CodeEditorUI */; };
-		505E326127D2602600054573 /* XTerminalUI in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326027D2602600054573 /* XTerminalUI */; };
+		505E326227D2602600054574 /* SwiftTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326127D2602600054574 /* SwiftTerminal */; };
 		505E326527D2625F00054573 /* MachineStatus in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326427D2625F00054573 /* MachineStatus */; };
 		505E326B27D2642C00054573 /* MachineStatusView in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326A27D2642C00054573 /* MachineStatusView */; };
 		505E762B27B4ECFC008D80F6 /* MachineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 505E762927B4ECFC008D80F6 /* MachineView.swift */; };
@@ -165,7 +165,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				501FF7A527CEFF2300380D59 /* SymbolPicker in Frameworks */,
-				505E326127D2602600054573 /* XTerminalUI in Frameworks */,
+				505E326227D2602600054574 /* SwiftTerminal in Frameworks */,
 				ABF821022F41E2E2006A8F60 /* RevenueCat in Frameworks */,
 				ABF8210B2F41E5CE006A8F60 /* StoreKit.framework in Frameworks */,
 				ABF821042F41E2E2006A8F60 /* RevenueCatUI in Frameworks */,
@@ -451,7 +451,7 @@
 				50BBA54E27B8000900CE7BB1 /* Colorful */,
 				5068E44B27CE3AAE00F8B770 /* RayonModule */,
 				501FF7A427CEFF2300380D59 /* SymbolPicker */,
-				505E326027D2602600054573 /* XTerminalUI */,
+				505E326127D2602600054574 /* SwiftTerminal */,
 				505E326427D2625F00054573 /* MachineStatus */,
 				505E326A27D2642C00054573 /* MachineStatusView */,
 				5042072E287D953D00D62044 /* CodeEditorUI */,
@@ -825,9 +825,9 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = CodeEditorUI;
 		};
-		505E326027D2602600054573 /* XTerminalUI */ = {
+		505E326127D2602600054574 /* SwiftTerminal */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = XTerminalUI;
+			productName = SwiftTerminal;
 		};
 		505E326427D2625F00054573 /* MachineStatus */ = {
 			isa = XCSwiftPackageProductDependency;

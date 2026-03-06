@@ -41,7 +41,7 @@
       location = "group:Foundation/SymbolPicker">
    </FileRef>
    <FileRef
-      location = "group:External/XTerminalUI">
+      location = "group:External/SwiftTerm">
    </FileRef>
    <FileRef
       location = "group:Foundation/XMLCoder">
@@ -54,5 +54,11 @@
    </FileRef>
    <FileRef
       location = "group:Foundation/Premium">
+   </FileRef>
+   <FileRef
+      location = "group:Foundation/SwiftTerminal">
+   </FileRef>
+   <FileRef
+      location = "group:Foundation/NMMoshShell">
    </FileRef>
 </Workspace>

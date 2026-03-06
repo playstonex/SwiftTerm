@@ -24,6 +24,8 @@ struct MachineEditView: View {
     @State var openIdentityPicker: Bool = false
 
     @State var sftpLoginPath: String = "/"
+    @State var connectionType: RDMachine.ConnectionType = .ssh
+    @State var moshPredictionMode: RDMachine.MoshPredictionMode = .adaptive
 
     var identityDescription: String {
         if let aid = associatedIdentity {
@@ -51,6 +53,10 @@ struct MachineEditView: View {
             generator.comment = comment
             generator.associatedIdentity = associatedIdentity?.uuidString
             generator.fileTransferLoginPath = sftpLoginPath
+            generator.connectionType = connectionType
+            if connectionType == .mosh {
+                generator.moshPredictionMode = moshPredictionMode
+            }
             generator.lastModifiedDate = Date()
             store.machineGroup.insert(generator)
             shouldDismiss = true
@@ -63,6 +69,8 @@ struct MachineEditView: View {
             group = read.group
             comment = read.comment
             sftpLoginPath = read.fileTransferLoginPath
+            connectionType = read.connectionType
+            moshPredictionMode = read.moshPredictionMode
             if let aid = read.associatedIdentity,
                let auid = UUID(uuidString: aid)
             {
@@ -114,6 +122,25 @@ struct MachineEditView: View {
             Group {
                 AlignedLabel("SFTP Login Path", icon: "point.topleft.down.curvedto.point.bottomright.up.fill")
                 TextField("SFTP Login Path", text: $sftpLoginPath)
+            }
+            Group {
+                AlignedLabel("Connection Type", icon: "network")
+                Picker("Connection Type", selection: $connectionType) {
+                    Text("SSH").tag(RDMachine.ConnectionType.ssh)
+                    Text("Mosh").tag(RDMachine.ConnectionType.mosh)
+                }
+                .pickerStyle(.segmented)
+
+                if connectionType == .mosh {
+                    AlignedLabel("Prediction Mode", icon: "waveform")
+                    Picker("Prediction Mode", selection: $moshPredictionMode) {
+                        Text("Adaptive").tag(RDMachine.MoshPredictionMode.adaptive)
+                        Text("Always").tag(RDMachine.MoshPredictionMode.always)
+                        Text("Never").tag(RDMachine.MoshPredictionMode.never)
+                        Text("Experimental").tag(RDMachine.MoshPredictionMode.experimental)
+                    }
+                    .pickerStyle(.menu)
+                }
             }
             sheetFoot
         }

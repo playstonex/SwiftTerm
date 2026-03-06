@@ -8,7 +8,7 @@
 import NSRemoteShell
 import RayonModule
 import SwiftUI
-import XTerminalUI
+import SwiftTerminal
 
 class SnippetExecuteContext: ObservableObject {
     let snippet: RDSnippet
