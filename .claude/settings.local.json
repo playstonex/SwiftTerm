@@ -48,7 +48,28 @@
       "Bash(git -C /Volumes/HubData/Projects/terminal/GoodTerm add:*)",
       "Bash(git -C /Volumes/HubData/Projects/terminal/GoodTerm commit -m \"$\\(cat <<''EOF''\nRefactor settings to modern 3-level navigation with SettingsUI module\n\nCreated new Foundation/SettingsUI shared module with:\n- NavigationSplitView master-detail layout for all platforms\n- Left sidebar: categorized settings items list\n- Right panel: detail content for selected item\n- Unified iOS/macOS experience with proper platform adaptation\n\nKey changes:\n- Added SettingsUI package with models and views\n- Implemented MonitorTelemetryManager for server monitoring\n- Refactored both Rayon and mRayon setting views\n- 3-level structure: App sidebar → Settings list → Detail view\n- Improved navigation and layout consistency\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git -C /Volumes/HubData/Projects/terminal/GoodTerm log:*)",
-      "Bash(git -C /Volumes/HubData/Projects/terminal/GoodTerm commit -m \"$\\(cat <<''EOF''\nModernize settings layout with Form and 3-level navigation\n\nUpdated settings UI to match Xcode and macOS design standards:\n- Changed from ScrollView to Form container for native layout\n- Applied .formStyle\\(.grouped\\) for proper section grouping\n- Simplified to clean 3-level structure:\n  Level 1: App sidebar \\(Connect, Machine, Settings...\\)\n  Level 2: Settings categories \\(About, Appearance, Premium...\\)\n  Level 3: Detail view showing all sections for selected category\n- Left panel shows category list, right panel shows category content\n- Each setting item displayed as independent section with full details\n- Matches Apple HIG guidelines for macOS settings interfaces\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git -C /Volumes/HubData/Projects/terminal/GoodTerm commit -m \"$\\(cat <<''EOF''\nModernize settings layout with Form and 3-level navigation\n\nUpdated settings UI to match Xcode and macOS design standards:\n- Changed from ScrollView to Form container for native layout\n- Applied .formStyle\\(.grouped\\) for proper section grouping\n- Simplified to clean 3-level structure:\n  Level 1: App sidebar \\(Connect, Machine, Settings...\\)\n  Level 2: Settings categories \\(About, Appearance, Premium...\\)\n  Level 3: Detail view showing all sections for selected category\n- Left panel shows category list, right panel shows category content\n- Each setting item displayed as independent section with full details\n- Matches Apple HIG guidelines for macOS settings interfaces\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(swift test:*)",
+      "Bash(swift package:*)",
+      "Bash(swift:*)",
+      "Bash(xargs -I {} {})",
+      "Bash(Foundation/NMMoshShell/.build/debug/MoshTest:*)",
+      "Bash(./Foundation/NMMoshShell/.build/debug/MoshTest:*)",
+      "Bash(./.build/arm64-apple-macosx/debug/MoshTest:*)",
+      "Bash(lldb:*)",
+      "mcp__web-search-prime__webSearchPrime",
+      "mcp__zread__search_doc",
+      "mcp__zread__read_file",
+      "mcp__zread__get_repo_structure",
+      "Bash(./.build/debug/MoshTest:*)",
+      "WebFetch(domain:www.rfc-editor.org)",
+      "WebFetch(domain:datatracker.ietf.org)",
+      "Bash(echo:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mosh-client:*)",
+      "Bash(./build/debug/MoshTest:*)",
+      "Bash(./build/arm64-apple-macosx/debug/MoshTest:*)",
+      "Bash(git:*)"
     ]
   }
 }

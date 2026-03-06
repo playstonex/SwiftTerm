@@ -25,6 +25,8 @@ struct EditMachineView: View {
     @State var group = ""
     @State var comment = ""
     @State var associatedIdentity: UUID? = nil
+    @State var connectionType: RDMachine.ConnectionType = .ssh
+    @State var moshPredictionMode: RDMachine.MoshPredictionMode = .adaptive
 
     // Extra
     @State var fileTransferLoginPath: String = "/"
@@ -98,6 +100,32 @@ struct EditMachineView: View {
                 Text("Customization about SFTP features")
             }
 
+            // Connection Type Settings
+            Section {
+                Picker("Connection Type", selection: $connectionType) {
+                    Text("SSH").tag(RDMachine.ConnectionType.ssh)
+                    Text("Mosh").tag(RDMachine.ConnectionType.mosh)
+                }
+                .pickerStyle(.segmented)
+
+                if connectionType == .mosh {
+                    Picker("Prediction Mode", selection: $moshPredictionMode) {
+                        Text("Adaptive").tag(RDMachine.MoshPredictionMode.adaptive)
+                        Text("Always").tag(RDMachine.MoshPredictionMode.always)
+                        Text("Never").tag(RDMachine.MoshPredictionMode.never)
+                        Text("Experimental").tag(RDMachine.MoshPredictionMode.experimental)
+                    }
+                }
+            } header: {
+                Label("Connection", systemImage: "network")
+            } footer: {
+                if connectionType == .mosh {
+                    Text("Mosh provides better roaming and low-latency prediction. Requires mosh-server on the remote host.")
+                } else {
+                    Text("Standard SSH connection")
+                }
+            }
+
             if let identity = inEditWith?() {
                 Section {
                     Button {
@@ -128,6 +156,8 @@ struct EditMachineView: View {
                     group = read.group
                     comment = read.comment
                     fileTransferLoginPath = read.fileTransferLoginPath
+                    connectionType = read.connectionType
+                    moshPredictionMode = read.moshPredictionMode
                     if let aid = read.associatedIdentity {
                         associatedIdentity = UUID(uuidString: aid)
                     }
@@ -183,6 +213,10 @@ struct EditMachineView: View {
             associatedIdentity: associatedIdentity?.uuidString
         )
         newMachine.fileTransferLoginPath = fileTransferLoginPath
+        newMachine.connectionType = connectionType
+        if connectionType == .mosh {
+            newMachine.moshPredictionMode = moshPredictionMode
+        }
         RayonStore.shared.machineGroup.insert(newMachine)
 
         presentationMode.wrappedValue.dismiss()

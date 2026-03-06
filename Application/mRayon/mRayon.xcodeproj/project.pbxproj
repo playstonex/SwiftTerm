@@ -33,7 +33,6 @@
 		5047BE9F27DECE48008887A7 /* SPIndicator in Frameworks */ = {isa = PBXBuildFile; productRef = 5047BE9E27DECE48008887A7 /* SPIndicator */; };
 		5047BEA127DED78A008887A7 /* PortForwardBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5047BEA027DED78A008887A7 /* PortForwardBackend.swift */; };
 		5047BEA327DEDB77008887A7 /* SidebarView+Recent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5047BEA227DEDB77008887A7 /* SidebarView+Recent.swift */; };
-		505E326327D2602E00054573 /* XTerminalUI in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326227D2602E00054573 /* XTerminalUI */; };
 		505E326427D2602E00054574 /* SwiftTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326327D2602E00054574 /* SwiftTerminal */; };
 		505E326727D2626900054573 /* MachineStatus in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326627D2626900054573 /* MachineStatus */; };
 		505E326927D2642700054573 /* MachineStatusView in Frameworks */ = {isa = PBXBuildFile; productRef = 505E326827D2642700054573 /* MachineStatusView */; };
@@ -119,7 +118,6 @@
 		ABB80C922B8EC20800FDD779 /* StripedTextTable in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C912B8EC20800FDD779 /* StripedTextTable */; };
 		ABB80C942B8EC20800FDD779 /* SymbolPicker in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C932B8EC20800FDD779 /* SymbolPicker */; };
 		ABB80C962B8EC20800FDD779 /* XMLCoder in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C952B8EC20800FDD779 /* XMLCoder */; };
-		ABB80C982B8EC20800FDD779 /* XTerminalUI in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C972B8EC20800FDD779 /* XTerminalUI */; };
 		ABB80C992B8EC20800FDD77A /* SwiftTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C982B8EC20800FDD77A /* SwiftTerminal */; };
 		ABB80C992B8EC28F00FDD779 /* LogRedirect.swift in Sources */ = {isa = PBXBuildFile; fileRef = 501B334127DF0DD100EB6261 /* LogRedirect.swift */; };
 		ABB80C9A2B8EC29900FDD779 /* PlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726C27CF269700149A43 /* PlaceholderView.swift */; };
@@ -298,7 +296,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				505E326327D2602E00054573 /* XTerminalUI in Frameworks */,
 				505E326427D2602E00054574 /* SwiftTerminal in Frameworks */,
 				ABF8210D2F41E5E2006A8F60 /* StoreKit.framework in Frameworks */,
 				ABF821092F41E308006A8F60 /* RevenueCatUI in Frameworks */,
@@ -322,7 +319,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				ABB80C922B8EC20800FDD779 /* StripedTextTable in Frameworks */,
-				ABB80C982B8EC20800FDD779 /* XTerminalUI in Frameworks */,
 				ABB80C992B8EC20800FDD77A /* SwiftTerminal in Frameworks */,
 				ABB80C7E2B8EC20800FDD779 /* CodeEditorUI in Frameworks */,
 				ABB80C962B8EC20800FDD779 /* XMLCoder in Frameworks */,
@@ -658,7 +654,6 @@
 			packageProductDependencies = (
 				501FF79A27CEFC6300380D59 /* RayonModule */,
 				501FF79C27CEFC6700380D59 /* Colorful */,
-				505E326227D2602E00054573 /* XTerminalUI */,
 				505E326327D2602E00054574 /* SwiftTerminal */,
 				505E326627D2626900054573 /* MachineStatus */,
 				505E326827D2642700054573 /* MachineStatusView */,
@@ -703,7 +698,6 @@
 				ABB80C912B8EC20800FDD779 /* StripedTextTable */,
 				ABB80C932B8EC20800FDD779 /* SymbolPicker */,
 				ABB80C952B8EC20800FDD779 /* XMLCoder */,
-				ABB80C972B8EC20800FDD779 /* XTerminalUI */,
 				ABB80C982B8EC20800FDD77A /* SwiftTerminal */,
 			);
 			productName = vRayon;
@@ -1304,10 +1298,6 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = SPIndicator;
 		};
-		505E326227D2602E00054573 /* XTerminalUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = XTerminalUI;
-		};
 		505E326327D2602E00054574 /* SwiftTerminal */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SwiftTerminal;
@@ -1375,10 +1365,6 @@
 		ABB80C952B8EC20800FDD779 /* XMLCoder */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = XMLCoder;
-		};
-		ABB80C972B8EC20800FDD779 /* XTerminalUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = XTerminalUI;
 		};
 		ABB80C982B8EC20800FDD77A /* SwiftTerminal */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -12,25 +12,8 @@ import Speech
 import UIKit
 import SwiftTerminal
 
-struct TerminalView: View {
-    @StateObject var context: TerminalContext
-
-    @State var interfaceToken = UUID()
-
-    @State var terminalSize: CGSize = TerminalContext.defaultTerminalSize
-
-    @StateObject var store = RayonStore.shared
-    @ObservedObject var assistantManager = AssistantManager.shared
-
-    @Environment(\.presentationMode) var presentationMode
-
-    @State private var isShowingToolbarSettings = false
-    @StateObject private var speechInputController = TerminalSpeechInputController()
-    @State private var liveTranscriptPreview: String = ""
-    private let terminalContentPadding = EdgeInsets(top: 10, leading: 12, bottom: 6, trailing: 12)
-
-    // Helper function to create Color from hex string
-    private func ColorFromHex(_ hex: String) -> Color {
+extension Color {
+    init(hex: String) {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
 
@@ -54,8 +37,26 @@ struct TerminalView: View {
             a = CGFloat(rgb & 0x000000FF) / 255.0
         }
 
-        return Color(red: r, green: g, blue: b, opacity: a)
+        self.init(red: r, green: g, blue: b, opacity: a)
     }
+}
+
+struct TerminalView: View {
+    @StateObject var context: TerminalContext
+
+    @State var interfaceToken = UUID()
+
+    @State var terminalSize: CGSize = TerminalContext.defaultTerminalSize
+
+    @StateObject var store = RayonStore.shared
+    @ObservedObject var assistantManager = AssistantManager.shared
+
+    @Environment(\.dismiss) var dismiss
+
+    @State private var isShowingToolbarSettings = false
+    @StateObject private var speechInputController = TerminalSpeechInputController()
+    @State private var liveTranscriptPreview: String = ""
+    private let terminalContentPadding = EdgeInsets(top: 10, leading: 12, bottom: 6, trailing: 12)
 
     var body: some View {
         Group {
@@ -63,7 +64,7 @@ struct TerminalView: View {
                 GeometryReader { r in
                     ZStack {
                         // Background
-                        ColorFromHex(store.terminalTheme.background)
+                        Color(hex: store.terminalTheme.background)
                             .ignoresSafeArea()
 
                         // Terminal view
@@ -72,7 +73,7 @@ struct TerminalView: View {
                             .padding(terminalContentPadding)
                             .onChange(of: r.size) { _, _ in
                                 guard context.interfaceToken == interfaceToken else { return }
-                                updateTerminalSize()
+                                Task { await updateTerminalSize() }
                             }
                             .onAppear {
                                 context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
@@ -87,9 +88,7 @@ struct TerminalView: View {
                                 applyFont()
                             }
                             .onChange(of: store.terminalThemeName) { _, _ in
-                                DispatchQueue.main.async {
-                                    applyTheme()
-                                }
+                                applyTheme()
                             }
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -136,7 +135,7 @@ struct TerminalView: View {
                                     },
                                     onClose: {
                                         if context.closed {
-                                            presentationMode.wrappedValue.dismiss()
+                                            dismiss()
                                             TerminalManager.shared.end(for: context.id)
                                         } else {
                                             UIBridge.requiresConfirmation(
@@ -206,7 +205,7 @@ struct TerminalView: View {
             ToolbarItem(placement: .principal) {
                 Text(context.navigationTitle)
                     .font(.headline)
-                    .foregroundStyle(ColorFromHex(store.terminalTheme.foreground))
+                    .foregroundStyle(Color(hex: store.terminalTheme.foreground))
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -236,24 +235,18 @@ struct TerminalView: View {
         }
     }
 
-    func updateTerminalSize() {
-        let core = context.termInterface
-        let origSize = terminalSize
-        DispatchQueue.global().async {
-            let newSize = core.requestTerminalSize()
-            guard newSize.width > 5, newSize.height > 5 else {
-                return
-            }
-            if newSize != origSize {
-                mainActor {
-                    guard context.interfaceToken == interfaceToken else {
-                        return
-                    }
-                    terminalSize = newSize
-                    context.shell.explicitRequestStatusPickup()
-                }
-            }
-        }
+    @MainActor
+    func updateTerminalSize() async {
+        let newSize = await Task.detached(priority: .userInitiated) {
+            context.termInterface.requestTerminalSize()
+        }.value
+
+        guard newSize.width > 5, newSize.height > 5,
+              newSize != terminalSize else { return }
+
+        guard context.interfaceToken == interfaceToken else { return }
+        terminalSize = newSize
+        context.shell.explicitRequestStatusPickup()
     }
 
     func applyTheme() {
@@ -858,7 +851,7 @@ struct ToolbarSettingsView: View {
     @State private var editMode: EditMode = .inactive
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             List {
                 Section {
                     Text("拖动调整顺序，开关控制显示/隐藏")
