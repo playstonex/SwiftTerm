@@ -103,7 +103,7 @@ struct TerminalView: View {
                                             self.safeWrite(payload + "\n")
                                             liveTranscriptPreview = ""
                                             speechInputController.clearCurrentBuffer()
-                                            UIBridge.presentSuccess(with: "Sent+Enter")
+                                            UIBridge.presentSuccess(with: String(localized: "Sent+Enter"))
                                         },
                                         onSendWithoutReturn: {
                                             let payload = liveTranscriptPreview.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -111,7 +111,7 @@ struct TerminalView: View {
                                             self.safeWrite(payload)
                                             liveTranscriptPreview = ""
                                             speechInputController.clearCurrentBuffer()
-                                            UIBridge.presentSuccess(with: "Sent")
+                                            UIBridge.presentSuccess(with: String(localized: "Sent"))
                                         },
                                         onClear: {
                                             liveTranscriptPreview = ""
@@ -128,8 +128,8 @@ struct TerminalView: View {
                                     keyStore: ToolbarKeyStore.shared,
                                     onReconnect: {
                                         DispatchQueue.global().async {
-                                            context.putInformation("[i] Reconnect will use the information you provide previously,")
-                                            context.putInformation("    if the machine was edited, create a new terminal.")
+                                            context.putInformation(String(localized: "[i] Reconnect will use the information you provide previously,"))
+                                            context.putInformation(String(localized: "    if the machine was edited, create a new terminal."))
                                             context.processBootstrap()
                                         }
                                     },
@@ -139,7 +139,7 @@ struct TerminalView: View {
                                             TerminalManager.shared.end(for: context.id)
                                         } else {
                                             UIBridge.requiresConfirmation(
-                                                message: "Are you sure you want to close this session?"
+                                                message: String(localized: "Are you sure you want to close this session?")
                                             ) { yes in
                                                 if yes { context.processShutdown() }
                                             }
@@ -147,11 +147,11 @@ struct TerminalView: View {
                                     },
                                     onPaste: {
                                         guard let str = UIPasteboard.general.string else {
-                                            UIBridge.presentError(with: "Empty Pasteboard")
+                                            UIBridge.presentError(with: String(localized: "Empty Pasteboard"))
                                             return
                                         }
                                         UIBridge.requiresConfirmation(
-                                            message: "Are you sure you want to paste following string?\n\n\(str)"
+                                            message: String(localized: "Are you sure you want to paste following string?\n\n\(str)")
                                         ) { yes in
                                             if yes { self.safeWrite(str) }
                                         }
@@ -160,9 +160,9 @@ struct TerminalView: View {
                                         let cleanHistory = context.getOutputHistoryStrippedANSI()
                                         if !cleanHistory.isEmpty {
                                             UIPasteboard.general.string = cleanHistory
-                                            UIBridge.presentSuccess(with: "已复制")
+                                            UIBridge.presentSuccess(with: String(localized: "Copied"))
                                         } else {
-                                            UIBridge.presentError(with: "终端内容为空")
+                                            UIBridge.presentError(with: String(localized: "Terminal content is empty"))
                                         }
                                     },
                                     onSendKey: { key in
@@ -331,7 +331,7 @@ private struct AccessoryBar: View {
                 Separator()
                 AccessoryBarButton(
                     icon: "ellipsis.circle",
-                    label: "自定义",
+                    label: String(localized: "Customize"),
                     action: { isShowingToolbarSettings = true }
                 )
             }
@@ -358,7 +358,7 @@ private struct AccessoryBar: View {
         case "close":
             AccessoryBarButton(
                 icon: isReconnecting ? "xmark" : key.icon,
-                label: isReconnecting ? "Cancel" : key.label,
+                label: isReconnecting ? String(localized: "Cancel") : key.label,
                 action: onClose
             )
         case "paste":
@@ -389,7 +389,7 @@ private struct AccessoryBar: View {
         case "voice":
             AccessoryBarButton(
                 icon: isVoiceRecording ? "mic.fill" : key.icon,
-                label: isVoiceRecording ? "Listening" : key.label,
+                label: isVoiceRecording ? String(localized: "Listening") : key.label,
                 action: onVoiceInput
             )
         default:
@@ -443,7 +443,7 @@ private struct LiveTranscriptBar: View {
                     Image(systemName: "waveform")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
-                    Text(text.isEmpty ? "Listening..." : text)
+                    Text(text.isEmpty ? String(localized: "Listening...") : text)
                         .font(.system(size: 13))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -504,15 +504,15 @@ private struct ControlKeyPopover: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Text("Ctrl Key")
+            Text(String(localized: "Ctrl Key"))
                 .font(.headline)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
-                Text("Ctrl +")
+                Text(String(localized: "Ctrl +"))
                     .foregroundStyle(.secondary)
 
-                TextField("Key", text: $controlKey, prompt: Text("A-Z"))
+                TextField(String(localized: "Key"), text: $controlKey, prompt: Text("A-Z"))
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 60)
                     .textInputAutocapitalization(.characters)
@@ -534,7 +534,7 @@ private struct ControlKeyPopover: View {
                 Button {
                     sendCtrl()
                 } label: {
-                    Text("Send")
+                    Text(String(localized: "Send"))
                         .frame(minWidth: 60)
                 }
                 .buttonStyle(.borderedProminent)
@@ -736,7 +736,7 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
     ) {
         guard !isRecording else { return }
         guard RayonStore.shared.speechInputEngine != "disabled" else {
-            UIBridge.presentError(with: "Voice disabled")
+            UIBridge.presentError(with: String(localized: "Voice disabled"))
             return
         }
         self.onPartialTranscript = onPartialTranscript
@@ -748,7 +748,7 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
                 try await requestPermissions()
                 try configureAndStart()
             } catch {
-                UIBridge.presentError(with: "Mic/Speech denied")
+                UIBridge.presentError(with: String(localized: "Mic/Speech denied"))
             }
         }
     }
@@ -849,7 +849,7 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
         audioEngine.prepare()
         try audioEngine.start()
         isRecording = true
-        UIBridge.presentSuccess(with: "Voice started")
+        UIBridge.presentSuccess(with: String(localized: "Voice started"))
 
         recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
             guard let self else { return }
@@ -896,11 +896,11 @@ struct ToolbarSettingsView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("拖动调整顺序，开关控制显示/隐藏")
+                    Text(String(localized: "Drag to reorder, toggle to show/hide"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } header: {
-                    Text("工具栏设置")
+                    Text(String(localized: "Toolbar Settings"))
                 }
 
                 Section {
@@ -935,18 +935,18 @@ struct ToolbarSettingsView: View {
                     }
                     .onMove(perform: editMode == .active ? keyStore.move : nil)
                 } header: {
-                    Text("所有按钮")
+                    Text(String(localized: "All Buttons"))
                 } footer: {
-                    Text("编辑模式下拖动可调整按钮顺序")
+                    Text(String(localized: "Drag to reorder buttons in edit mode"))
                         .font(.caption)
                 }
             }
-            .navigationTitle("自定义工具栏")
+            .navigationTitle(String(localized: "Customize Toolbar"))
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.editMode, $editMode)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(editMode == .active ? "完成" : "编辑") {
+                    Button(editMode == .active ? String(localized: "Done") : String(localized: "Edit")) {
                         withAnimation {
                             editMode = editMode == .active ? .inactive : .active
                         }
@@ -954,7 +954,7 @@ struct ToolbarSettingsView: View {
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("关闭") {
+                    Button(String(localized: "Close")) {
                         dismiss()
                     }
                 }
@@ -964,11 +964,11 @@ struct ToolbarSettingsView: View {
 
     private func categoryLabel(_ category: ToolbarKey.KeyCategory) -> String {
         switch category {
-        case .session: return "会话管理"
-        case .clipboard: return "剪贴板"
-        case .navigation: return "导航"
-        case .control: return "控制键"
-        case .custom: return "自定义"
+        case .session: return String(localized: "Session")
+        case .clipboard: return String(localized: "Clipboard")
+        case .navigation: return String(localized: "Navigation")
+        case .control: return String(localized: "Control")
+        case .custom: return String(localized: "Custom")
         }
     }
 }
