@@ -19,7 +19,7 @@ import zlib
 public final class NMSession: @unchecked Sendable {
 
     /// Enable/disable verbose debug logging
-    public var debugLogging: Bool = false
+    public var debugLogging: Bool = true
 
     // MARK: - Types
 
@@ -175,7 +175,7 @@ public final class NMSession: @unchecked Sendable {
     public func sendString(_ string: String) {
         queue.async { [weak self] in
             guard let self else { return }
-            if self.debugLogging { print("[Mosh] sendString: \"\(string.prefix(20).replacingOccurrences(of: "\n", with: "\\n"))...\"") }
+            if self.debugLogging { print("[Mosh] >>> sendString: \"\(string.prefix(20).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))\" (\(string.count) chars)") }
             // Create UserMessage with keystroke instruction
             let keystroke = Keystroke(string: string)
             let instruction = UserInstruction(keystroke: keystroke)
@@ -692,7 +692,7 @@ public final class NMSession: @unchecked Sendable {
             }
         }
 
-        if debugLogging { print("[Mosh] Transport: old=\(oldNum), new=\(newNum), ack=\(ackNum), diff=\(diff?.count ?? 0) bytes") }
+        if debugLogging { print("[Mosh] Transport: old=\(oldNum), new=\(newNum), ack=\(ackNum), diff=\(diff?.count ?? 0) bytes, lastApplied=\(lastAppliedRemoteState)") }
 
         let transportDiff = diff ?? Data()
 
@@ -702,13 +702,24 @@ public final class NMSession: @unchecked Sendable {
             receiverAckedState = ackNum
         }
         let appliedState = lastAppliedRemoteState
+
+        // Check if we've already seen this state
+        if pendingRemoteStates[newNum] != nil {
+            lock.unlock()
+            if debugLogging { print("[Mosh] DUPLICATE state new=\(newNum) already pending, skipping") }
+            return
+        }
+
         if newNum <= appliedState {
             lock.unlock()
             if debugLogging { print("[Mosh] Ignoring stale state old=\(oldNum), new=\(newNum), lastApplied=\(appliedState)") }
             return
         }
         pendingRemoteStates[newNum] = PendingRemoteState(oldNum: oldNum, diff: transportDiff)
+        let pendingCount = pendingRemoteStates.count
         lock.unlock()
+
+        if debugLogging { print("[Mosh] Added pending state new=\(newNum), pending count=\(pendingCount)") }
 
         applyPendingRemoteStates()
     }
@@ -720,19 +731,18 @@ public final class NMSession: @unchecked Sendable {
             // - Each state frame is a DIFF from oldNum to newNum
             // - States must be applied in order, each diff builds on the previous
             // - oldNum indicates which state this diff is based on
-            // - We can only apply a diff if we have already applied its base state (oldNum)
+            // - We can only apply a diff if its base state (oldNum) matches our current state
 
-            // Find the next state that can be applied (oldNum <= lastAppliedRemoteState)
+            // Find the next state that can be applied (oldNum == lastAppliedRemoteState)
             // and has the lowest newNum (earliest in sequence)
             var targetState: UInt64?
             var targetPending: PendingRemoteState?
             var pendingCount: Int = 0
 
             for (stateNum, pending) in pendingRemoteStates {
-                // A state can be applied if its oldNum matches our current state
-                // OR if its oldNum is less than or equal (we can skip intermediate states
-                // if we receive a cumulative update)
-                if pending.oldNum <= lastAppliedRemoteState {
+                // A state can only be applied if its oldNum matches our current state exactly
+                // This ensures we apply diffs in the correct order
+                if pending.oldNum == lastAppliedRemoteState {
                     // Pick the earliest applicable state to maintain order
                     if targetState == nil || stateNum < targetState! {
                         targetState = stateNum
@@ -770,14 +780,18 @@ public final class NMSession: @unchecked Sendable {
             for instruction in hostMessage.instructions {
                 if let hostbytes = instruction.hostbytes {
                     let str = decodeTerminalBytes(hostbytes.hoststring)
-                    if debugLogging { print("[Mosh] HostBytes: \(str.prefix(50))...") }
+                    if debugLogging { print("[Mosh] HostBytes(\(str.count) chars): \(str.prefix(80).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...") }
                     notifyReceive(str)
+                }
+                if let echoack = instruction.echoack {
+                    if debugLogging { print("[Mosh] EchoAck: \(echoack.echoAckNum)") }
+                    // Handle echo acknowledgment - we can use this to confirm sent keystrokes
                 }
             }
         } else {
             // Try as raw string
             let str = decodeTerminalBytes(diff)
-            if debugLogging { print("[Mosh] Raw string diff: \(str.prefix(50))...") }
+            if debugLogging { print("[Mosh] Raw string diff(\(str.count) chars): \(str.prefix(80).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...") }
             notifyReceive(str)
         }
     }

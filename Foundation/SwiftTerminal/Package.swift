@@ -16,8 +16,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(path: "../../External/SwiftTerm"),
-    ],
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", from: "1.11.2"),    ],
     targets: [
         .target(
             name: "SwiftTerminal",

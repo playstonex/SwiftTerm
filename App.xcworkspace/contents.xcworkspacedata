@@ -41,9 +41,6 @@
       location = "group:Foundation/SymbolPicker">
    </FileRef>
    <FileRef
-      location = "group:External/SwiftTerm">
-   </FileRef>
-   <FileRef
       location = "group:Foundation/XMLCoder">
    </FileRef>
    <FileRef

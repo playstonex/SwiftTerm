@@ -115,17 +115,21 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         }
         bufferAccessLock.unlock()
 
-        // Add to persistent history (for copy)
-        historyLock.lock()
-        outputHistory += str
-        // Keep history at max size by removing old content
-        if outputHistory.count > maxHistorySize {
-            let removeCount = outputHistory.count - maxHistorySize
-            outputHistory = String(outputHistory.dropFirst(removeCount))
-        }
-        historyLock.unlock()
+        // In Mosh mode, the server will echo back output which gets added to history.
+        // So we should NOT add user input to history here to avoid duplication.
+        // For SSH mode, we still add to history here since SSH output callback adds display output.
+        if !shouldRouteToMosh {
+            historyLock.lock()
+            outputHistory += str
+            // Keep history at max size by removing old content
+            if outputHistory.count > maxHistorySize {
+                let removeCount = outputHistory.count - maxHistorySize
+                outputHistory = String(outputHistory.dropFirst(removeCount))
+            }
+            historyLock.unlock()
 
-        debugPrint("[TerminalContext] insertBuffer: \(str.prefix(50)), history size: \(outputHistory.count)")
+            debugPrint("[TerminalContext] insertBuffer: \(str.prefix(50)), history size: \(outputHistory.count)")
+        }
 
         // Route to Mosh if connected, otherwise use SSH
         if shouldRouteToMosh, let mosh = moshSession {
@@ -162,15 +166,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
     /// Handle output received from Mosh UDP session
     /// - Parameter str: The output string from Mosh
     func handleMoshOutput(_ str: String) {
-        // Write to terminal interface on main thread (matching SSH output path)
-        let sem = DispatchSemaphore(value: 0)
-        mainActor {
+        debugPrint("[Mosh] handleMoshOutput received: \(str.prefix(100).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...")
+        
+        Task { @MainActor in
             self.termInterface.write(str)
-            sem.signal()
         }
-        sem.wait()
-
-        // Add to history
+        
         addToHistory(str)
     }
 
@@ -305,7 +306,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
             }
         )
 
-        // Wait longer for command to complete and capture output
+        // Wait for command to complete (on background thread - acceptable)
         Thread.sleep(forTimeInterval: 2.0)
 
         print("[Mosh Debug] After sleep, captured output length: \(capturedOutput.count)")
@@ -401,6 +402,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
                 // Terminal bell
             }
             .setupBufferChain { [weak self] buffer in
+                debugPrint("[TerminalContext] setupBufferChain received: \(buffer.prefix(50).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))")
                 self?.insertBuffer(buffer)
             }
             .setupTitleChain { [weak self] str in
@@ -492,14 +494,12 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
                     key: moshParams.key,
                     initialRows: UInt16(self.terminalSize.height),
                     initialCols: UInt16(self.terminalSize.width),
-                    stateHandler: { [weak self] state in
+                    stateHandler: { @MainActor [weak self] state in
                         switch state {
                         case .connecting:
                             self?.putInformation("[i] UDP connecting...")
                         case .connected:
-                            DispatchQueue.main.async {
-                                self?.moshConnected = true
-                            }
+                            self?.moshConnected = true
                             self?.putInformation("[+] UDP socket ready")
                         case .disconnected:
                             self?.putInformation("[!] UDP disconnected")
@@ -507,8 +507,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
                             self?.putInformation("[!] UDP connection failed: \(error)")
                         }
                     },
-                    receiveHandler: { [weak self] output in
-                        // Handle Mosh terminal output
+                    receiveHandler: { @MainActor [weak self] output in
                         self?.handleMoshOutput(output)
                     }
                 )
@@ -555,15 +554,10 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         } withWriteDataBuffer: { [weak self] in
             self?.getBuffer() ?? ""
         } withOutputDataBuffer: { [weak self] output in
-            let sem = DispatchSemaphore(value: 0)
-            mainActor {
-                // Capture server output to history
+            Task { @MainActor in
                 self?.addToHistory(output)
-                // Display output
                 self?.termInterface.write(output)
-                sem.signal()
             }
-            sem.wait()
         } withContinuationHandler: { [weak self] in
             self?.continueDecision ?? false
         }

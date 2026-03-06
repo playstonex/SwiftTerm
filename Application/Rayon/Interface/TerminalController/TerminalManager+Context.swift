@@ -126,14 +126,10 @@ extension TerminalManager {
         /// Handle output received from Mosh UDP session
         /// - Parameter str: The output string from Mosh
         func handleMoshOutput(_ str: String) {
-            // Write to terminal interface on main thread (matching SSH output path)
-            let sem = DispatchSemaphore(value: 0)
-            mainActor {
+            Task { @MainActor in
                 self.termInterface.write(str)
-                sem.signal()
             }
-            sem.wait()
-
+            
             // Notify observers (Skills, etc.)
             observerLock.lock()
             let observers = outputObservers.values
@@ -325,7 +321,7 @@ extension TerminalManager {
                 }
             )
 
-            // Wait longer for command to complete and capture output
+            // Wait for command to complete (on background thread - acceptable)
             Thread.sleep(forTimeInterval: 2.0)
 
             print("[Mosh Debug] After sleep, captured output length: \(capturedOutput.count)")
@@ -495,14 +491,12 @@ extension TerminalManager {
                         key: moshParams.key,
                         initialRows: UInt16(self.terminalSize.height),
                         initialCols: UInt16(self.terminalSize.width),
-                        stateHandler: { [weak self] state in
+                        stateHandler: { @MainActor [weak self] state in
                             switch state {
                             case .connecting:
                                 self?.putInformation("[i] UDP connecting...")
                             case .connected:
-                                DispatchQueue.main.async {
-                                    self?.moshConnected = true
-                                }
+                                self?.moshConnected = true
                                 self?.putInformation("[+] UDP socket ready")
                             case .disconnected:
                                 self?.putInformation("[!] UDP disconnected")
@@ -510,8 +504,7 @@ extension TerminalManager {
                                 self?.putInformation("[!] UDP connection failed: \(error)")
                             }
                         },
-                        receiveHandler: { [weak self] output in
-                            // Handle Mosh terminal output
+                        receiveHandler: { @MainActor [weak self] output in
                             self?.handleMoshOutput(output)
                         }
                     )
@@ -556,15 +549,11 @@ extension TerminalManager {
             } withWriteDataBuffer: { [weak self] in
                 self?.getBuffer() ?? ""
             } withOutputDataBuffer: { [weak self] output in
-                // 1. Process for UI
-                let sem = DispatchSemaphore(value: 0)
-                mainActor {
+                Task { @MainActor in
                     self?.termInterface.write(output)
-                    sem.signal()
                 }
-                sem.wait()
-
-                // 2. Process for Logic (History, Observers)
+                
+                // Process for Logic (History, Observers)
                 self?.handleShellOutput(output)
             } withContinuationHandler: { [weak self] in
                 self?.continueDecision ?? false
