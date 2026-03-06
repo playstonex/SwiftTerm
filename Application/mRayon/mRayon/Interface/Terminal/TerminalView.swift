@@ -619,8 +619,40 @@ class ToolbarKeyStore: ObservableObject {
 
     private init() {
         loadKeys()
+        // Ensure voice key exists in the list (for users upgrading from older versions)
+        ensureVoiceKeyExists()
         // Update voice key availability after loading to respect current settings
         updateVoiceKeyAvailability()
+    }
+
+    private func ensureVoiceKeyExists() {
+        // Check if voice key exists in the loaded keys
+        if !availableKeys.contains(where: { $0.id == "voice" }) {
+            // Find the position to insert voice key (after "esc" in control category)
+            if let escIndex = availableKeys.firstIndex(where: { $0.id == "esc" }) {
+                let voiceKey = ToolbarKey(
+                    id: "voice",
+                    icon: "mic",
+                    label: "Voice",
+                    keySequence: "",
+                    isEnabled: true,
+                    category: .control
+                )
+                availableKeys.insert(voiceKey, at: escIndex + 1)
+            } else {
+                // Fallback: add to the end of control keys or just append
+                let voiceKey = ToolbarKey(
+                    id: "voice",
+                    icon: "mic",
+                    label: "Voice",
+                    keySequence: "",
+                    isEnabled: true,
+                    category: .control
+                )
+                availableKeys.append(voiceKey)
+            }
+            saveKeys()
+        }
     }
 
     private static func isSpeechRecognitionAvailable() -> Bool {
@@ -628,9 +660,15 @@ class ToolbarKeyStore: ObservableObject {
         guard RayonStore.shared.speechInputEngine != "disabled" else {
             return false
         }
-        // Then check if speech recognition is supported and available for the current locale
-        guard let recognizer = SFSpeechRecognizer(locale: .current) else {
-            return false
+        // Check if speech recognition is supported for the configured locale
+        let localeIdentifier = RayonStore.shared.speechInputLocaleIdentifier
+        let targetLocale = localeIdentifier == "system" ? Locale.current : Locale(identifier: localeIdentifier)
+        guard let recognizer = SFSpeechRecognizer(locale: targetLocale) else {
+            // Fallback to current locale if configured locale is not supported
+            guard let fallbackRecognizer = SFSpeechRecognizer(locale: .current) else {
+                return false
+            }
+            return fallbackRecognizer.isAvailable
         }
         return recognizer.isAvailable
     }
@@ -639,8 +677,11 @@ class ToolbarKeyStore: ObservableObject {
     func updateVoiceKeyAvailability() {
         let isAvailable = Self.isSpeechRecognitionAvailable()
         if let index = availableKeys.firstIndex(where: { $0.id == "voice" }) {
-            availableKeys[index].isEnabled = isAvailable
-            saveKeys()
+            // Only update and save if the state actually changed
+            if availableKeys[index].isEnabled != isAvailable {
+                availableKeys[index].isEnabled = isAvailable
+                saveKeys()
+            }
         }
     }
 
