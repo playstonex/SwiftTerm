@@ -571,6 +571,7 @@ struct ToolbarKey: Identifiable, Equatable, Codable {
 
 class ToolbarKeyStore: ObservableObject {
     static let shared = ToolbarKeyStore()
+    private static let voiceKeyId = "voice"
 
     @AppStorage("terminalToolbarKeys") private var keysData: Data = Data()
 
@@ -592,7 +593,7 @@ class ToolbarKeyStore: ObservableObject {
         // Control keys
         ToolbarKey(id: "ctrl", icon: "keyboard", label: "Ctrl", keySequence: "", isEnabled: true, category: .control),
         ToolbarKey(id: "esc", icon: "escape", label: "Esc", keySequence: "\u{001B}", isEnabled: true, category: .control),
-        ToolbarKey(id: "voice", icon: "mic", label: "Voice", keySequence: "", isEnabled: ToolbarKeyStore.isSpeechRecognitionAvailable(), category: .control),
+        ToolbarKey(id: ToolbarKeyStore.voiceKeyId, icon: "mic", label: String(localized: "Voice"), keySequence: "", isEnabled: ToolbarKeyStore.isSpeechRecognitionAvailable(), category: .control),
 
         // Custom keys
         ToolbarKey(id: "tab", icon: "arrow.right", label: "Tab", keySequence: "\u{0009}", isEnabled: true, category: .custom),
@@ -627,13 +628,13 @@ class ToolbarKeyStore: ObservableObject {
 
     private func ensureVoiceKeyExists() {
         // Check if voice key exists in the loaded keys
-        if !availableKeys.contains(where: { $0.id == "voice" }) {
+        if !availableKeys.contains(where: { $0.id == Self.voiceKeyId }) {
             // Find the position to insert voice key (after "esc" in control category)
             if let escIndex = availableKeys.firstIndex(where: { $0.id == "esc" }) {
                 let voiceKey = ToolbarKey(
-                    id: "voice",
+                    id: Self.voiceKeyId,
                     icon: "mic",
-                    label: "Voice",
+                    label: String(localized: "Voice"),
                     keySequence: "",
                     isEnabled: true,
                     category: .control
@@ -642,9 +643,9 @@ class ToolbarKeyStore: ObservableObject {
             } else {
                 // Fallback: add to the end of control keys or just append
                 let voiceKey = ToolbarKey(
-                    id: "voice",
+                    id: Self.voiceKeyId,
                     icon: "mic",
-                    label: "Voice",
+                    label: String(localized: "Voice"),
                     keySequence: "",
                     isEnabled: true,
                     category: .control
@@ -676,7 +677,7 @@ class ToolbarKeyStore: ObservableObject {
     /// Update voice key enabled state when settings change
     func updateVoiceKeyAvailability() {
         let isAvailable = Self.isSpeechRecognitionAvailable()
-        if let index = availableKeys.firstIndex(where: { $0.id == "voice" }) {
+        if let index = availableKeys.firstIndex(where: { $0.id == Self.voiceKeyId }) {
             // Only update and save if the state actually changed
             if availableKeys[index].isEnabled != isAvailable {
                 availableKeys[index].isEnabled = isAvailable
