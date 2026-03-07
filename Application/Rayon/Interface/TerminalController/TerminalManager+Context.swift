@@ -55,6 +55,7 @@ extension TerminalManager {
 
         @Published var interfaceToken: UUID = .init()
         @Published var interfaceDisabled: Bool = false
+        @Published var isInTmuxSession: Bool = false
 
         static let defaultTerminalSize = CGSize(width: 80, height: 40)
 
@@ -524,6 +525,9 @@ extension TerminalManager {
 
             // Prepare tmux bootstrap command before entering the terminal loop.
             if RayonStore.shared.useTmux {
+                DispatchQueue.main.async {
+                    self.isInTmuxSession = true
+                }
                 let configuredSessionName = RayonStore.shared.tmuxSessionName
                 let sessionName = normalizedTmuxSessionName(configuredSessionName)
                 let autoCreate = RayonStore.shared.tmuxAutoCreate
@@ -650,6 +654,79 @@ extension TerminalManager {
             }
 
             return (cleanOutput, exitCode)
+        }
+
+        // MARK: - Tmux Commands
+
+        /// Sends a tmux command by first pressing Ctrl+B, then the command key
+        func sendTmuxCommand(_ command: String) {
+            guard isInTmuxSession else { return }
+            // Send Ctrl+B (prefix key), then the command
+            insertBuffer("\u{02}\(command)")
+        }
+
+        /// Sends raw key sequences to the terminal
+        func sendTmuxKeySequence(_ sequence: String) {
+            guard isInTmuxSession else { return }
+            insertBuffer(sequence)
+        }
+
+        /// Detach from the current tmux session
+        func tmuxDetach() {
+            sendTmuxCommand("d")
+            DispatchQueue.main.async {
+                self.isInTmuxSession = false
+            }
+        }
+
+        /// Create a new tmux window
+        func tmuxNewWindow() {
+            sendTmuxCommand("c")
+        }
+
+        /// List all tmux windows
+        func tmuxListWindows() {
+            sendTmuxCommand("w")
+        }
+
+        /// Switch to the next tmux window
+        func tmuxNextWindow() {
+            sendTmuxCommand("n")
+        }
+
+        /// Switch to the previous tmux window
+        func tmuxPreviousWindow() {
+            sendTmuxCommand("p")
+        }
+
+        /// Kill the current tmux window
+        func tmuxKillWindow() {
+            sendTmuxCommand("&")
+        }
+
+        /// Rename the current tmux window
+        func tmuxRenameWindow() {
+            sendTmuxCommand(",")
+        }
+
+        /// Split the current pane horizontally
+        func tmuxSplitHorizontal() {
+            sendTmuxCommand("%")
+        }
+
+        /// Split the current pane vertically
+        func tmuxSplitVertical() {
+            sendTmuxCommand("\"")
+        }
+
+        /// List all tmux sessions
+        func tmuxListSessions() {
+            sendTmuxCommand("s")
+        }
+
+        /// Enter tmux command mode
+        func tmuxCommandMode() {
+            sendTmuxCommand(":")
         }
 
         /// Stream output for real-time analysis

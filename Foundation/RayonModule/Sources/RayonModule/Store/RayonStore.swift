@@ -93,6 +93,12 @@ public class RayonStore: ObservableObject {
         ) {
             portForwardGroup = read
         }
+        if let read = readEncryptedDefault(
+            from: .browserSessionEncrypted,
+            browserSessionGroup.self
+        ) {
+            browserSessionGroup = read
+        }
 
         // Setup auto-sync for data changes
         setupAutoSync()
@@ -465,6 +471,15 @@ public class RayonStore: ObservableObject {
             storeEncryptedDefault(
                 to: .portForwardEncrypted,
                 with: portForwardGroup
+            )
+        }
+    }
+
+    @Published public var browserSessionGroup: RDBrowserSessionGroup = .init() {
+        didSet {
+            storeEncryptedDefault(
+                to: .browserSessionEncrypted,
+                with: browserSessionGroup
             )
         }
     }

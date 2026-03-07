@@ -54,6 +54,9 @@ struct TerminalView: View {
     @Environment(\.dismiss) var dismiss
 
     @State private var isShowingToolbarSettings = false
+    @State private var isShowingKillWindowConfirm = false
+    @State private var isShowingWebBrowserSheet = false
+    @State private var webBrowserPort: String = ""
     @StateObject private var speechInputController = TerminalSpeechInputController()
     @State private var liveTranscriptPreview: String = ""
     private let terminalContentPadding = EdgeInsets(top: 10, leading: 12, bottom: 6, trailing: 12)
@@ -208,10 +211,111 @@ struct TerminalView: View {
                     .foregroundStyle(Color(hex: store.terminalTheme.foreground))
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    assistantManager.toggle()
-                } label: {
-                    Image(systemName: "sidebar.right")
+                HStack(spacing: 12) {
+                    // Tmux button - only show when in tmux session
+                    if context.isInTmuxSession {
+                        Menu {
+                            // Session actions
+                            Button {
+                                context.tmuxDetach()
+                            } label: {
+                                Label(String(localized: "Detach Session"), systemImage: "rectangle.on.rectangle")
+                            }
+
+                            Divider()
+
+                            // Window actions
+                            Button {
+                                context.tmuxNewWindow()
+                            } label: {
+                                Label(String(localized: "New Window"), systemImage: "square.and.pencil")
+                            }
+
+                            Button {
+                                context.tmuxListWindows()
+                            } label: {
+                                Label(String(localized: "List Windows"), systemImage: "list.bullet.rectangle")
+                            }
+
+                            Button {
+                                context.tmuxNextWindow()
+                            } label: {
+                                Label(String(localized: "Next Window"), systemImage: "arrow.right.square")
+                            }
+
+                            Button {
+                                context.tmuxPreviousWindow()
+                            } label: {
+                                Label(String(localized: "Previous Window"), systemImage: "arrow.left.square")
+                            }
+
+                            Button {
+                                isShowingKillWindowConfirm = true
+                            } label: {
+                                Label(String(localized: "Kill Current Window"), systemImage: "xmark.square")
+                            }
+
+                            Button {
+                                context.tmuxRenameWindow()
+                            } label: {
+                                Label(String(localized: "Rename Window"), systemImage: "pencil.line")
+                            }
+
+                            Divider()
+
+                            // Pane actions
+                            Button {
+                                context.tmuxSplitHorizontal()
+                            } label: {
+                                Label(String(localized: "Split Horizontal"), systemImage: "rectangle.split.2x1")
+                            }
+
+                            Button {
+                                context.tmuxSplitVertical()
+                            } label: {
+                                Label(String(localized: "Split Vertical"), systemImage: "rectangle.split.1x2")
+                            }
+
+                            Divider()
+
+                            // Session list and command mode
+                            Button {
+                                context.tmuxListSessions()
+                            } label: {
+                                Label(String(localized: "List Sessions"), systemImage: "list.bullet")
+                            }
+
+                            Button {
+                                context.tmuxCommandMode()
+                            } label: {
+                                Label(String(localized: "Command Mode"), systemImage: "terminal")
+                            }
+                        } label: {
+                            Image(systemName: "square.split.2x2")
+                        }
+                        .alert(String(localized: "Kill Current Window?"), isPresented: $isShowingKillWindowConfirm) {
+                            Button(String(localized: "Cancel"), role: .cancel) {}
+                            Button(String(localized: "Kill"), role: .destructive) {
+                                context.tmuxKillWindow()
+                            }
+                        } message: {
+                            Text(String(localized: "Are you sure you want to kill the current tmux window?"))
+                        }
+                    }
+
+                    // Internal Web Browser button
+                    Button {
+                        webBrowserPort = ""
+                        isShowingWebBrowserSheet = true
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+
+                    Button {
+                        assistantManager.toggle()
+                    } label: {
+                        Image(systemName: "sidebar.right")
+                    }
                 }
             }
         }
@@ -228,6 +332,13 @@ struct TerminalView: View {
         }
         .sheet(isPresented: $isShowingToolbarSettings) {
             ToolbarSettingsView(keyStore: ToolbarKeyStore.shared)
+        }
+        .sheet(isPresented: $isShowingWebBrowserSheet) {
+            WebBrowserPortInputSheet(
+                port: $webBrowserPort,
+                machine: context.machine,
+                isPresented: $isShowingWebBrowserSheet
+            )
         }
         .onDisappear {
             speechInputController.stopAndDiscard()
@@ -969,6 +1080,99 @@ struct ToolbarSettingsView: View {
         case .navigation: return String(localized: "Navigation")
         case .control: return String(localized: "Control")
         case .custom: return String(localized: "Custom")
+        }
+    }
+}
+
+// MARK: - Web Browser Port Input Sheet
+
+private struct WebBrowserPortInputSheet: View {
+    @Binding var port: String
+    let machine: RDMachine
+    @Binding var isPresented: Bool
+
+    @StateObject private var browserManager = WebBrowserManager.shared
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField(String(localized: "Port Number"), text: $port)
+                        .textFieldStyle(.roundedBorder)
+                        .keyboardType(.numberPad)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                } header: {
+                    Text(String(localized: "Remote Port"))
+                } footer: {
+                    Text(String(localized: "Enter the port number on the remote server to forward"))
+                }
+
+                Section {
+                    HStack {
+                        Text(String(localized: "Server"))
+                        Spacer()
+                        Text(machine.name)
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Text(String(localized: "Address"))
+                        Spacer()
+                        Text(machine.remoteAddress)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text(String(localized: "Connection"))
+                }
+            }
+            .navigationTitle(String(localized: "Open Web Browser"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(String(localized: "Cancel")) {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(String(localized: "Open")) {
+                        openBrowser()
+                    }
+                    .disabled(port.isEmpty)
+                }
+            }
+        }
+    }
+
+    private func openBrowser() {
+        guard let portNumber = Int(port), portNumber > 0, portNumber <= 65535 else {
+            UIBridge.presentError(with: String(localized: "Invalid port number"))
+            return
+        }
+
+        // Create a browser session for this terminal's machine
+        let session = RDBrowserSession(
+            name: "\(machine.name):\(portNumber)",
+            usingMachine: machine.id,
+            remoteHost: "127.0.0.1",
+            remotePort: portNumber
+        )
+
+        // Save the session
+        RayonStore.shared.browserSessionGroup.insert(session)
+
+        // Start the browser
+        if let context = browserManager.begin(for: session) {
+            dismiss()
+            // Navigate to the browser view
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                let browserView = WebBrowserView(context: context)
+                let hostingController = UIHostingController(rootView: browserView)
+                hostingController.modalPresentationStyle = .fullScreen
+                UIWindow.shutUpKeyWindow?
+                    .topMostViewController?
+                    .present(hostingController, animated: true)
+            }
         }
     }
 }

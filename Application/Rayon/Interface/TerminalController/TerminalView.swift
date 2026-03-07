@@ -7,10 +7,12 @@
 
 import AVFoundation
 import AppKit
+import NSRemoteShell
 import RayonModule
 import Speech
 import SwiftUI
 import SwiftTerminal
+import WebKit
 
 struct TerminalView: View {
     @StateObject var context: TerminalManager.Context
@@ -21,6 +23,24 @@ struct TerminalView: View {
     @State var backgroundColor: Color = .black
     @StateObject private var speechInputController = TerminalSpeechInputController()
     @State private var liveTranscriptPreview: String = ""
+    @State private var isShowingWebBrowserSheet = false
+    @State private var webBrowserPort: String = ""
+    
+    private var tmuxLogoImage: Image {
+        if let img = NSImage(named: "tmux-logo") {
+            let targetSize = NSSize(width: 16, height: 16)
+            let resized = NSImage(size: targetSize)
+            resized.lockFocus()
+            img.draw(in: NSRect(origin: .zero, size: targetSize),
+                     from: NSRect(origin: .zero, size: img.size),
+                     operation: .sourceOver,
+                     fraction: 1.0)
+            resized.unlockFocus()
+            resized.isTemplate = true
+            return Image(nsImage: resized).renderingMode(.template)
+        }
+        return Image(systemName: "square.split.2x2")
+    }
 
     var body: some View {
         Group {
@@ -113,6 +133,117 @@ struct TerminalView: View {
                 Button {} label: { HStack { Divider().frame(height: 15) } }
                     .disabled(true)
             }
+            // Tmux button - only shown when in a tmux session
+            if context.isInTmuxSession {
+                ToolbarItem {
+                    Menu {
+                        // Session actions
+                        Button {
+                            context.tmuxDetach()
+                        } label: {
+                            Label("Detach Session", systemImage: "rectangle.on.rectangle")
+                        }
+                        .accessibilityLabel("Detach from tmux session")
+
+                        Divider()
+
+                        // Window actions
+                        Button {
+                            context.tmuxNewWindow()
+                        } label: {
+                            Label("New Window", systemImage: "square.and.pencil")
+                        }
+                        .accessibilityLabel("Create new tmux window")
+
+                        Button {
+                            context.tmuxListWindows()
+                        } label: {
+                            Label("List Windows", systemImage: "list.bullet.rectangle")
+                        }
+                        .accessibilityLabel("List all tmux windows")
+
+                        Button {
+                            context.tmuxNextWindow()
+                        } label: {
+                            Label("Next Window", systemImage: "arrow.right.square")
+                        }
+                        .accessibilityLabel("Switch to next tmux window")
+
+                        Button {
+                            context.tmuxPreviousWindow()
+                        } label: {
+                            Label("Previous Window", systemImage: "arrow.left.square")
+                        }
+                        .accessibilityLabel("Switch to previous tmux window")
+
+                        Button {
+                            context.tmuxKillWindow()
+                        } label: {
+                            Label("Kill Current Window", systemImage: "xmark.square")
+                        }
+                        .accessibilityLabel("Kill current tmux window")
+
+                        Button {
+                            context.tmuxRenameWindow()
+                        } label: {
+                            Label("Rename Window", systemImage: "pencil.line")
+                        }
+                        .accessibilityLabel("Rename current tmux window")
+
+                        Divider()
+
+                        // Pane actions
+                        Button {
+                            context.tmuxSplitHorizontal()
+                        } label: {
+                            Label("Split Horizontal", systemImage: "rectangle.split.2x1")
+                        }
+                        .accessibilityLabel("Split pane horizontally")
+
+                        Button {
+                            context.tmuxSplitVertical()
+                        } label: {
+                            Label("Split Vertical", systemImage: "rectangle.split.1x2")
+                        }
+                        .accessibilityLabel("Split pane vertically")
+
+                        Divider()
+
+                        // Other
+                        Button {
+                            context.tmuxListSessions()
+                        } label: {
+                            Label("List Sessions", systemImage: "list.bullet")
+                        }
+                        .accessibilityLabel("List all tmux sessions")
+
+                        Button {
+                            context.tmuxCommandMode()
+                        } label: {
+                            Label("Command Mode", systemImage: "terminal")
+                        }
+                        .accessibilityLabel("Enter tmux command mode")
+                    } label: {
+                        tmuxLogoImage
+                    }
+                    .accessibilityLabel("Tmux Session Menu")
+                    .menuStyle(.borderlessButton)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                }
+            }
+            // Web Browser button
+            ToolbarItem {
+                Button {
+                    webBrowserPort = ""
+                    isShowingWebBrowserSheet = true
+                } label: {
+                    Label("Open Web Browser", systemImage: "globe")
+                }
+                .accessibilityLabel("Open Web Browser")
+                .help("Open internal web browser for this server")
+                .disabled(context.closed)
+            }
             ToolbarItem {
                 Button {
                     guard !context.closed else { return }
@@ -137,6 +268,7 @@ struct TerminalView: View {
                         systemImage: speechInputController.isRecording ? "mic.fill" : "mic"
                     )
                 }
+                .accessibilityLabel(speechInputController.isRecording ? "Stop Voice Input" : "Start Voice Input")
                 .help(speechInputController.isRecording ? "Stop Voice Input" : "Start Voice Input")
                 .disabled(context.closed)
             }
@@ -146,6 +278,7 @@ struct TerminalView: View {
                 } label: {
                     Image(systemName: "sidebar.right")
                 }
+                .accessibilityLabel("Toggle Assistant Panel")
             }
             ToolbarItem {
                 Button {
@@ -173,6 +306,13 @@ struct TerminalView: View {
         }
         .navigationTitle(context.navigationTitle)
         .navigationSubtitle(context.navigationSubtitle)
+        .sheet(isPresented: $isShowingWebBrowserSheet) {
+            WebBrowserPortInputSheet(
+                port: $webBrowserPort,
+                machine: context.machine,
+                isPresented: $isShowingWebBrowserSheet
+            )
+        }
         .onDisappear {
             speechInputController.stopAndDiscard()
             liveTranscriptPreview = ""
@@ -482,5 +622,761 @@ extension Color {
         let b = Double(rgb & 0x0000FF) / 255.0
 
         self.init(red: r, green: g, blue: b)
+    }
+}
+
+// MARK: - Web Browser Port Input Sheet
+
+private struct WebBrowserPortInputSheet: View {
+    @Binding var port: String
+    let machine: RDMachine
+    @Binding var isPresented: Bool
+
+    @StateObject private var browserManager = WebBrowserManagerMac.shared
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Open Web Browser")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Remote Port")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                TextField("Port Number", text: $port)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 150)
+                    .onSubmit {
+                        openBrowser()
+                    }
+
+                Text("Enter the port number on the remote server to forward")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("Server:")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(machine.name)
+                }
+                HStack {
+                    Text("Address:")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(machine.remoteAddress)
+                }
+            }
+            .font(.subheadline)
+
+            HStack {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+
+                Button("Open") {
+                    openBrowser()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(port.isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 350)
+    }
+
+    private func openBrowser() {
+        guard let portNumber = Int(port), portNumber > 0, portNumber <= 65535 else {
+            UIBridge.presentError(with: "Invalid port number")
+            return
+        }
+
+        // Create a browser session for this terminal's machine
+        let session = RDBrowserSession(
+            name: "\(machine.name):\(portNumber)",
+            usingMachine: machine.id,
+            remoteHost: "127.0.0.1",
+            remotePort: portNumber
+        )
+
+        // Save the session
+        RayonStore.shared.browserSessionGroup.insert(session)
+
+        // Start the browser
+        if let context = browserManager.begin(for: session) {
+            dismiss()
+            // Open browser in new window
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                let browserView = WebBrowserViewMac(context: context)
+                let window = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
+                    styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                    backing: .buffered,
+                    defer: false
+                )
+                window.isReleasedWhenClosed = false
+                window.center()
+                window.title = context.session.name.isEmpty ? "Web Browser" : context.session.name
+                window.contentView = NSHostingView(rootView: browserView)
+                let delegate = WebBrowserWindowDelegate(context: context)
+                WebBrowserWindowDelegate.store(delegate, for: context.id)
+                window.delegate = delegate
+                window.makeKeyAndOrderFront(nil)
+            }
+        }
+    }
+}
+
+// MARK: - Web Browser Window Delegate
+
+private class WebBrowserWindowDelegate: NSObject, NSWindowDelegate {
+    private weak var context: WebBrowserContextMac?
+
+    private static var delegates: NSMapTable<NSUUID, WebBrowserWindowDelegate> = {
+        let table = NSMapTable<NSUUID, WebBrowserWindowDelegate>(keyOptions: .strongMemory, valueOptions: .weakMemory)
+        return table
+    }()
+    private static let lock = NSLock()
+
+    private let contextId: UUID
+
+    init(context: WebBrowserContextMac) {
+        self.context = context
+        self.contextId = context.id
+        super.init()
+    }
+
+    static func store(_ delegate: WebBrowserWindowDelegate, for id: UUID) {
+        lock.lock()
+        delegates.setObject(delegate, forKey: id as NSUUID)
+        lock.unlock()
+    }
+
+    static func remove(for id: UUID) {
+        lock.lock()
+        delegates.removeObject(forKey: id as NSUUID)
+        lock.unlock()
+    }
+
+    static func get(for id: UUID) -> WebBrowserWindowDelegate? {
+        lock.lock()
+        let delegate = delegates.object(forKey: id as NSUUID)
+        lock.unlock()
+        return delegate
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        let id = contextId
+        // Defer delegate self-destruction until AppKit finishes its window closed event loop.
+        // Doing this synchronously while AppKit is iterating delegates can crash inside libobjc!
+        DispatchQueue.main.async {
+            WebBrowserWindowDelegate.remove(for: id)
+            WebBrowserManagerMac.shared.end(for: id)
+        }
+    }
+}
+
+// MARK: - Web Browser Manager (macOS)
+
+private class WebBrowserManagerMac: ObservableObject {
+    static let shared = WebBrowserManagerMac()
+
+    private init() {}
+
+    @Published var browsers: [WebBrowserContextMac] = []
+    fileprivate let portAllocationLock = NSLock()
+
+    var usedLocalPorts: Set<Int> {
+        Set(browsers.map { $0.localPort }.filter { $0 > 0 })
+    }
+
+    @MainActor
+    func begin(for session: RDBrowserSession) -> WebBrowserContextMac? {
+        // Check if session already has a running browser
+        if let existing = browsers.first(where: { $0.id == session.id }) {
+            return existing
+        }
+
+        guard session.isValid() else {
+            UIBridge.presentError(with: "Invalid browser session configuration")
+            return nil
+        }
+
+        let context = WebBrowserContextMac(session: session)
+        browsers.append(context)
+
+        // Start connection in background
+        context.connectAndForward()
+
+        return context
+    }
+
+    @MainActor
+    func end(for sessionId: UUID) {
+        guard let index = browsers.firstIndex(where: { $0.id == sessionId }) else {
+            return
+        }
+
+        let context = browsers.remove(at: index)
+        context.disconnect()
+    }
+
+    @MainActor
+    func endAll() {
+        for context in browsers {
+            context.disconnect()
+        }
+        browsers.removeAll()
+    }
+
+    func browser(for sessionId: UUID) -> WebBrowserContextMac? {
+        browsers.first(where: { $0.id == sessionId })
+    }
+
+    func isRunning(sessionId: UUID) -> Bool {
+        browsers.contains(where: { $0.id == sessionId })
+    }
+}
+
+// MARK: - Web Browser Context (macOS)
+
+private class WebBrowserContextMac: ObservableObject, Identifiable {
+    let id: UUID
+    let session: RDBrowserSession
+    let machine: RDMachine
+    let shell: NSRemoteShell
+
+    @Published var connectionState: ConnectionState = .disconnected
+    @Published var localPort: Int = 0
+    @Published var errorMessage: String?
+
+    private var webView: WKWebView?
+    private var isClosed: Bool = false
+
+    enum ConnectionState: Equatable {
+        case disconnected
+        case connecting
+        case authenticating
+        case creatingTunnel
+        case connected
+        case error(String)
+
+        static func == (lhs: ConnectionState, rhs: ConnectionState) -> Bool {
+            switch (lhs, rhs) {
+            case (.disconnected, .disconnected),
+                 (.connecting, .connecting),
+                 (.authenticating, .authenticating),
+                 (.creatingTunnel, .creatingTunnel),
+                 (.connected, .connected):
+                return true
+            case (.error(let a), .error(let b)):
+                return a == b
+            default:
+                return false
+            }
+        }
+    }
+
+    var localUrl: URL? {
+        guard localPort > 0 else { return nil }
+        return URL(string: "http://127.0.0.1:\(localPort)")
+    }
+
+    init(session: RDBrowserSession) {
+        self.id = session.id
+        self.session = session
+        self.shell = .init()
+
+        guard let machineId = session.usingMachine,
+              let machine = RayonStore.shared.machineGroup[machineId].isNotPlaceholder() ? RayonStore.shared.machineGroup[machineId] : nil
+        else {
+            self.machine = RDMachine()
+            self.connectionState = .error("Invalid machine configuration")
+            return
+        }
+        self.machine = machine
+    }
+
+    func allocateLocalPort() -> Int {
+        var usedPorts = Set<Int>()
+        WebBrowserManagerMac.shared.portAllocationLock.lock()
+        for browser in WebBrowserManagerMac.shared.browsers {
+            usedPorts.insert(browser.localPort)
+        }
+
+        let preferredPorts = [3000, 3001, 3002, 4000, 5000, 5001, 8000, 8080, 8081, 8888, 9000]
+        for port in preferredPorts {
+            if !usedPorts.contains(port) {
+                WebBrowserManagerMac.shared.portAllocationLock.unlock()
+                return port
+            }
+        }
+
+        for port in 10000...65535 {
+            if !usedPorts.contains(port) {
+                WebBrowserManagerMac.shared.portAllocationLock.unlock()
+                return port
+            }
+        }
+        WebBrowserManagerMac.shared.portAllocationLock.unlock()
+        return 0
+    }
+
+    func connectAndForward() {
+        guard session.isValid() else {
+            DispatchQueue.main.async {
+                self.connectionState = .error("Invalid session configuration")
+                self.errorMessage = "Invalid session configuration"
+            }
+            return
+        }
+
+        let port = allocateLocalPort()
+        guard port > 0 else {
+            DispatchQueue.main.async {
+                self.connectionState = .error("Failed to allocate local port")
+                self.errorMessage = "Failed to allocate local port"
+            }
+            return
+        }
+
+        DispatchQueue.main.async {
+            self.localPort = port
+            self.connectionState = .connecting
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.performConnection(localPort: port)
+        }
+    }
+
+    private func performConnection(localPort: Int) {
+        shell
+            .setupConnectionHost(machine.remoteAddress)
+            .setupConnectionPort(NSNumber(value: Int(machine.remotePort) ?? 22))
+            .setupConnectionTimeout(RayonStore.shared.timeoutNumber)
+            .requestConnectAndWait()
+
+        let remoteAddress = machine.remoteAddress
+        let remotePort = machine.remotePort
+
+        guard shell.isConnected else {
+            DispatchQueue.main.async {
+                self.connectionState = .error("Failed to connect to \(remoteAddress):\(remotePort)")
+                self.errorMessage = "Failed to connect to \(remoteAddress):\(remotePort)"
+            }
+            return
+        }
+
+        DispatchQueue.main.async {
+            self.connectionState = .authenticating
+        }
+
+        if let identityId = machine.associatedIdentity,
+           let uuid = UUID(uuidString: identityId) {
+            let identity = RayonStore.shared.identityGroup[uuid]
+            guard !identity.username.isEmpty else {
+                DispatchQueue.main.async {
+                    self.connectionState = .error("Invalid identity configuration")
+                    self.errorMessage = "Invalid identity configuration"
+                }
+                return
+            }
+            identity.callAuthenticationWith(remote: shell)
+        } else {
+            for identity in RayonStore.shared.identityGroupForAutoAuth {
+                identity.callAuthenticationWith(remote: shell)
+                if shell.isAuthenticated {
+                    break
+                }
+            }
+        }
+
+        guard shell.isAuthenticated else {
+            DispatchQueue.main.async {
+                self.connectionState = .error("Authentication failed")
+                self.errorMessage = "Authentication failed"
+            }
+            return
+        }
+
+        DispatchQueue.main.async {
+            self.connectionState = .creatingTunnel
+        }
+
+        shell.createPortForward(
+            withLocalPort: NSNumber(value: localPort),
+            withForwardTargetHost: session.remoteHost,
+            withForwardTargetPort: NSNumber(value: session.remotePort)
+        ) { [weak self] in
+            DispatchQueue.main.async {
+                self?.connectionState = .connected
+                self?.errorMessage = nil
+            }
+        } withContinuationHandler: { [weak self] in
+            guard let self = self else { return false }
+            return !self.isClosed
+        }
+    }
+
+    func disconnect() {
+        self.isClosed = true
+        let cleanup = {
+            self.webView?.stopLoading()
+            self.webView?.loadHTMLString("", baseURL: nil)
+            self.webView = nil
+            self.connectionState = .disconnected
+            self.localPort = 0
+        }
+        
+        if Thread.isMainThread {
+            cleanup()
+        } else {
+            DispatchQueue.main.async(execute: cleanup)
+        }
+
+        DispatchQueue.global().async { [self] in
+            // Keep self securely alive to safely destruct NSRemoteShell
+            self.shell.requestDisconnectAndWait()
+            self.shell.destroyPermanently()
+            DispatchQueue.main.async { _ = self }
+        }
+    }
+
+    func getWebView() -> WKWebView {
+        if let existing = webView {
+            return existing
+        }
+
+        let config = WKWebViewConfiguration()
+        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        // Don't set navigationDelegate here - let WebViewRepresentableMac's coordinator handle it
+        self.webView = webView
+
+        return webView
+    }
+
+    func load(url: URL) {
+        let webView = getWebView()
+        webView.load(URLRequest(url: url))
+    }
+
+    func loadInitialPage() {
+        guard let url = localUrl else { return }
+
+        if let lastUrl = session.lastUrl,
+           let lastUrlObj = URL(string: lastUrl),
+           lastUrl.hasPrefix("http://127.0.0.1:\(localPort)") || lastUrl.hasPrefix("http://localhost:\(localPort)") {
+            load(url: lastUrlObj)
+        } else {
+            load(url: url)
+        }
+    }
+
+    func goBack() { webView?.goBack() }
+    func goForward() { webView?.goForward() }
+    func refresh() { webView?.reload() }
+
+    var currentUrl: String? { webView?.url?.absoluteString }
+    var canGoBack: Bool { webView?.canGoBack ?? false }
+    var canGoForward: Bool { webView?.canGoForward ?? false }
+    var isLoading: Bool { webView?.isLoading ?? false }
+
+    func updateSessionLastUrl() {
+        guard let url = currentUrl else { return }
+        var updatedSession = session
+        updatedSession.lastUrl = url
+        RayonStore.shared.browserSessionGroup.insert(updatedSession)
+    }
+}
+
+// MARK: - Web Browser View (macOS)
+
+private struct WebBrowserViewMac: View {
+    @ObservedObject var context: WebBrowserContextMac
+    @Environment(\.dismiss) var dismiss
+
+    @State private var urlText: String = ""
+    @State private var isLoading: Bool = false
+    @State private var estimatedProgress: Double = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            statusBar
+            urlBar
+            webViewContainer
+        }
+        .navigationTitle(navigationTitle)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    context.disconnect()
+                    dismiss()
+                } label: {
+                    Label("Disconnect", systemImage: "xmark.circle")
+                }
+            }
+        }
+        .onAppear {
+            setupWebView()
+        }
+        .onDisappear {
+            context.updateSessionLastUrl()
+        }
+    }
+
+    private var navigationTitle: String {
+        let portInfo = context.localPort > 0 ? "localhost:\(context.localPort)" : "connecting..."
+        if context.session.name.isEmpty {
+            return portInfo
+        }
+        return "\(context.session.name) - \(portInfo)"
+    }
+
+    var statusBar: some View {
+        Group {
+            switch context.connectionState {
+            case .disconnected:
+                HStack {
+                    Image(systemName: "circle.dashed")
+                    Text("Disconnected")
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Color.gray.opacity(0.2))
+            case .connecting:
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("Connecting to \(context.machine.remoteAddress)...")
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Color.blue.opacity(0.2))
+            case .authenticating:
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("Authenticating...")
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Color.orange.opacity(0.2))
+            case .creatingTunnel:
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("Creating tunnel to \(context.session.remoteHost):\(context.session.remotePort)...")
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Color.purple.opacity(0.2))
+            case .connected:
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                    Text("Connected: localhost:\(context.localPort) → \(context.session.remoteHost):\(context.session.remotePort)")
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Color.green.opacity(0.15))
+            case .error(let message):
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                    Text(message)
+                        .foregroundColor(.red)
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(Color.red.opacity(0.15))
+            }
+        }
+        .font(.caption)
+    }
+
+    var urlBar: some View {
+        HStack(spacing: 8) {
+            Button { context.goBack() } label: {
+                Image(systemName: "chevron.left")
+                    .foregroundColor(context.canGoBack ? .accentColor : .gray)
+            }
+            .disabled(!context.canGoBack)
+
+            Button { context.goForward() } label: {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(context.canGoForward ? .accentColor : .gray)
+            }
+            .disabled(!context.canGoForward)
+
+            Button { context.refresh() } label: {
+                Image(systemName: "arrow.clockwise")
+                    .foregroundColor(.accentColor)
+            }
+
+            TextField("URL", text: $urlText)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .onSubmit { loadUrl() }
+
+            Button { loadUrl() } label: {
+                Image(systemName: "arrow.right.circle.fill")
+                    .foregroundColor(.accentColor)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    var webViewContainer: some View {
+        ZStack {
+            if context.connectionState == .connected {
+                WebViewRepresentableMac(
+                    webView: context.getWebView(),
+                    isLoading: $isLoading,
+                    estimatedProgress: $estimatedProgress,
+                    urlText: $urlText
+                )
+
+                if isLoading {
+                    VStack {
+                        ProgressView(value: estimatedProgress, total: 1.0)
+                            .progressViewStyle(LinearProgressViewStyle())
+                        Spacer()
+                    }
+                }
+            } else {
+                VStack(spacing: 20) {
+                    if case .error(let message) = context.connectionState {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 60))
+                            .foregroundColor(.red)
+                        Text("Connection Failed")
+                            .font(.headline)
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button("Retry") {
+                            context.connectAndForward()
+                        }
+                        .buttonStyle(.bordered)
+                    } else {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Connecting...")
+                            .font(.headline)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(NSColor.windowBackgroundColor))
+            }
+        }
+    }
+
+    private func setupWebView() {
+        if context.connectionState == .disconnected ||
+           context.connectionState == .error("") {
+            context.connectAndForward()
+        }
+    }
+
+    private func loadUrl() {
+        guard !urlText.isEmpty else { return }
+
+        var urlString = urlText
+        if !urlString.hasPrefix("http://") && !urlString.hasPrefix("https://") {
+            urlString = "http://\(urlString)"
+        }
+
+        guard let url = URL(string: urlString) else {
+            UIBridge.presentError(with: "Invalid URL")
+            return
+        }
+
+        context.load(url: url)
+    }
+}
+
+// MARK: - WebView Representable (macOS)
+
+private struct WebViewRepresentableMac: NSViewRepresentable {
+    let webView: WKWebView
+    @Binding var isLoading: Bool
+    @Binding var estimatedProgress: Double
+    @Binding var urlText: String
+
+    func makeNSView(context: Context) -> WKWebView {
+        webView.navigationDelegate = context.coordinator
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        if webView.navigationDelegate !== context.coordinator {
+            webView.navigationDelegate = context.coordinator
+        }
+    }
+
+    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.navigationDelegate = nil
+        webView.stopLoading()
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, WKNavigationDelegate {
+        var parent: WebViewRepresentableMac
+
+        init(_ parent: WebViewRepresentableMac) {
+            self.parent = parent
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
+            DispatchQueue.main.async {
+                self.parent.isLoading = true
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
+                self.parent.estimatedProgress = 1.0
+                if let url = webView.url {
+                    self.parent.urlText = url.absoluteString
+                }
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation?, withError error: Error) {
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation?, withError error: Error) {
+            DispatchQueue.main.async {
+                self.parent.isLoading = false
+            }
+        }
+
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+            decisionHandler(.allow)
+        }
     }
 }

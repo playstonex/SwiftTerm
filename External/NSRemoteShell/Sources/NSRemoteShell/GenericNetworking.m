@@ -50,6 +50,7 @@
     
     int port = [localPort intValue];
     struct sockaddr_in server4;
+    memset(&server4, 0, sizeof(server4));
     int socket_desc4 = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_desc4 <= 0) {
         NSLog(@"failed to create socket for ipv4 at port %d", port);

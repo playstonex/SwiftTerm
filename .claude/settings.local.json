@@ -69,7 +69,8 @@
       "Bash(mosh-client:*)",
       "Bash(./build/debug/MoshTest:*)",
       "Bash(./build/arm64-apple-macosx/debug/MoshTest:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "mcp__zai-mcp-server__extract_text_from_screenshot"
     ]
   }
 }

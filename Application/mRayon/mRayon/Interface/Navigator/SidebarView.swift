@@ -16,6 +16,7 @@ struct SidebarView: View {
     @StateObject var terminalManager = TerminalManager.shared
     @StateObject var forwardBackend = PortForwardBackend.shared
     @StateObject var transferBackend = FileTransferManager.shared
+    @StateObject var browserManager = WebBrowserManager.shared
 
     @Namespace private var detailNamespace
 
@@ -32,6 +33,7 @@ struct SidebarView: View {
             app
             monitor
             terminals
+            browsers
             transfers
 //            portForward
             if store.storeRecent { recent }
@@ -72,6 +74,11 @@ struct SidebarView: View {
                 PortForwardView()
             } label: {
                 Label("Port Forward", systemImage: "arrow.left.arrow.right")
+            }
+            NavigationLink {
+                WebBrowserListView()
+            } label: {
+                Label("Web Browser", systemImage: "globe")
             }
             NavigationLink {
                 SettingView()
@@ -168,6 +175,41 @@ struct SidebarView: View {
                             terminalManager.end(for: context.id)
                         } label: {
                             Label("Delete", systemImage: "trash")
+                        }
+                        .tint(.red)
+                    }
+                }
+            }
+        }
+    }
+
+    var browsers: some View {
+        Section("Web Browsers") {
+            if browserManager.browsers.isEmpty {
+                Button {} label: {
+                    HStack {
+                        Label("No Session", systemImage: "square.dashed")
+                        Spacer()
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .expended()
+            } else {
+                ForEach(browserManager.browsers) { context in
+                    NavigationLink {
+                        WebBrowserView(context: context)
+                            .id(context.id)
+                    } label: {
+                        Label(
+                            context.session.name.isEmpty ? context.session.fullUrlDescription() : context.session.name,
+                            systemImage: "globe"
+                        )
+                    }
+                    .swipeActions {
+                        Button {
+                            browserManager.end(for: context.id)
+                        } label: {
+                            Label("Disconnect", systemImage: "xmark.circle")
                         }
                         .tint(.red)
                     }

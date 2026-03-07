@@ -20,6 +20,7 @@ public extension RayonStore {
         case snippetGroupEncrypted
         case recentRecordEncrypted
         case portForwardEncrypted
+        case browserSessionEncrypted
         case syncSnapshotsEncrypted
         case machineRedacted
         case licenseAgreed

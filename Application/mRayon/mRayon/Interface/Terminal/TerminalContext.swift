@@ -33,6 +33,9 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     @Published var navigationSubtitle: String = ""
 
+    // Track if we're in a tmux session
+    @Published var isInTmuxSession: Bool = false
+
     private var title: String = "" {
         didSet {
             DispatchQueue.main.async {
@@ -537,6 +540,10 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
                 putInformation("[i] Normalized tmux session name to: \(sessionName)")
             }
             putInformation("[*] Attaching to tmux session: \(sessionName)")
+            // Mark that we're in a tmux session
+            DispatchQueue.main.async {
+                self.isInTmuxSession = true
+            }
             insertBuffer(tmuxCmd + "\n")
         }
 
@@ -588,6 +595,86 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         DispatchQueue.global().async { [weak shell] in
             shell?.requestDisconnectAndWait()
         }
+    }
+
+    // MARK: - Tmux Commands
+
+    /// Send tmux command using prefix key (Ctrl+B by default)
+    func sendTmuxCommand(_ command: String) {
+        guard isInTmuxSession else {
+            putInformation("[!] " + String(localized: "Not in a tmux session"))
+            return
+        }
+        // Send Ctrl+B followed by the command
+        insertBuffer("\u{0002}" + command)
+    }
+
+    /// Send tmux command key sequence directly
+    func sendTmuxKeySequence(_ sequence: String) {
+        guard isInTmuxSession else {
+            putInformation("[!] Not in a tmux session")
+            return
+        }
+        insertBuffer(sequence)
+    }
+
+    /// Detach from tmux session
+    func tmuxDetach() {
+        sendTmuxCommand("d")
+        // Update state after detach
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.isInTmuxSession = false
+        }
+    }
+
+    /// Create new tmux window
+    func tmuxNewWindow() {
+        sendTmuxCommand("c")
+    }
+
+    /// List tmux windows
+    func tmuxListWindows() {
+        sendTmuxCommand("w")
+    }
+
+    /// Switch to next tmux window
+    func tmuxNextWindow() {
+        sendTmuxCommand("n")
+    }
+
+    /// Switch to previous tmux window
+    func tmuxPreviousWindow() {
+        sendTmuxCommand("p")
+    }
+
+    /// Kill current tmux window
+    func tmuxKillWindow() {
+        sendTmuxCommand("&")
+    }
+
+    /// Rename current tmux window
+    func tmuxRenameWindow() {
+        sendTmuxCommand(",")
+    }
+
+    /// Split pane horizontally
+    func tmuxSplitHorizontal() {
+        sendTmuxCommand("%")
+    }
+
+    /// Split pane vertically
+    func tmuxSplitVertical() {
+        sendTmuxCommand("\"")
+    }
+
+    /// List tmux sessions
+    func tmuxListSessions() {
+        sendTmuxCommand("s")
+    }
+
+    /// Switch to tmux command mode
+    func tmuxCommandMode() {
+        sendTmuxCommand(":")
     }
 }
 

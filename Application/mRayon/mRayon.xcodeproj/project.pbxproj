@@ -8,6 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		000000000000CFF5835B0D8D /* SettingsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0000000000005306EABAF4A4 /* SettingsUI */; };
+		D9A931E9A4A948A285CFEB35 /* WebBrowserContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB3C64428F6F4955B42D45FF /* WebBrowserContext.swift */; };
+		C89457FD613D4AC98CE7DA7B /* WebBrowserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DACB39AC7AE4841BB40AE29 /* WebBrowserManager.swift */; };
+		93A45A1E2EC64869AD5FFACD /* WebBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BF2FBD66518419CAFE76079 /* WebBrowserView.swift */; };
+		CDDD2483D0384FCF943F08DD /* WebBrowserListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4644FDCA8F149D78139C673 /* WebBrowserListView.swift */; };
+		6AA9DCE7AA17414280ABA378 /* EditBrowserSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B41DC054D8C445085661220 /* EditBrowserSessionView.swift */; };
 		500D726827CF1BC000149A43 /* MachineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726727CF1BC000149A43 /* MachineElement.swift */; };
 		500D726A27CF1C0800149A43 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726927CF1C0800149A43 /* View.swift */; };
 		500D726D27CF269700149A43 /* PlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726C27CF269700149A43 /* PlaceholderView.swift */; };
@@ -148,6 +153,11 @@
 		ABB80CB32B8EC2B000FDD779 /* EditPortForwardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5047BE9C27DCCC8B008887A7 /* EditPortForwardView.swift */; };
 		ABB80CB42B8EC2B300FDD779 /* MonitorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C527D09C8C00C71C0F /* MonitorManager.swift */; };
 		ABB80CB52B8EC2B300FDD779 /* MonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C727D09D1700C71C0F /* MonitorView.swift */; };
+		F89938C4DA63408494C36EB8 /* WebBrowserContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB3C64428F6F4955B42D45FF /* WebBrowserContext.swift */; };
+		F89938C4DA63408494C36EB9 /* WebBrowserManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DACB39AC7AE4841BB40AE29 /* WebBrowserManager.swift */; };
+		F89938C4DA63408494C36EBA /* WebBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BF2FBD66518419CAFE76079 /* WebBrowserView.swift */; };
+		F89938C4DA63408494C36EBB /* WebBrowserListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4644FDCA8F149D78139C673 /* WebBrowserListView.swift */; };
+		F89938C4DA63408494C36EBC /* EditBrowserSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B41DC054D8C445085661220 /* EditBrowserSessionView.swift */; };
 		ABB80CB62B8EC2B300FDD779 /* MonitorContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C927D0A90100C71C0F /* MonitorContext.swift */; };
 		ABB80CB72B8EC2B700FDD779 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B1027CF18C100F60B51 /* TerminalView.swift */; };
 		ABB80CB82B8EC2B700FDD779 /* TerminalManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90B0E27CF18BD00F60B51 /* TerminalManager.swift */; };
@@ -214,6 +224,11 @@
 		5047BE9A27DCCB76008887A7 /* PortForwardElementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardElementView.swift; sourceTree = "<group>"; };
 		5047BE9C27DCCC8B008887A7 /* EditPortForwardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditPortForwardView.swift; sourceTree = "<group>"; };
 		5047BEA027DED78A008887A7 /* PortForwardBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardBackend.swift; sourceTree = "<group>"; };
+		EB3C64428F6F4955B42D45FF /* WebBrowserContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebBrowserContext.swift; sourceTree = "<group>"; };
+		2DACB39AC7AE4841BB40AE29 /* WebBrowserManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebBrowserManager.swift; sourceTree = "<group>"; };
+		7BF2FBD66518419CAFE76079 /* WebBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebBrowserView.swift; sourceTree = "<group>"; };
+		B4644FDCA8F149D78139C673 /* WebBrowserListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebBrowserListView.swift; sourceTree = "<group>"; };
+		4B41DC054D8C445085661220 /* EditBrowserSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditBrowserSessionView.swift; sourceTree = "<group>"; };
 		5047BEA227DEDB77008887A7 /* SidebarView+Recent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SidebarView+Recent.swift"; sourceTree = "<group>"; };
 		5082A1C227D087FB00C71C0F /* Util.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Util.swift; sourceTree = "<group>"; };
 		5082A1C527D09C8C00C71C0F /* MonitorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorManager.swift; sourceTree = "<group>"; };
@@ -448,6 +463,7 @@
 				50C90AFD27CF143C00F60B51 /* Snippet */,
 				50C90B0527CF15A500F60B51 /* Identity */,
 				50C90B0A27CF189700F60B51 /* PortForward */,
+				EB3C64428F6F4955B42D4600 /* Browser */,
 				5082A1C427D09C7F00C71C0F /* Monitor */,
 				50C90B0B27CF18A100F60B51 /* Terminal */,
 				5013B51327E4B12800EF01C4 /* FileTransfer */,
@@ -526,6 +542,18 @@
 				5047BEA027DED78A008887A7 /* PortForwardBackend.swift */,
 			);
 			path = PortForward;
+			sourceTree = "<group>";
+		};
+		EB3C64428F6F4955B42D4600 /* Browser */ = {
+			isa = PBXGroup;
+			children = (
+				EB3C64428F6F4955B42D45FF /* WebBrowserContext.swift */,
+				2DACB39AC7AE4841BB40AE29 /* WebBrowserManager.swift */,
+				7BF2FBD66518419CAFE76079 /* WebBrowserView.swift */,
+				B4644FDCA8F149D78139C673 /* WebBrowserListView.swift */,
+				4B41DC054D8C445085661220 /* EditBrowserSessionView.swift */,
+			);
+			path = Browser;
 			sourceTree = "<group>";
 		};
 		50C90B0B27CF18A100F60B51 /* Terminal */ = {
@@ -841,6 +869,11 @@
 				50D3AEFD27D063A30085F899 /* PickIdentityView.swift in Sources */,
 				50C90B0027CF145F00F60B51 /* MachineView.swift in Sources */,
 				5047BEA127DED78A008887A7 /* PortForwardBackend.swift in Sources */,
+				D9A931E9A4A948A285CFEB35 /* WebBrowserContext.swift in Sources */,
+				C89457FD613D4AC98CE7DA7B /* WebBrowserManager.swift in Sources */,
+				93A45A1E2EC64869AD5FFACD /* WebBrowserView.swift in Sources */,
+				CDDD2483D0384FCF943F08DD /* WebBrowserListView.swift in Sources */,
+				6AA9DCE7AA17414280ABA378 /* EditBrowserSessionView.swift in Sources */,
 				50C90B1127CF18C100F60B51 /* TerminalView.swift in Sources */,
 				50C90AF727CF12E000F60B51 /* UIWindow.swift in Sources */,
 				500D726F27CF382100149A43 /* StarLinkView.swift in Sources */,
@@ -885,6 +918,11 @@
 				ABB80CBA2B8EC2BB00FDD779 /* FileTransferContext.swift in Sources */,
 				ABB80C9E2B8EC29E00FDD779 /* ContentView.swift in Sources */,
 				ABB80CB52B8EC2B300FDD779 /* MonitorView.swift in Sources */,
+				F89938C4DA63408494C36EC0 /* WebBrowserContext.swift in Sources */,
+				F89938C4DA63408494C36EC1 /* WebBrowserManager.swift in Sources */,
+				F89938C4DA63408494C36EC2 /* WebBrowserView.swift in Sources */,
+				F89938C4DA63408494C36EC3 /* WebBrowserListView.swift in Sources */,
+				F89938C4DA63408494C36EC4 /* EditBrowserSessionView.swift in Sources */,
 				ABB80CB82B8EC2B700FDD779 /* TerminalManager.swift in Sources */,
 				ABB80CAE2B8EC2AC00FDD779 /* IdentityElementView.swift in Sources */,
 				ABB80CA92B8EC2A700FDD779 /* SnippetExecuteContext.swift in Sources */,
