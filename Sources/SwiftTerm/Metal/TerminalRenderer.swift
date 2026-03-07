@@ -14,8 +14,6 @@ import simd
 
 /// Renders terminal content using Metal
 public class TerminalRenderer: NSObject, MTKViewDelegate {
-    private static var didLogFrameDiagnostics = false
-
     /// Metal shader source code (compiled at runtime for Swift Package Manager compatibility)
     private static let shaderSource = """
         #include <metal_stdlib>
@@ -171,6 +169,13 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     private var dirtyRect: CGRect? = nil
     private var lastRenderedCols: Int = -1
     private var lastRenderedRows: Int = -1
+    private var rowCache: [CachedRowVertices] = []
+    private var cachedSelectionVertices: [TerminalVertex] = []
+    private var cachedCursorVertices: [TerminalVertex] = []
+    private var dirtyRows = IndexSet()
+    private var needsFullRebuild = true
+    private var needsSelectionRebuild = true
+    private var needsCursorRebuild = true
 
     private var frameCount: Int = 0
     private var lastFrameTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
@@ -349,13 +354,8 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
 
         updateProjectionMatrix(size: view.bounds.size)
 
-        let builder = cellRenderer.buildFrame(
-            terminal: terminal,
-            fontSet: fontSet,
-            cellDimension: cellDimension,
-            selection: selection,
-            commandBuffer: commandBuffer
-        )
+        rebuildCachesIfNeeded(terminal: terminal, fontSet: fontSet, commandBuffer: commandBuffer)
+        let builder = composeCachedFrame()
 
         guard let descriptor = view.currentRenderPassDescriptor,
               let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
@@ -376,12 +376,6 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             guard !vertices.isEmpty else { return nil }
             let size = vertices.count * MemoryLayout<TerminalVertex>.stride
             return device.makeBuffer(bytes: vertices, length: size, options: .storageModeShared)
-        }
-
-        if !Self.didLogFrameDiagnostics {
-            Self.didLogFrameDiagnostics = true
-            let atlasAvailable = cellRenderer.glyphCache.atlasTexture(at: 0) != nil
-            print("MetalTerminal diagnostics bg=\(builder.backgroundVertices.count) glyph=\(builder.glyphVertices.count) deco=\(builder.decorationVertices.count) cursor=\(builder.cursorVertices.count) atlas=\(atlasAvailable) cols=\(terminal.cols) rows=\(terminal.rows) cell=\(cellDimension)")
         }
 
         renderEncoder.setVertexBytes(&uniforms, length: MemoryLayout<VertexUniforms>.stride, index: 1)
@@ -459,11 +453,122 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         // Reset cached dimensions to force full redraw
         lastRenderedCols = -1
         lastRenderedRows = -1
+        needsFullRebuild = true
     }
 
     /// Clear cached data
     public func clearCache() {
         cellRenderer.clearCache()
+        rowCache.removeAll()
+        cachedSelectionVertices.removeAll()
+        cachedCursorVertices.removeAll()
+        needsFullRebuild = true
+        needsSelectionRebuild = true
+        needsCursorRebuild = true
+    }
+
+    func markAllDirty(reason: String = "markAllDirty") {
+        needsFullRebuild = true
+        needsSelectionRebuild = true
+        needsCursorRebuild = true
+    }
+
+    func markDirtyViewportRows(startY: Int, endY: Int, terminal: Terminal) {
+        let visibleStart = max(0, startY)
+        let visibleEnd = min(terminal.rows - 1, endY)
+        guard visibleStart <= visibleEnd else { return }
+        markDirtyRows(visibleStart...visibleEnd)
+    }
+
+    func markDirtyViewportRows(_ rows: IndexSet, terminal: Terminal) {
+        guard !rows.isEmpty else { return }
+        var validRows = IndexSet()
+        for row in rows where row >= 0 && row < terminal.rows {
+            validRows.insert(row)
+        }
+        guard !validRows.isEmpty else { return }
+        dirtyRows.formUnion(validRows)
+        needsCursorRebuild = true
+    }
+
+    func markDirtyBufferRows(startY: Int, endY: Int, terminal: Terminal) {
+        let visibleStart = max(0, startY - terminal.displayBuffer.yDisp)
+        let visibleEnd = min(terminal.rows - 1, endY - terminal.displayBuffer.yDisp)
+        guard visibleStart <= visibleEnd else { return }
+        markDirtyRows(visibleStart...visibleEnd)
+    }
+
+    private func markDirtyRows(_ range: ClosedRange<Int>) {
+        dirtyRows.insert(integersIn: range)
+        needsCursorRebuild = true
+    }
+
+    func markSelectionDirty() {
+        needsSelectionRebuild = true
+    }
+
+    func markCursorDirty() {
+        needsCursorRebuild = true
+    }
+
+    private func rebuildCachesIfNeeded(terminal: Terminal, fontSet: FontSet, commandBuffer: MTLCommandBuffer) {
+        let rows = terminal.rows
+        let cols = terminal.cols
+
+        if needsFullRebuild || rowCache.count != rows || lastRenderedCols != cols || lastRenderedRows != rows {
+            rowCache = Array(repeating: CachedRowVertices(), count: rows)
+            dirtyRows = rows > 0 ? IndexSet(integersIn: 0..<rows) : IndexSet()
+            needsFullRebuild = false
+            lastRenderedCols = cols
+            lastRenderedRows = rows
+            needsSelectionRebuild = true
+            needsCursorRebuild = true
+        }
+
+        cellRenderer.prepareFrame(terminal: terminal)
+
+        if !dirtyRows.isEmpty {
+            for row in dirtyRows {
+                rowCache[row] = cellRenderer.buildRowVertices(
+                    terminal: terminal,
+                    fontSet: fontSet,
+                    cellDimension: cellDimension,
+                    row: row,
+                    commandBuffer: commandBuffer
+                )
+            }
+            self.dirtyRows.removeAll()
+        }
+
+        if needsSelectionRebuild {
+            cachedSelectionVertices = cellRenderer.buildSelectionVertices(
+                terminal: terminal,
+                cellDimension: cellDimension,
+                selection: selection
+            )
+            needsSelectionRebuild = false
+        }
+        if needsCursorRebuild {
+            cachedCursorVertices = cellRenderer.buildCursorVertices(
+                terminal: terminal,
+                cellDimension: cellDimension
+            )
+            needsCursorRebuild = false
+        }
+    }
+
+    private func composeCachedFrame() -> VertexBufferBuilder {
+        let builder = VertexBufferBuilder()
+        builder.selectionVertices = cachedSelectionVertices
+        builder.cursorVertices = cachedCursorVertices
+
+        for row in rowCache {
+            builder.backgroundVertices.append(contentsOf: row.backgroundVertices)
+            builder.glyphVertices.append(contentsOf: row.glyphVertices)
+            builder.decorationVertices.append(contentsOf: row.decorationVertices)
+        }
+
+        return builder
     }
 }
 
