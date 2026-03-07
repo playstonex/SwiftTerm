@@ -16,8 +16,8 @@ import SwiftUI
 
 #if os(iOS) || os(visionOS)
 import UIKit
-typealias TTColor = UIColor
-typealias TTFont = UIFont
+public typealias TTColor = UIColor
+public typealias TTFont = UIFont
 typealias TTRect = CGRect
 typealias TTBezierPath = UIBezierPath
 public typealias TTImage = UIImage
@@ -25,8 +25,8 @@ public typealias TTImage = UIImage
 
 #if os(macOS)
 import AppKit
-typealias TTColor = NSColor
-typealias TTFont = NSFont
+public typealias TTColor = NSColor
+public typealias TTFont = NSFont
 typealias TTRect = CGRect
 typealias TTBezierPath = NSBezierPath
 public typealias TTImage = NSImage

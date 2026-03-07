@@ -35,32 +35,32 @@ extension UIColor {
         return UIColor(red: red * dimFactor, green: green * dimFactor, blue: blue * dimFactor, alpha: alpha)
     }
 
-    static func make (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat) -> TTColor
+    public static func make (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat) -> TTColor
     {
-        
+
         return UIColor(red: red,
                        green: green,
                        blue: blue,
                        alpha: 1.0)
     }
-  
-    static func make (hue: CGFloat, saturation: CGFloat, brightness: CGFloat, alpha: CGFloat) -> TTColor
+
+    public static func make (hue: CGFloat, saturation: CGFloat, brightness: CGFloat, alpha: CGFloat) -> TTColor
     {
         return UIColor(hue: hue,
                        saturation: saturation,
                        brightness: brightness,
                        alpha: alpha)
     }
-    
-    static func make (color: Color) -> UIColor
+
+    public static func make (color: Color) -> UIColor
     {
         UIColor (red: CGFloat (color.red) / 65535.0,
                  green: CGFloat (color.green) / 65535.0,
                  blue: CGFloat (color.blue) / 65535.0,
                  alpha: 1.0)
     }
-    
-    static func transparent () -> UIColor {
+
+    public static func transparent () -> UIColor {
         return UIColor.clear
     }
 }
