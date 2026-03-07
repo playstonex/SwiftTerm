@@ -51,6 +51,7 @@ struct TerminalView: View {
 
                     context.termInterface
                         .padding(4)
+                        .focusable()
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if speechInputController.isRecording || !liveTranscriptPreview.isEmpty {

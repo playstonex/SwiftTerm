@@ -142,20 +142,29 @@
         if ([self unsafeChannelShouldTerminate]) {
             break;
         }
-        // Actual number of bytes written or negative on failure.
-        long rc = libssh2_channel_write(self.representedChannel, [data bytes], [data length]);
-        if (rc == LIBSSH2_ERROR_EAGAIN) {
-            continue;
+        const char *bytes = data.bytes;
+        NSUInteger totalLength = data.length;
+        NSUInteger written = 0;
+        BOOL failed = NO;
+        while (written < totalLength) {
+            long rc = libssh2_channel_write(self.representedChannel, bytes + written, totalLength - written);
+            if (rc == LIBSSH2_ERROR_EAGAIN) {
+                if ([self unsafeChannelShouldTerminate]) {
+                    failed = YES;
+                    break;
+                }
+                continue;
+            }
+            if (rc <= 0) {
+                NSLog(@"error occurred during message write, consider terminated channel");
+                failed = YES;
+                break;
+            }
+            written += (NSUInteger)rc;
         }
-        if (rc < 0) {
-            NSLog(@"error occurred during message write, consider terminated channel");
+        if (failed) {
             break;
         }
-        if (rc != [data length]) {
-            NSLog(@"written data was smaller than giving, data might broke");
-            break;
-        }
-        // do not deal with error?
         break;
     }
 }

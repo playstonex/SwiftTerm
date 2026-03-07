@@ -2,21 +2,23 @@
 //  SwiftTerminalView+UIKit.swift
 //  SwiftTerminal
 //
-//  iOS UIView wrapper for SwiftTerm
+//  iOS UIView wrapper for SwiftTerm with Metal rendering
 //
 
 #if canImport(UIKit)
 import UIKit
 import SwiftTerm
+import Metal
+import MetalKit
 
-/// iOS terminal view using SwiftTerm with native rendering
+/// iOS terminal view using SwiftTerm with Metal rendering
 public class SwiftTerminalView: UIView {
 
     // MARK: - Properties
 
-    private var terminalView: TerminalView!
+    private(set) public var metalView: iOSMetalTerminalView!
     private let adapter: SwiftTerminalAdapter
-    private var viewDelegate: ViewDelegateHandler?
+    private var viewDelegate: MetalViewDelegateHandler?
 
     // MARK: - Initialization
 
@@ -43,22 +45,31 @@ public class SwiftTerminalView: UIView {
     private func setupView() {
         backgroundColor = .black
 
-        terminalView = TerminalView(frame: CGRect(x: 0, y: 0, width: 500, height: 500))
+        // Create Metal terminal view
+        metalView = iOSMetalTerminalView(frame: CGRect(x: 0, y: 0, width: 500, height: 500))
 
-        addSubview(terminalView)
-        terminalView.translatesAutoresizingMaskIntoConstraints = false
-        terminalView.topAnchor.constraint(equalTo: topAnchor).isActive = true
-        terminalView.bottomAnchor.constraint(equalTo: bottomAnchor).isActive = true
-        terminalView.leadingAnchor.constraint(equalTo: leadingAnchor).isActive = true
-        terminalView.trailingAnchor.constraint(equalTo: trailingAnchor).isActive = true
+        addSubview(metalView)
+        metalView.translatesAutoresizingMaskIntoConstraints = false
+        metalView.topAnchor.constraint(equalTo: topAnchor).isActive = true
+        metalView.bottomAnchor.constraint(equalTo: bottomAnchor).isActive = true
+        metalView.leadingAnchor.constraint(equalTo: leadingAnchor).isActive = true
+        metalView.trailingAnchor.constraint(equalTo: trailingAnchor).isActive = true
 
-        // Apply default theme
+        // Setup terminal with default options
+        metalView.setupTerminal(options: TerminalOptions(cols: 80, rows: 24))
+
+        // Note: allowMouseReporting defaults to true.
+        // Mouse reporting is handled dynamically by iOSMetalTerminalView:
+        // - When terminal.mouseMode != .off (htop, vim, tmux), taps are forwarded to the app.
+        // - When terminal.mouseMode == .off (normal shell), taps perform text selection.
+
+        // Apply default font
         applyFont()
     }
 
     private func setupDelegates() {
-        viewDelegate = ViewDelegateHandler(adapter: adapter)
-        terminalView.terminalDelegate = viewDelegate
+        viewDelegate = MetalViewDelegateHandler(adapter: adapter)
+        metalView.terminalDelegate = viewDelegate
     }
 
     // MARK: - Theme & Font
@@ -88,31 +99,35 @@ public class SwiftTerminalView: UIView {
             brightWhite: theme.brightWhite
         )
 
-        // Install the 16 ANSI colors
-        terminalView.installColors(colors.ansiColors)
+        guard let terminal = metalView.terminal else { return }
 
         // Set foreground and background colors
-        let terminal = terminalView.getTerminal()
         terminal.foregroundColor = colors.foreground.toTerminalColor()
         terminal.backgroundColor = colors.background.toTerminalColor()
+
+        // Install ANSI colors palette (16 colors)
+        terminal.installPalette(colors: colors.ansiColors)
 
         // Set view background color
         backgroundColor = UIColor(hex: theme.background)
 
-        // Trigger a refresh
-        terminalView.setNeedsDisplay()
+        // Theme changes only affect colors; glyph cache remains valid.
+        metalView.setTerminalNeedsDisplay()
     }
 
     private func applyFont() {
         let fontName = adapter.getCurrentFontName()
         let fontSize = CGFloat(adapter.getCurrentFontSize())
 
-        if let font = UIFont(name: fontName, size: fontSize) {
-            terminalView.font = font
+        let font: UIFont
+        if let customFont = UIFont(name: fontName, size: fontSize) {
+            font = customFont
         } else {
             // Fallback to Menlo if custom font not found
-            terminalView.font = UIFont(name: "Menlo", size: fontSize) ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            font = UIFont(name: "Menlo", size: fontSize) ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         }
+
+        metalView.setupFont(font: font)
     }
 
     // MARK: - Public API
@@ -122,37 +137,28 @@ public class SwiftTerminalView: UIView {
     }
 
     public func feed(data: Data) {
-        let array = Array(data)
-        terminalView.feed(byteArray: Array(data)[...])
+        // Feed data to the terminal
+        let bytes = Array(data)
+        metalView.terminal?.feed(buffer: bytes[...])
+        metalView.setTerminalNeedsDisplay()
     }
 
     public func feed(text: String) {
-        terminalView.feed(text: text)
+        // Feed host output into the terminal buffer.
+        if let data = text.data(using: .utf8) {
+            let bytes = Array(data)
+            metalView.terminal?.feed(buffer: bytes[...])
+            metalView.setTerminalNeedsDisplay()
+        }
     }
 
     public func getTerminal() -> Terminal {
-        return terminalView.getTerminal()
+        return metalView.terminal!
     }
 
     /// Get the currently selected text
-    /// Uses clipboard copy internally as SwiftTerm doesn't expose selection publicly
     public func getSelectedText() -> String {
-        // Get selection using UIPasteboard
-        let pasteboard = UIPasteboard.general
-        let oldContents = pasteboard.string
-
-        // Trigger copy on terminal view
-        terminalView.copy(UIApplication.shared)
-
-        // Read the selected text
-        let selectedText = pasteboard.string ?? ""
-
-        // Restore old contents if there was any
-        if let old = oldContents {
-            pasteboard.string = old
-        }
-
-        return selectedText
+        return metalView.getSelectedText()
     }
 
     public func updateTheme() {
@@ -162,32 +168,48 @@ public class SwiftTerminalView: UIView {
     public func updateFont() {
         applyFont()
     }
-}
 
-// MARK: - View Delegate Handler
-
-private class ViewDelegateHandler: NSObject, TerminalViewDelegate {
-    private weak var adapter: SwiftTerminalAdapter?
-    private weak var terminalView: TerminalView?
-
-    init(adapter: SwiftTerminalAdapter, terminalView: TerminalView? = nil) {
-        self.adapter = adapter
-        self.terminalView = terminalView
+    /// Make the terminal view the first responder to receive keyboard input
+    @discardableResult
+    public func makeTerminalFirstResponder() -> Bool {
+        return metalView.becomeFirstResponder()
     }
 
-    func sizeChanged(source: TerminalView, newCols: Int, newRows: Int) {
+    // MARK: - Touch Handling
+
+    /// Forward touch events to the metalView so it can become first responder
+    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesBegan(touches, with: event)
+        // Make the metalView the first responder to receive keyboard input
+        // The metalView handles its own tap gesture for this, but we also do it here for safety
+        if !metalView.isFirstResponder {
+            _ = metalView.becomeFirstResponder()
+        }
+    }
+}
+
+// MARK: - Metal View Delegate Handler
+
+private class MetalViewDelegateHandler: NSObject, MetalTerminalViewDelegate {
+    private weak var adapter: SwiftTerminalAdapter?
+
+    init(adapter: SwiftTerminalAdapter) {
+        self.adapter = adapter
+    }
+
+    func sizeChanged(source: MetalTerminalView, newCols: Int, newRows: Int) {
         adapter?.notifySize(CGSize(width: newCols, height: newRows))
     }
 
-    func setTerminalTitle(source: TerminalView, title: String) {
+    func setTerminalTitle(source: MetalTerminalView, title: String) {
         adapter?.notifyTitle(title)
     }
 
-    func hostCurrentDirectoryUpdate(source: TerminalView, directory: String?) {
+    func hostCurrentDirectoryUpdate(source: MetalTerminalView, directory: String?) {
         // Not used for SSH terminals
     }
 
-    func send(source: TerminalView, data: ArraySlice<UInt8>) {
+    func send(source: MetalTerminalView, data: ArraySlice<UInt8>) {
         // User input from terminal - notify adapter
         let dataArray = Array(data)
         if let str = String(bytes: dataArray, encoding: .utf8) {
@@ -195,33 +217,49 @@ private class ViewDelegateHandler: NSObject, TerminalViewDelegate {
         }
     }
 
-    func scrolled(source: TerminalView, position: Double) {
+    func scrolled(source: MetalTerminalView, position: Double) {
         // Terminal scrolled
     }
 
-    func requestOpenLink(source: TerminalView, link: String, params: [String: String]) {
+    func requestOpenLink(source: MetalTerminalView, link: String, params: [String: String]) {
         // Open link in default browser
         if let url = URL(string: link) {
             UIApplication.shared.open(url)
         }
     }
 
-    func bell(source: TerminalView) {
+    func bell(source: MetalTerminalView) {
         adapter?.notifyBell()
     }
 
-    func clipboardCopy(source: TerminalView, content: Data) {
+    func clipboardCopy(source: MetalTerminalView, content: Data) {
         if let str = String(data: content, encoding: .utf8) {
             adapter?.notifyCopy(str)
         }
     }
 
-    func iTermContent(source: TerminalView, content: ArraySlice<UInt8>) {
+    func clipboardGet(source: MetalTerminalView) -> String {
+        return UIPasteboard.general.string ?? ""
+    }
+
+    func rangeChanged(source: MetalTerminalView, startY: Int, endY: Int) {
+        // Visual changes in buffer - not used
+    }
+
+    func bufferActivated(source: MetalTerminalView) {
+        // Buffer activated - not used
+    }
+
+    func iTermContent(source: MetalTerminalView, content: ArraySlice<UInt8>) {
         // iTerm2 specific OSC 1337 sequences - not used
     }
 
-    func rangeChanged(source: TerminalView, startY: Int, endY: Int) {
-        // Visual changes in buffer - not used
+    func iconTitleChanged(source: MetalTerminalView, title: String) {
+        // Icon title changed - not used
+    }
+
+    func windowTitleChanged(source: MetalTerminalView, title: String) {
+        adapter?.notifyTitle(title)
     }
 }
 

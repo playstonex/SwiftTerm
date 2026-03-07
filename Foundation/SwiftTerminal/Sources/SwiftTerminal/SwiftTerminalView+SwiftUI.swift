@@ -151,6 +151,12 @@ public struct STerminalView: NativeTerminalProtocol {
         let text = terminalView.getSelectedText()
         completion(text.isEmpty ? nil : text)
     }
+
+    public func activateKeyboard() {
+        DispatchQueue.main.async {
+            _ = self.terminalView.makeTerminalFirstResponder()
+        }
+    }
 }
 
 // MARK: - SwiftUI View Representable
@@ -179,11 +185,16 @@ extension STerminalView: NSViewRepresentable {
 #if canImport(UIKit)
 extension STerminalView: UIViewRepresentable {
     public func makeUIView(context: Context) -> SwiftTerminalView {
+        // Delay first responder activation slightly to allow the view to be in a window
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.terminalView.makeTerminalFirstResponder()
+        }
         return terminalView
     }
 
     public func updateUIView(_ uiView: SwiftTerminalView, context: Context) {
-        // Updates are handled through the adapter
+        // Do not steal focus on every SwiftUI update.
+        // The terminal view manages its own first-responder status via tap gestures.
     }
 
     public static func dismantleUIView(_ uiView: SwiftTerminalView, coordinator: ()) {
