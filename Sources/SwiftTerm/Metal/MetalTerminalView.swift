@@ -140,6 +140,16 @@ struct FontSet {
 
 /// Metal-based terminal view for Apple platforms
 open class MetalTerminalView: MTView, TerminalDelegate {
+    private var suppressLargeCursorRangeChanges = false
+
+    public struct VisibleBufferSnapshot {
+        let rowSignatures: [Int]
+        let cursorCol: Int
+        let cursorRow: Int
+        let topVisibleRow: Int
+        let cols: Int
+        let rows: Int
+    }
     /// The terminal emulator
     public var terminal: Terminal!
 
@@ -368,29 +378,43 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     // MARK: - TerminalDelegate
 
     public func showCursor(source: Terminal) {
-        // Cursor is rendered by the renderer
+        suppressLargeCursorRangeChanges = true
+        renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
     }
 
     public func hideCursor(source: Terminal) {
+        suppressLargeCursorRangeChanges = true
+        renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
     }
 
     public func scrollChanged(source: Terminal) {
+        suppressLargeCursorRangeChanges = false
+        renderer?.markAllDirty(reason: "scrollChanged")
         setTerminalNeedsDisplay()
         terminalDelegate?.scrolled(source: self, position: Double(source.buffer.yDisp) / Double(max(1, source.buffer.lines.count - source.rows)))
     }
 
     public func rangeChanged(source: Terminal, startY: Int, endY: Int) {
+        if suppressLargeCursorRangeChanges {
+            setTerminalNeedsDisplay()
+            return
+        }
+        renderer?.markDirtyViewportRows(startY: startY, endY: endY, terminal: source)
         setTerminalNeedsDisplay()
         terminalDelegate?.rangeChanged(source: self, startY: startY, endY: endY)
     }
 
     public func screenChanged(source: Terminal) {
+        suppressLargeCursorRangeChanges = false
+        renderer?.markAllDirty(reason: "screenChanged")
         setTerminalNeedsDisplay()
     }
 
     public func lineBufferChanged(source: Terminal, startY: Int, endY: Int) {
+        renderer?.markDirtyBufferRows(startY: startY, endY: endY, terminal: source)
+        renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
     }
 
@@ -411,6 +435,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func colorsChanged(source: Terminal) {
+        suppressLargeCursorRangeChanges = false
         renderer?.clearCache()
         setTerminalNeedsDisplay()
     }
@@ -428,6 +453,8 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func sizeChanged(source: Terminal) {
+        suppressLargeCursorRangeChanges = false
+        renderer?.markAllDirty(reason: "sizeChanged")
         terminalDelegate?.sizeChanged(source: self, newCols: source.cols, newRows: source.rows)
         setTerminalNeedsDisplay()
     }
@@ -485,6 +512,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func selectionChanged(source: Terminal) {
+        renderer?.markSelectionDirty()
         setTerminalNeedsDisplay()
     }
 
@@ -493,6 +521,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func cursorStyleChanged(source: Terminal, newStyle: CursorStyle) {
+        renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
     }
 
@@ -540,6 +569,98 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Queue a pending display update
     public func queuePendingDisplay() {
         setTerminalNeedsDisplay()
+    }
+
+    public func captureVisibleBufferSnapshot() -> VisibleBufferSnapshot? {
+        guard let terminal else { return nil }
+        let buffer = terminal.displayBuffer
+        let rows = terminal.rows
+        let cols = terminal.cols
+        let yDisp = buffer.yDisp
+
+        var rowSignatures: [Int] = []
+        rowSignatures.reserveCapacity(rows)
+
+        for row in 0..<rows {
+            rowSignatures.append(Self.signature(for: buffer.lines[yDisp + row], cols: cols))
+        }
+
+        return VisibleBufferSnapshot(
+            rowSignatures: rowSignatures,
+            cursorCol: buffer.x,
+            cursorRow: buffer.y,
+            topVisibleRow: yDisp,
+            cols: cols,
+            rows: rows
+        )
+    }
+
+    public func applyExternalFeedDiff(from snapshot: VisibleBufferSnapshot?) {
+        guard let terminal, let renderer else {
+            setTerminalNeedsDisplay()
+            return
+        }
+        guard let previous = snapshot,
+              let current = captureVisibleBufferSnapshot() else {
+            renderer.markDirtyViewportRows(IndexSet(integersIn: 0..<terminal.rows), terminal: terminal)
+            renderer.markSelectionDirty()
+            renderer.markCursorDirty()
+            setTerminalNeedsDisplay()
+            return
+        }
+
+        guard previous.cols == current.cols,
+              previous.rows == current.rows,
+              previous.topVisibleRow == current.topVisibleRow,
+              previous.rowSignatures.count == current.rowSignatures.count else {
+            renderer.markDirtyViewportRows(IndexSet(integersIn: 0..<terminal.rows), terminal: terminal)
+            renderer.markSelectionDirty()
+            renderer.markCursorDirty()
+            setTerminalNeedsDisplay()
+            return
+        }
+
+        var changedRows = IndexSet()
+        for row in 0..<current.rowSignatures.count where previous.rowSignatures[row] != current.rowSignatures[row] {
+            changedRows.insert(row)
+        }
+
+        if !changedRows.isEmpty {
+            renderer.markDirtyViewportRows(changedRows, terminal: terminal)
+        }
+
+        if previous.cursorCol != current.cursorCol || previous.cursorRow != current.cursorRow {
+            renderer.markCursorDirty()
+        }
+
+        setTerminalNeedsDisplay()
+    }
+
+    private static func signature(for line: BufferLine, cols: Int) -> Int {
+        var hasher = Hasher()
+        hasher.combine(cols)
+        hasher.combine(line.isWrapped)
+        switch line.renderMode {
+        case .single:
+            hasher.combine(0)
+        case .doubleWidth:
+            hasher.combine(1)
+        case .doubledTop:
+            hasher.combine(2)
+        case .doubledDown:
+            hasher.combine(3)
+        }
+        hasher.combine(line.images?.count ?? 0)
+
+        for idx in 0..<cols {
+            let cell = line[idx]
+            hasher.combine(cell.code)
+            hasher.combine(cell.width)
+            hasher.combine(cell.attribute)
+            hasher.combine(cell.hasPayload)
+        }
+
+        return hasher.finalize()
     }
 
     #if os(macOS)

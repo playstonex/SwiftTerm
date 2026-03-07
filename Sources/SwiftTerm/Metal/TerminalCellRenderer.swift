@@ -12,10 +12,14 @@ import CoreText
 import Metal
 import simd
 
+struct CachedRowVertices {
+    var backgroundVertices: [TerminalVertex] = []
+    var glyphVertices: [TerminalVertex] = []
+    var decorationVertices: [TerminalVertex] = []
+}
+
 /// Renders terminal cells to vertex data
 class TerminalCellRenderer {
-    private static var didLogEmptyGlyphDiagnostics = false
-
     /// The glyph cache for rasterizing glyphs
     let glyphCache: GlyphCache
 
@@ -40,6 +44,10 @@ class TerminalCellRenderer {
         return (value * scale).rounded() / scale
     }
 
+    func prepareFrame(terminal: Terminal) {
+        colorTable = MetalColorTable(terminal: terminal)
+    }
+
     /// Build a frame of vertex data from the terminal buffer
     /// - Parameters:
     ///   - terminal: The terminal to render
@@ -56,9 +64,6 @@ class TerminalCellRenderer {
         commandBuffer: MTLCommandBuffer? = nil
     ) -> VertexBufferBuilder {
         let builder = VertexBufferBuilder()
-        var candidateGlyphs = 0
-        var glyphMisses = 0
-        var firstRenderableCharacter: Character?
 
         // Update color table
         colorTable = MetalColorTable(terminal: terminal)
@@ -203,10 +208,6 @@ class TerminalCellRenderer {
 
                 // Get the character
                 let character = terminal.getCharacter(for: charData)
-                if firstRenderableCharacter == nil {
-                    firstRenderableCharacter = character
-                }
-                candidateGlyphs += 1
 
                 // Select the appropriate font
                 let font = selectFont(for: charData.attribute.style, from: fontSet)
@@ -231,17 +232,10 @@ class TerminalCellRenderer {
                         fgColor: fgColor,
                         bgColor: bgColor
                     )
-                } else {
-                    glyphMisses += 1
                 }
 
                 col += Int(charData.width)
             }
-        }
-
-        if builder.glyphVertices.isEmpty && candidateGlyphs > 0 && !Self.didLogEmptyGlyphDiagnostics {
-            Self.didLogEmptyGlyphDiagnostics = true
-            print("MetalTerminal glyph diagnostics candidates=\(candidateGlyphs) misses=\(glyphMisses) first=\(String(describing: firstRenderableCharacter))")
         }
 
         // Fourth pass: render decorations (underline, strikethrough)
@@ -326,6 +320,267 @@ class TerminalCellRenderer {
         }
 
         return builder
+    }
+
+    internal func buildRowVertices(
+        terminal: Terminal,
+        fontSet: FontSet,
+        cellDimension: CGSize,
+        row: Int,
+        commandBuffer: MTLCommandBuffer? = nil
+    ) -> CachedRowVertices {
+        let buffer = terminal.displayBuffer
+        let cols = terminal.cols
+        let yDisp = buffer.yDisp
+        let cellWidth = Float(cellDimension.width)
+        let cellHeight = Float(cellDimension.height)
+        let line = buffer.lines[yDisp + row]
+        let y = Float(row) * cellHeight
+
+        var cached = CachedRowVertices()
+
+        var col = 0
+        while col < cols {
+            let charData = line[col]
+            let bgColor = resolveColor(charData.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+
+            var runLength = 1
+            while col + runLength < cols {
+                let nextChar = line[col + runLength]
+                let nextBgColor = resolveColor(nextChar.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                if nextBgColor == bgColor && nextChar.attribute.style == charData.attribute.style {
+                    runLength += 1
+                } else {
+                    break
+                }
+            }
+
+            let x = Float(col) * cellWidth
+            appendQuad(
+                to: &cached.backgroundVertices,
+                x: x,
+                y: y,
+                width: cellWidth * Float(runLength),
+                height: cellHeight,
+                color: bgColor
+            )
+            col += runLength
+        }
+
+        col = 0
+        while col < cols {
+            let charData = line[col]
+            if charData.code == 0 || charData.width == 0 {
+                col += 1
+                continue
+            }
+
+            var fgColor = resolveColor(charData.attribute.fg, terminal: terminal, isFg: true, isBold: charData.attribute.style.contains(.bold))
+            if charData.attribute.style.contains(.dim) {
+                fgColor = colorTable?.dimmed(fgColor) ?? fgColor
+            }
+
+            var bgColor = resolveColor(charData.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+            if charData.attribute.style.contains(.inverse) {
+                swap(&fgColor, &bgColor)
+            }
+            if charData.attribute.style.contains(.invisible) {
+                fgColor = SIMD4<Float>(fgColor.x, fgColor.y, fgColor.z, 0.0)
+            }
+
+            let character = terminal.getCharacter(for: charData)
+            let font = selectFont(for: charData.attribute.style, from: fontSet)
+
+            if let cachedGlyph = glyphCache.getOrCreateGlyph(character: character, font: font, commandBuffer: commandBuffer) {
+                let x = Float(col) * cellWidth
+                let glyphX = pixelAlign(x + cachedGlyph.bearing.x)
+                let glyphY = pixelAlign(y + cachedGlyph.bearing.y)
+                let glyphWidth = max(1 / max(Float(scale), 1), pixelAlign(Float(cachedGlyph.size.x)))
+                let glyphHeight = max(1 / max(Float(scale), 1), pixelAlign(Float(cachedGlyph.size.y)))
+
+                appendGlyphQuad(
+                    to: &cached.glyphVertices,
+                    x: glyphX,
+                    y: glyphY,
+                    width: glyphWidth,
+                    height: glyphHeight,
+                    uvRect: cachedGlyph.uvRect,
+                    fgColor: fgColor,
+                    bgColor: bgColor
+                )
+            }
+
+            var decorationColor = resolveColor(charData.attribute.fg, terminal: terminal, isFg: true, isBold: charData.attribute.style.contains(.bold))
+            if let underlineColor = charData.attribute.underlineColor {
+                decorationColor = underlineColor.toSIMD4(
+                    palette: terminal.ansiColors,
+                    defaultFg: terminal.foregroundColor,
+                    defaultBg: terminal.backgroundColor
+                )
+            }
+
+            let x = Float(col) * cellWidth
+            if charData.attribute.style.contains(.underline) {
+                appendQuad(
+                    to: &cached.decorationVertices,
+                    x: x,
+                    y: y + cellHeight - 2.0,
+                    width: cellWidth * Float(charData.width),
+                    height: 1.0,
+                    color: decorationColor
+                )
+            }
+            if charData.attribute.style.contains(.crossedOut) {
+                appendQuad(
+                    to: &cached.decorationVertices,
+                    x: x,
+                    y: y + cellHeight * 0.4,
+                    width: cellWidth * Float(charData.width),
+                    height: 1.0,
+                    color: decorationColor
+                )
+            }
+
+            col += max(1, Int(charData.width))
+        }
+
+        return cached
+    }
+
+    internal func buildSelectionVertices(
+        terminal: Terminal,
+        cellDimension: CGSize,
+        selection: SelectionService?
+    ) -> [TerminalVertex] {
+        guard let selection = selection, selection.active else { return [] }
+        let builder = VertexBufferBuilder()
+        let buffer = terminal.displayBuffer
+        let cols = terminal.cols
+        let rows = terminal.rows
+        let yDisp = buffer.yDisp
+        let cellWidth = Float(cellDimension.width)
+        let cellHeight = Float(cellDimension.height)
+
+        let isReversed = Position.compare(selection.start, selection.end) == .after
+        let trueStart = isReversed ? selection.end : selection.start
+        let trueEnd = isReversed ? selection.start : selection.end
+
+        let startRow = trueStart.row - yDisp
+        let endRow = trueEnd.row - yDisp
+        let selectionColor = SIMD4<Float>(0.3, 0.3, 1.0, 0.5)
+        let visibleStartRow = max(0, startRow)
+        let visibleEndRowExclusive = min(rows, endRow + 1)
+
+        if visibleStartRow < visibleEndRowExclusive {
+            for row in visibleStartRow..<visibleEndRowExclusive {
+                let startCol: Int
+                let endCol: Int
+
+                if row == startRow && row == endRow {
+                    startCol = trueStart.col
+                    endCol = trueEnd.col
+                } else if row == startRow {
+                    startCol = trueStart.col
+                    endCol = cols - 1
+                } else if row == endRow {
+                    startCol = 0
+                    endCol = trueEnd.col
+                } else {
+                    startCol = 0
+                    endCol = cols - 1
+                }
+
+                if startCol < cols && endCol >= 0 {
+                    let clampedStart = max(0, startCol)
+                    let clampedEnd = min(cols - 1, endCol)
+                    guard clampedStart <= clampedEnd else { continue }
+
+                    builder.addSelectionQuad(
+                        x: Float(clampedStart) * cellWidth,
+                        y: Float(row) * cellHeight,
+                        width: Float(clampedEnd - clampedStart + 1) * cellWidth,
+                        height: cellHeight,
+                        color: selectionColor
+                    )
+                }
+            }
+        }
+
+        return builder.selectionVertices
+    }
+
+    internal func buildCursorVertices(
+        terminal: Terminal,
+        cellDimension: CGSize
+    ) -> [TerminalVertex] {
+        guard terminal.cursorHidden == false else { return [] }
+        let buffer = terminal.displayBuffer
+        let cols = terminal.cols
+        let rows = terminal.rows
+        let cursorX = buffer.x
+        let cursorY = buffer.y
+        guard cursorY >= 0 && cursorY < rows && cursorX >= 0 && cursorX < cols else { return [] }
+
+        let cellWidth = Float(cellDimension.width)
+        let cellHeight = Float(cellDimension.height)
+        let cursorColor = SIMD4<Float>(1.0, 1.0, 1.0, 1.0)
+        let x = Float(cursorX) * cellWidth
+        let y = Float(cursorY) * cellHeight
+        let builder = VertexBufferBuilder()
+
+        switch terminal.options.cursorStyle {
+        case .blinkBlock, .steadyBlock:
+            builder.addCursorQuad(x: x, y: y, width: cellWidth, height: cellHeight, color: cursorColor)
+        case .blinkUnderline, .steadyUnderline:
+            builder.addCursorQuad(x: x, y: y + cellHeight - 2.0, width: cellWidth, height: 2.0, color: cursorColor)
+        case .blinkBar, .steadyBar:
+            builder.addCursorQuad(x: x, y: y, width: 2.0, height: cellHeight, color: cursorColor)
+        }
+
+        return builder.cursorVertices
+    }
+
+    private func appendQuad(
+        to vertices: inout [TerminalVertex],
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        color: SIMD4<Float>
+    ) {
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(0, 0), fgColor: color, bgColor: color))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(1, 1), fgColor: color, bgColor: color))
+    }
+
+    private func appendGlyphQuad(
+        to vertices: inout [TerminalVertex],
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        uvRect: CGRect,
+        fgColor: SIMD4<Float>,
+        bgColor: SIMD4<Float>
+    ) {
+        let atlasWidth = max(Float(width), 1)
+        let atlasHeight = max(Float(height), 1)
+        let insetU = Float(uvRect.width) / atlasWidth * 0.5
+        let insetV = Float(uvRect.height) / atlasHeight * 0.5
+        let u0 = Float(uvRect.origin.x) + insetU
+        let v0 = Float(uvRect.origin.y) + insetV
+        let u1 = Float(uvRect.origin.x + uvRect.width) - insetU
+        let v1 = Float(uvRect.origin.y + uvRect.height) - insetV
+
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(u0, v1), fgColor: fgColor, bgColor: bgColor))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(u0, v0), fgColor: fgColor, bgColor: bgColor))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(u1, v1), fgColor: fgColor, bgColor: bgColor))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(u1, v1), fgColor: fgColor, bgColor: bgColor))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(u0, v0), fgColor: fgColor, bgColor: bgColor))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(u1, v0), fgColor: fgColor, bgColor: bgColor))
     }
 
     /// Select the appropriate font for a character style

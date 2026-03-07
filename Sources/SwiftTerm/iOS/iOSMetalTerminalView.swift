@@ -12,7 +12,7 @@ import Metal
 import MetalKit
 
 /// iOS Metal-based terminal view
-open class iOSMetalTerminalView: MetalTerminalView, UITextInput {
+open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTraits {
     // MARK: - UITextInput properties
 
     public weak var inputDelegate: UITextInputDelegate?
@@ -35,6 +35,18 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput {
             // Not used for terminal
         }
     }
+
+    public var autocapitalizationType: UITextAutocapitalizationType = .none
+    public var autocorrectionType: UITextAutocorrectionType = .no
+    public var spellCheckingType: UITextSpellCheckingType = .no
+    public var smartQuotesType: UITextSmartQuotesType = .no
+    public var smartDashesType: UITextSmartDashesType = .no
+    public var smartInsertDeleteType: UITextSmartInsertDeleteType = .no
+    public var keyboardType: UIKeyboardType = .asciiCapable
+    public var keyboardAppearance: UIKeyboardAppearance = .dark
+    public var returnKeyType: UIReturnKeyType = .default
+    public var enablesReturnKeyAutomatically: Bool = false
+    public var isSecureTextEntry: Bool = false
 
     // MARK: - Input handling
 
@@ -820,28 +832,21 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput {
     }
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        guard let terminal = terminal, let selection = selection else { return }
+        guard let terminal = terminal, cellDimension.height > 0 else { return }
 
-        let location = gesture.location(in: self)
-        let col = Int(location.x / cellDimension.width)
-        let row = Int(location.y / cellDimension.height)
-        let bufferRow = row + terminal.buffer.yDisp
+        let translation = gesture.translation(in: self)
+        let scrollDelta = Int((-translation.y / cellDimension.height).rounded(.towardZero))
+        guard scrollDelta != 0 else { return }
 
-        switch gesture.state {
-        case .began:
-            selection.startSelection(row: bufferRow, col: col)
-        case .changed:
-            selection.dragExtend(row: bufferRow, col: col)
-        case .ended:
-            // Show edit menu after pan selection
-            if selection.active {
-                showEditMenu(at: location)
-            }
-        default:
-            break
+        let buffer = terminal.buffer
+        let newYDisp = max(0, min(buffer.yDisp + scrollDelta, buffer.lines.count - terminal.rows))
+        if newYDisp != buffer.yDisp {
+            buffer.yDisp = newYDisp
+            terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, buffer.lines.count - terminal.rows)))
+            setTerminalNeedsDisplay()
         }
 
-        setTerminalNeedsDisplay()
+        gesture.setTranslation(.zero, in: self)
     }
 
     private func sendTouchToTerminal(button: Int, col: Int, row: Int, pressed: Bool, motion: Bool) {
@@ -860,6 +865,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput {
 
     override open func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesMoved(touches, with: event)
+
+        if gestureRecognizers?.contains(where: { $0 is UIPanGestureRecognizer && $0.state == .changed }) == true {
+            return
+        }
 
         guard let touch = touches.first else { return }
         let currentLocation = touch.location(in: self)
