@@ -43,12 +43,12 @@ extension NSColor {
         return NSColor(calibratedRed: red * dimFactor, green: green * dimFactor, blue: blue * dimFactor, alpha: alpha)
     }
 
-    static func make (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat) -> NSColor
+    public static func make (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat) -> NSColor
     {
         return NSColor (deviceRed: red, green: green, blue: blue, alpha: alpha)
     }
-    
-    static func make (hue: CGFloat, saturation: CGFloat, brightness: CGFloat, alpha: CGFloat) -> TTColor
+
+    public static func make (hue: CGFloat, saturation: CGFloat, brightness: CGFloat, alpha: CGFloat) -> TTColor
     {
         return NSColor (
             calibratedHue: hue,
@@ -57,15 +57,15 @@ extension NSColor {
             alpha: alpha)
     }
 
-    static func make (color: Color) -> NSColor
+    public static func make (color: Color) -> NSColor
     {
         return NSColor (deviceRed: CGFloat (color.red) / 65535.0,
                         green: CGFloat (color.green) / 65535.0,
                         blue: CGFloat (color.blue) / 65535.0,
                         alpha: 1.0)
     }
-    
-    static func transparent () -> NSColor {
+
+    public static func transparent () -> NSColor {
         return NSColor (calibratedWhite: 0, alpha: 0)
     }
 }
