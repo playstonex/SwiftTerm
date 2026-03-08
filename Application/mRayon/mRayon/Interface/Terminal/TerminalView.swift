@@ -417,6 +417,8 @@ struct TerminalView: View {
         #if canImport(UIKit)
         let userInfo = notification.userInfo ?? [:]
         let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+        // Wait until the keyboard animation and safe-area/layout updates have settled before
+        // asking the terminal to recompute its rows, otherwise iPhone can briefly report a stale size.
         DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
             context.termInterface.refreshDisplay()
             Task { await updateTerminalSize() }

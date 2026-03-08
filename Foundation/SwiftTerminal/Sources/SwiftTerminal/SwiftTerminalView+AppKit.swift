@@ -235,6 +235,8 @@ public class SwiftTerminalView: NSView {
     }
 
     private func scheduleRefreshDisplay() {
+        // Window focus and view reattachment do not always line up with the first drawable update.
+        // Retry once on the next short tick to avoid stale content after the app becomes active.
         DispatchQueue.main.async { [weak self] in
             self?.refreshDisplay()
         }

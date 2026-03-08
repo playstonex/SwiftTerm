@@ -218,6 +218,8 @@ public class SwiftTerminalView: UIView {
     }
 
     private func scheduleRefreshDisplay() {
+        // Reattachment and foregrounding can race with Auto Layout and MTKView drawable updates.
+        // A second refresh on the next short tick avoids leaving the terminal with stale content.
         DispatchQueue.main.async { [weak self] in
             self?.refreshDisplay()
             self?.syncAndNotifyTerminalSizeIfNeeded()
@@ -259,6 +261,8 @@ public class SwiftTerminalView: UIView {
         _ = metalView.syncTerminalSizeToView()
         guard let terminal = metalView.terminal else { return }
         let size = CGSize(width: terminal.cols, height: terminal.rows)
+        // syncTerminalSizeToView() can update the underlying terminal before the delegate callback
+        // arrives; de-duplicate here so the shell only sees real size changes.
         guard size != lastNotifiedTerminalSize else { return }
         lastNotifiedTerminalSize = size
         adapter.notifySize(size)
