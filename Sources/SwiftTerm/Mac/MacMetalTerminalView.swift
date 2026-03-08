@@ -365,6 +365,9 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     override open func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         setupRenderer()
+        if window != nil, bounds.width > 1, bounds.height > 1 {
+            refreshDisplay(immediately: true)
+        }
     }
 
     override open func setFrameSize(_ newSize: NSSize) {
@@ -379,6 +382,7 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
     private func handleResize(newSize: NSSize) {
         guard cellDimension != .zero else { return }
+        guard newSize.width > 1, newSize.height > 1 else { return }
 
         updateDrawableMetrics()
 
