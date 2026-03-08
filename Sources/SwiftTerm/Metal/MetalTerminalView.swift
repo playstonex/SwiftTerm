@@ -324,12 +324,9 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         if advancement.width > 0 {
             measuredCellWidth = advancement.width
         } else {
-            #if os(macOS)
-            measuredCellWidth = fontSet.normal.boundingRect(forGlyph: glyph).width
-            #else
-            let fontAttributes = [NSAttributedString.Key.font: fontSet.normal as UIFont]
-            measuredCellWidth = "M".size(withAttributes: fontAttributes).width
-            #endif
+            var boundingRect = CGRect.zero
+            CTFontGetBoundingRectsForGlyphs(fontSet.normal, .horizontal, &glyph, &boundingRect, 1)
+            measuredCellWidth = boundingRect.width
         }
 
         let scale = self.scale
