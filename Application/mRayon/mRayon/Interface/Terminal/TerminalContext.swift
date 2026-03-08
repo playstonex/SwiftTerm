@@ -250,6 +250,11 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     private func buildTmuxBootstrapCommand(sessionName: String, autoCreate: Bool) -> String {
         let quotedSession = singleQuotedShellString(sessionName)
+        let tmuxStatusSetup = [
+            "\"$TMUX_BIN\" set-option -g status 1",
+            "\"$TMUX_BIN\" set-option -g status-left-length 40",
+            "\"$TMUX_BIN\" set-option -g status-right-length 40"
+        ].joined(separator: "; ")
         let tmuxAction = autoCreate
             ? "\"$TMUX_BIN\" new-session -A -s \(quotedSession)"
             : "\"$TMUX_BIN\" attach-session -t \(quotedSession)"
@@ -263,6 +268,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         if [ -z "$TMUX_BIN" ]; then \
           echo '[!] tmux not found in PATH or common install paths'; \
         else \
+          \(tmuxStatusSetup); \
           \(tmuxAction); \
         fi
         """
