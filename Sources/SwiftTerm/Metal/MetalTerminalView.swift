@@ -278,7 +278,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         updateDrawableMetrics()
 
         // Resize terminal to fit current view bounds if bounds are valid
-        if bounds.width > 0 && bounds.height > 0 {
+        if bounds.width > 1 && bounds.height > 1 {
             handleResize(newSize: bounds.size)
         }
     }
@@ -298,7 +298,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         }
 
         // Trigger resize after font setup to ensure proper dimensions
-        if bounds.width > 0 && bounds.height > 0 {
+        if bounds.width > 1 && bounds.height > 1 {
             handleResize(newSize: bounds.size)
         }
     }
@@ -695,6 +695,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
             setTerminalNeedsDisplay()
             return
         }
+        // Correctness currently takes priority over partial redraws here. External feeds can
+        // change viewport state, alternate-buffer content, and cursor placement in ways that
+        // previously left stale rows on screen. Keep the snapshot plumbing in place so the
+        // diff path can be restored later once the invalidation model is reliable again.
         _ = snapshot
         renderer.markAllDirty(reason: "externalFeedFullRefresh")
         renderer.markSelectionDirty()
