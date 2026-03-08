@@ -29,7 +29,10 @@ public protocol NativeTerminalProtocol {
     func requestTerminalSize() -> CGSize
     func setTerminalFontSize(with size: Int)
     func setTerminalFontName(with name: String)
+    func activateKeyboard()
+    func dismissKeyboard()
     func getSelection(completion: @escaping (String?) -> Void)
+    func refreshDisplay()
     func setTerminalTheme(
         foreground: String,
         background: String,
@@ -157,6 +160,18 @@ public final class SwiftTerminalAdapter: NativeTerminalProtocol {
     public func getSelection(completion: @escaping (String?) -> Void) {
         // Will be implemented by platform-specific view
         completion(nil)
+    }
+
+    public func activateKeyboard() {
+        // Will be implemented by platform-specific view
+    }
+
+    public func dismissKeyboard() {
+        // Will be implemented by platform-specific view
+    }
+
+    public func refreshDisplay() {
+        // Will be implemented by platform-specific view
     }
 
     public func setTerminalTheme(

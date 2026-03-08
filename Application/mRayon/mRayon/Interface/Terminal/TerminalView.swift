@@ -59,7 +59,8 @@ struct TerminalView: View {
     @State private var webBrowserPort: String = ""
     @StateObject private var speechInputController = TerminalSpeechInputController()
     @State private var liveTranscriptPreview: String = ""
-    private let terminalContentPadding = EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
+    @State private var isKeyboardVisible = false
+    private let terminalContentPadding = EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
 
     var body: some View {
         Group {
@@ -83,6 +84,10 @@ struct TerminalView: View {
                                 context.termInterface.setTerminalFontName(with: store.terminalFontName)
                                 // Apply theme immediately without delay
                                 applyTheme()
+                                context.termInterface.refreshDisplay()
+                                Task { @MainActor in
+                                    await updateTerminalSize()
+                                }
                             }
                             .onChange(of: store.terminalFontSize) { _, newValue in
                                 context.termInterface.setTerminalFontSize(with: newValue)
@@ -125,6 +130,7 @@ struct TerminalView: View {
                                 AccessoryBar(
                                     isReconnecting: context.closed,
                                     isVoiceRecording: speechInputController.isRecording,
+                                    isKeyboardVisible: isKeyboardVisible,
                                     controlKey: .constant(""),
                                     isShowingControlPopover: .constant(false),
                                     isShowingToolbarSettings: $isShowingToolbarSettings,
@@ -171,6 +177,13 @@ struct TerminalView: View {
                                     onSendKey: { key in
                                         self.safeWrite(key)
                                     },
+                                    onKeyboardToggle: {
+                                        if isKeyboardVisible {
+                                            context.termInterface.dismissKeyboard()
+                                        } else {
+                                            context.termInterface.activateKeyboard()
+                                        }
+                                    },
                                     onVoiceInput: {
                                         if speechInputController.isRecording {
                                             speechInputController.stopAndCommit()
@@ -201,6 +214,18 @@ struct TerminalView: View {
             DispatchQueue.main.async {
                 context.interfaceToken = interfaceToken
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            isKeyboardVisible = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            isKeyboardVisible = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            handleKeyboardTransition(notification: notification)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+            handleKeyboardTransition(notification: notification)
         }
         .navigationTitle(context.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -388,6 +413,17 @@ struct TerminalView: View {
         context.termInterface.setTerminalFontName(with: fontName)
     }
 
+    private func handleKeyboardTransition(notification: Notification) {
+        #if canImport(UIKit)
+        let userInfo = notification.userInfo ?? [:]
+        let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
+            context.termInterface.refreshDisplay()
+            Task { await updateTerminalSize() }
+        }
+        #endif
+    }
+
     func safeWrite(_ str: String) {
         guard !context.closed else { return }
         guard context.interfaceToken == interfaceToken else { return }
@@ -400,6 +436,7 @@ struct TerminalView: View {
 private struct AccessoryBar: View {
     let isReconnecting: Bool
     let isVoiceRecording: Bool
+    let isKeyboardVisible: Bool
     @Binding var controlKey: String
     @Binding var isShowingControlPopover: Bool
     @Binding var isShowingToolbarSettings: Bool
@@ -409,6 +446,7 @@ private struct AccessoryBar: View {
     let onPaste: () -> Void
     let onCopy: () -> Void
     let onSendKey: (String) -> Void
+    let onKeyboardToggle: () -> Void
     let onVoiceInput: () -> Void
 
     var body: some View {
@@ -481,6 +519,12 @@ private struct AccessoryBar: View {
                 icon: key.icon,
                 label: key.label,
                 action: onCopy
+            )
+        case "keyboard_toggle":
+            AccessoryBarButton(
+                icon: isKeyboardVisible ? "keyboard.chevron.compact.down" : key.icon,
+                label: isKeyboardVisible ? String(localized: "Hide Keyboard") : key.label,
+                action: onKeyboardToggle
             )
         case "ctrl":
             AccessoryBarButton(
@@ -700,7 +744,8 @@ class ToolbarKeyStore: ObservableObject {
         ToolbarKey(id: "down", icon: "arrow.down", label: "Down", keySequence: "\u{001B}[B", isEnabled: true, category: .navigation),
 
         // Control keys
-        ToolbarKey(id: "ctrl", icon: "keyboard", label: "Ctrl", keySequence: "", isEnabled: true, category: .control),
+        ToolbarKey(id: "keyboard_toggle", icon: "keyboard", label: String(localized: "Keyboard"), keySequence: "", isEnabled: true, category: .control),
+        ToolbarKey(id: "ctrl", icon: "control", label: "Ctrl", keySequence: "", isEnabled: true, category: .control),
         ToolbarKey(id: "esc", icon: "escape", label: "Esc", keySequence: "\u{001B}", isEnabled: true, category: .control),
         ToolbarKey(id: ToolbarKeyStore.voiceKeyId, icon: "mic", label: String(localized: "Voice"), keySequence: "", isEnabled: ToolbarKeyStore.isSpeechRecognitionAvailable(), category: .control),
 
@@ -736,6 +781,21 @@ class ToolbarKeyStore: ObservableObject {
     }
 
     private func ensureVoiceKeyExists() {
+        if !availableKeys.contains(where: { $0.id == "keyboard_toggle" }) {
+            let keyboardKey = ToolbarKey(
+                id: "keyboard_toggle",
+                icon: "keyboard",
+                label: String(localized: "Keyboard"),
+                keySequence: "",
+                isEnabled: true,
+                category: .control
+            )
+            if let ctrlIndex = availableKeys.firstIndex(where: { $0.id == "ctrl" }) {
+                availableKeys.insert(keyboardKey, at: ctrlIndex)
+            } else {
+                availableKeys.insert(keyboardKey, at: min(availableKeys.count, 4))
+            }
+        }
         // Check if voice key exists in the loaded keys
         if !availableKeys.contains(where: { $0.id == Self.voiceKeyId }) {
             // Find the position to insert voice key (after "esc" in control category)
@@ -761,8 +821,8 @@ class ToolbarKeyStore: ObservableObject {
                 )
                 availableKeys.append(voiceKey)
             }
-            saveKeys()
         }
+        saveKeys()
     }
 
     private static func isSpeechRecognitionAvailable() -> Bool {

@@ -20,6 +20,7 @@ public class SwiftTerminalView: NSView {
     private let adapter: SwiftTerminalAdapter
     private var viewDelegate: MetalViewDelegateHandler?
     private var lastLaidOutBounds: CGRect = .null
+    private var notificationObservers: [NSObjectProtocol] = []
 
     // MARK: - Initialization
 
@@ -29,6 +30,7 @@ public class SwiftTerminalView: NSView {
 
         setupView()
         setupDelegates()
+        setupLifecycleObservers()
     }
 
     public convenience required init() {
@@ -39,6 +41,12 @@ public class SwiftTerminalView: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        for observer in notificationObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Setup
@@ -73,6 +81,21 @@ public class SwiftTerminalView: NSView {
     private func setupDelegates() {
         viewDelegate = MetalViewDelegateHandler(adapter: adapter)
         metalView.terminalDelegate = viewDelegate
+    }
+
+    private func setupLifecycleObservers() {
+        let center = NotificationCenter.default
+        notificationObservers.append(
+            center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.scheduleRefreshDisplay()
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { [weak self] notification in
+                guard let self, notification.object as? NSWindow === self.window else { return }
+                self.scheduleRefreshDisplay()
+            }
+        )
     }
 
     // MARK: - First Responder Handling
@@ -175,6 +198,7 @@ public class SwiftTerminalView: NSView {
             guard let self else { return }
             let snapshot = self.metalView.captureVisibleBufferSnapshot()
             self.metalView.terminal?.feed(buffer: bytes[...])
+            self.metalView.normalizeViewportAfterExternalFeed()
             self.metalView.applyExternalFeedDiff(from: snapshot)
         }
     }
@@ -186,6 +210,10 @@ public class SwiftTerminalView: NSView {
 
     public func getTerminal() -> Terminal {
         return metalView.terminal!
+    }
+
+    public func requestTerminalSize() -> CGSize {
+        metalView.fittingTerminalSize()
     }
 
     /// Get the currently selected text
@@ -201,12 +229,40 @@ public class SwiftTerminalView: NSView {
         applyFont()
     }
 
+    public func refreshDisplay() {
+        guard bounds.width > 1, bounds.height > 1 else { return }
+        metalView.refreshDisplay(clearCache: true, immediately: true)
+    }
+
+    private func scheduleRefreshDisplay() {
+        DispatchQueue.main.async { [weak self] in
+            self?.refreshDisplay()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.refreshDisplay()
+        }
+    }
+
     public override func layout() {
         super.layout()
         guard bounds != lastLaidOutBounds else { return }
         lastLaidOutBounds = bounds
         metalView.frame = bounds
         metalView.setTerminalNeedsDisplay()
+    }
+
+    public override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil, bounds.width > 1, bounds.height > 1 {
+            refreshDisplay()
+        }
+    }
+
+    public override func viewDidMoveToSuperview() {
+        super.viewDidMoveToSuperview()
+        if superview != nil, bounds.width > 1, bounds.height > 1 {
+            refreshDisplay()
+        }
     }
 
     /// Make the internal terminal view the first responder

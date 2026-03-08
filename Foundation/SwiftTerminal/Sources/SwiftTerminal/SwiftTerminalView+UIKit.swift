@@ -20,6 +20,9 @@ public class SwiftTerminalView: UIView {
     private let adapter: SwiftTerminalAdapter
     private var viewDelegate: MetalViewDelegateHandler?
     private var lastLaidOutBounds: CGRect = .null
+    private var lastAppliedFontPixelSignature: Int = -1
+    private var lastNotifiedTerminalSize: CGSize = .zero
+    private var notificationObservers: [NSObjectProtocol] = []
 
     // MARK: - Initialization
 
@@ -29,6 +32,7 @@ public class SwiftTerminalView: UIView {
 
         setupView()
         setupDelegates()
+        setupLifecycleObservers()
     }
 
     public convenience required init() {
@@ -39,6 +43,12 @@ public class SwiftTerminalView: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        for observer in notificationObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Setup
@@ -72,6 +82,23 @@ public class SwiftTerminalView: UIView {
     private func setupDelegates() {
         viewDelegate = MetalViewDelegateHandler(adapter: adapter)
         metalView.terminalDelegate = viewDelegate
+        DispatchQueue.main.async { [weak self] in
+            self?.syncAndNotifyTerminalSizeIfNeeded()
+        }
+    }
+
+    private func setupLifecycleObservers() {
+        let center = NotificationCenter.default
+        notificationObservers.append(
+            center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.scheduleRefreshDisplay()
+            }
+        )
+        notificationObservers.append(
+            center.addObserver(forName: UIScene.didActivateNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.scheduleRefreshDisplay()
+            }
+        )
     }
 
     // MARK: - Theme & Font
@@ -122,15 +149,20 @@ public class SwiftTerminalView: UIView {
 
     private func applyFont() {
         let fontName = adapter.getCurrentFontName()
-        let fontSize = CGFloat(adapter.getCurrentFontSize())
+        let requestedFontSize = CGFloat(adapter.getCurrentFontSize())
 
-        let font: UIFont
-        if let customFont = UIFont(name: fontName, size: fontSize) {
-            font = customFont
+        let baseFont: UIFont
+        if let customFont = UIFont(name: fontName, size: requestedFontSize) {
+            baseFont = customFont
         } else {
             // Fallback to Menlo if custom font not found
-            font = UIFont(name: "Menlo", size: fontSize) ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            baseFont = UIFont(name: "Menlo", size: requestedFontSize) ?? UIFont.monospacedSystemFont(ofSize: requestedFontSize, weight: .regular)
         }
+
+        let font = baseFont
+        let fontSignature = Int((font.pointSize * UIScreen.main.scale).rounded())
+        guard fontSignature != lastAppliedFontPixelSignature else { return }
+        lastAppliedFontPixelSignature = fontSignature
 
         metalView.setupFont(font: font)
         // MTKView is paused and renders on demand, so force an immediate redraw here.
@@ -149,6 +181,7 @@ public class SwiftTerminalView: UIView {
             guard let self else { return }
             let snapshot = self.metalView.captureVisibleBufferSnapshot()
             self.metalView.terminal?.feed(buffer: bytes[...])
+            self.metalView.normalizeViewportAfterExternalFeed()
             self.metalView.applyExternalFeedDiff(from: snapshot)
         }
     }
@@ -160,6 +193,10 @@ public class SwiftTerminalView: UIView {
 
     public func getTerminal() -> Terminal {
         return metalView.terminal!
+    }
+
+    public func requestTerminalSize() -> CGSize {
+        metalView.fittingTerminalSize()
     }
 
     /// Get the currently selected text
@@ -175,18 +212,67 @@ public class SwiftTerminalView: UIView {
         applyFont()
     }
 
+    public func refreshDisplay() {
+        guard bounds.width > 1, bounds.height > 1 else { return }
+        metalView.refreshDisplay(clearCache: true, immediately: true)
+    }
+
+    private func scheduleRefreshDisplay() {
+        DispatchQueue.main.async { [weak self] in
+            self?.refreshDisplay()
+            self?.syncAndNotifyTerminalSizeIfNeeded()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.refreshDisplay()
+            self?.syncAndNotifyTerminalSizeIfNeeded()
+        }
+    }
+
     public override func layoutSubviews() {
         super.layoutSubviews()
         guard bounds != lastLaidOutBounds else { return }
         lastLaidOutBounds = bounds
         metalView.frame = bounds
+        applyFont()
+        syncAndNotifyTerminalSizeIfNeeded()
         metalView.setTerminalNeedsDisplay()
+    }
+
+    public override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil, bounds.width > 1, bounds.height > 1 {
+            refreshDisplay()
+            syncAndNotifyTerminalSizeIfNeeded()
+        }
+    }
+
+    public override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        if superview != nil, bounds.width > 1, bounds.height > 1 {
+            refreshDisplay()
+            syncAndNotifyTerminalSizeIfNeeded()
+        }
+    }
+
+    private func syncAndNotifyTerminalSizeIfNeeded() {
+        guard bounds.width > 1, bounds.height > 1 else { return }
+        _ = metalView.syncTerminalSizeToView()
+        guard let terminal = metalView.terminal else { return }
+        let size = CGSize(width: terminal.cols, height: terminal.rows)
+        guard size != lastNotifiedTerminalSize else { return }
+        lastNotifiedTerminalSize = size
+        adapter.notifySize(size)
     }
 
     /// Make the terminal view the first responder to receive keyboard input
     @discardableResult
     public func makeTerminalFirstResponder() -> Bool {
         return metalView.becomeFirstResponder()
+    }
+
+    @discardableResult
+    public func resignTerminalFirstResponder() -> Bool {
+        return metalView.resignFirstResponder()
     }
 
     // MARK: - Touch Handling

@@ -82,8 +82,7 @@ public struct STerminalView: NativeTerminalProtocol {
     }
 
     public func requestTerminalSize() -> CGSize {
-        let terminal = terminalView.getTerminal()
-        return CGSize(width: terminal.cols, height: terminal.rows)
+        terminalView.requestTerminalSize()
     }
 
     public func setTerminalFontSize(with size: Int) {
@@ -152,10 +151,24 @@ public struct STerminalView: NativeTerminalProtocol {
         completion(text.isEmpty ? nil : text)
     }
 
+    public func refreshDisplay() {
+        DispatchQueue.main.async {
+            self.terminalView.refreshDisplay()
+        }
+    }
+
     public func activateKeyboard() {
         DispatchQueue.main.async {
             _ = self.terminalView.makeTerminalFirstResponder()
         }
+    }
+
+    public func dismissKeyboard() {
+        #if canImport(UIKit)
+        DispatchQueue.main.async {
+            _ = self.terminalView.resignTerminalFirstResponder()
+        }
+        #endif
     }
 }
 
@@ -172,8 +185,9 @@ extension STerminalView: NSViewRepresentable {
     }
 
     public func updateNSView(_ nsView: SwiftTerminalView, context: Context) {
-        // Don't interfere with focus during updates
-        // The terminal view handles its own display updates via SwiftTerm
+        DispatchQueue.main.async {
+            nsView.refreshDisplay()
+        }
     }
 
     public static func dismantleNSView(_ nsView: SwiftTerminalView, coordinator: ()) {
@@ -193,8 +207,9 @@ extension STerminalView: UIViewRepresentable {
     }
 
     public func updateUIView(_ uiView: SwiftTerminalView, context: Context) {
-        // Do not steal focus on every SwiftUI update.
-        // The terminal view manages its own first-responder status via tap gestures.
+        DispatchQueue.main.async {
+            uiView.refreshDisplay()
+        }
     }
 
     public static func dismantleUIView(_ uiView: SwiftTerminalView, coordinator: ()) {

@@ -106,6 +106,7 @@ struct TerminalView: View {
                     }
                     applyTheme()
                     applyFont()
+                    context.termInterface.refreshDisplay()
                     Task { await updateTerminalSize() }
                 }
             } else {
