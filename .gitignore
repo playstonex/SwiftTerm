@@ -72,6 +72,8 @@
 .yarn/cache
 .yarn/unplugged
 /*.gcno
+
+/External/SwiftTerm/
 Artifacts/
 CI
 CI-Pods.tar
