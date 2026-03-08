@@ -12,7 +12,7 @@ import Metal
 import MetalKit
 
 /// iOS Metal-based terminal view
-open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTraits {
+open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTraits, UIGestureRecognizerDelegate {
     // MARK: - UITextInput properties
 
     public weak var inputDelegate: UITextInputDelegate?
@@ -88,17 +88,30 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         // Set up gesture recognizers
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
         tapGesture.numberOfTapsRequired = 1
+        tapGesture.delegate = self
+        tapGesture.cancelsTouchesInView = false
         addGestureRecognizer(tapGesture)
 
         let doubleTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
         doubleTapGesture.numberOfTapsRequired = 2
+        doubleTapGesture.delegate = self
+        doubleTapGesture.cancelsTouchesInView = false
         addGestureRecognizer(doubleTapGesture)
 
         let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        longPressGesture.delegate = self
+        longPressGesture.cancelsTouchesInView = false
         addGestureRecognizer(longPressGesture)
 
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        panGesture.delegate = self
+        panGesture.cancelsTouchesInView = false
+        panGesture.delaysTouchesBegan = false
+        panGesture.delaysTouchesEnded = false
         addGestureRecognizer(panGesture)
+
+        tapGesture.require(toFail: panGesture)
+        doubleTapGesture.require(toFail: panGesture)
 
         // Note: Do NOT call becomeFirstResponder here - the view is not yet in a window.
         // The view will become first responder when tapped or when explicitly requested.
@@ -139,7 +152,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func insertText(_ text: String) {
-        if terminal.keyboardEnhancementFlags.isEmpty {
+        let hasPendingHardwareKey = pendingKittyKeyEvent != nil
+        if terminal.keyboardEnhancementFlags.isEmpty || !hasPendingHardwareKey {
             send(text: text)
             return
         }
@@ -147,7 +161,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func deleteBackward() {
-        if terminal.keyboardEnhancementFlags.isEmpty {
+        let hasPendingHardwareKey = pendingKittyKeyEvent != nil
+        if terminal.keyboardEnhancementFlags.isEmpty || !hasPendingHardwareKey {
             send([backspaceSendsControlH ? 8 : 0x7f])
             return
         }
@@ -797,7 +812,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         // Double tap selects word
         guard let terminal = terminal, let selection = selection else { return }
-        let bufferRow = row + terminal.buffer.yDisp
+        let bufferRow = row + terminal.displayBuffer.yDisp
         selection.selectWordOrExpression(at: Position(col: col, row: bufferRow), in: terminal.buffer)
         setTerminalNeedsDisplay()
 
@@ -816,10 +831,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         switch gesture.state {
         case .began:
-            let bufferRow = row + terminal.buffer.yDisp
+            let bufferRow = row + terminal.displayBuffer.yDisp
             selection.startSelection(row: bufferRow, col: col)
         case .changed:
-            let bufferRow = row + terminal.buffer.yDisp
+            let bufferRow = row + terminal.displayBuffer.yDisp
             selection.dragExtend(row: bufferRow, col: col)
         case .ended:
             // Show edit menu for copy
@@ -834,19 +849,33 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let terminal = terminal, cellDimension.height > 0 else { return }
 
+        if gesture.state == .began {
+            terminal.userScrolling = true
+        }
+
         let translation = gesture.translation(in: self)
         let scrollDelta = Int((-translation.y / cellDimension.height).rounded(.towardZero))
-        guard scrollDelta != 0 else { return }
+        guard scrollDelta != 0 else {
+            if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
+                terminal.userScrolling = false
+            }
+            return
+        }
 
-        let buffer = terminal.buffer
-        let newYDisp = max(0, min(buffer.yDisp + scrollDelta, buffer.lines.count - terminal.rows))
-        if newYDisp != buffer.yDisp {
-            buffer.yDisp = newYDisp
-            terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, buffer.lines.count - terminal.rows)))
+        let displayBuffer = terminal.displayBuffer
+        let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+        let newYDisp = max(0, min(displayBuffer.yDisp + scrollDelta, maxYDisp))
+        if newYDisp != displayBuffer.yDisp {
+            terminal.setViewYDisp(newYDisp)
+            renderer?.markAllDirty(reason: "gestureScroll")
+            terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, maxYDisp)))
             setTerminalNeedsDisplay()
         }
 
         gesture.setTranslation(.zero, in: self)
+        if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
+            terminal.userScrolling = false
+        }
     }
 
     private func sendTouchToTerminal(button: Int, col: Int, row: Int, pressed: Bool, motion: Bool) {
@@ -877,17 +906,29 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let delta = currentLocation.y - previousLocation.y
 
         guard let terminal = terminal else { return }
-        let buffer = terminal.buffer
+        let displayBuffer = terminal.displayBuffer
 
-        // Scroll the buffer
         let scrollDelta = Int(-delta / cellDimension.height)
         if scrollDelta != 0 {
-            let newYDisp = max(0, min(buffer.yDisp + scrollDelta, buffer.lines.count - terminal.rows))
-            if newYDisp != buffer.yDisp {
-                buffer.yDisp = newYDisp
+            terminal.userScrolling = true
+            let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+            let newYDisp = max(0, min(displayBuffer.yDisp + scrollDelta, maxYDisp))
+            if newYDisp != displayBuffer.yDisp {
+                terminal.setViewYDisp(newYDisp)
+                renderer?.markAllDirty(reason: "touchScroll")
                 setTerminalNeedsDisplay()
             }
         }
+    }
+
+    override open func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesEnded(touches, with: event)
+        terminal?.userScrolling = false
+    }
+
+    override open func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesCancelled(touches, with: event)
+        terminal?.userScrolling = false
     }
 
     // MARK: - UITextInput protocol
@@ -1071,6 +1112,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         super.layoutSubviews()
 
         guard cellDimension != .zero else { return }
+        guard bounds.width > 1, bounds.height > 1 else { return }
 
         updateDrawableMetrics()
 
@@ -1083,6 +1125,37 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             terminal.resize(cols: newCols, rows: newRows)
             setTerminalNeedsDisplay()
         }
+
+        if window != nil {
+            refreshDisplay()
+        }
+    }
+
+    override open func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil, bounds.width > 1, bounds.height > 1 {
+            refreshDisplay(immediately: true)
+        }
+    }
+
+    override open func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        if superview != nil, bounds.width > 1, bounds.height > 1 {
+            refreshDisplay(immediately: window != nil)
+        }
+    }
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        true
+    }
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        false
+    }
+
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard gestureRecognizer is UIPanGestureRecognizer else { return false }
+        return false
     }
 
     // MARK: - Selection & Edit Menu

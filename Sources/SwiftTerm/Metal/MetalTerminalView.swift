@@ -142,6 +142,18 @@ struct FontSet {
 open class MetalTerminalView: MTView, TerminalDelegate {
     private var suppressLargeCursorRangeChanges = false
 
+    private func pinViewportToBottomIfNeeded(for source: Terminal) {
+        guard !source.userScrolling else { return }
+        let displayBuffer = source.displayBuffer
+        guard displayBuffer.yDisp != displayBuffer.yBase else { return }
+        source.setViewYDisp(displayBuffer.yBase)
+    }
+
+    public func normalizeViewportAfterExternalFeed() {
+        guard let terminal else { return }
+        pinViewportToBottomIfNeeded(for: terminal)
+    }
+
     public struct VisibleBufferSnapshot {
         let rowSignatures: [Int]
         let cursorCol: Int
@@ -300,18 +312,28 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         let lineLeading = CTFontGetLeading(fontSet.normal)
         let cellHeight = ceil(lineAscent + lineDescent + lineLeading)
 
-        #if os(macOS)
-        var glyph = fontSet.normal.glyph(withName: "W")
+        var glyph = fontSet.normal.glyph(withName: "M")
+        if glyph == 0 {
+            glyph = fontSet.normal.glyph(withName: "W")
+        }
+
         var advancement = CGSize()
         CTFontGetAdvancesForGlyphs(fontSet.normal, .horizontal, &glyph, &advancement, 1)
-        let cellWidth = advancement.width
-        #else
-        let fontAttributes = [NSAttributedString.Key.font: fontSet.normal as UIFont]
-        let cellWidth = "W".size(withAttributes: fontAttributes).width
-        #endif
+
+        let measuredCellWidth: CGFloat
+        if advancement.width > 0 {
+            measuredCellWidth = advancement.width
+        } else {
+            #if os(macOS)
+            measuredCellWidth = fontSet.normal.boundingRect(forGlyph: glyph).width
+            #else
+            let fontAttributes = [NSAttributedString.Key.font: fontSet.normal as UIFont]
+            measuredCellWidth = "M".size(withAttributes: fontAttributes).width
+            #endif
+        }
 
         let scale = self.scale
-        let snappedWidth = ceil(cellWidth * scale) / scale
+        let snappedWidth = ceil(measuredCellWidth * scale) / scale
         let snappedHeight = ceil(cellHeight * scale) / scale
 
         self.cellDimension = CGSize(width: max(1, snappedWidth), height: max(min(snappedHeight, 8192), 1))
@@ -391,9 +413,11 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     public func scrollChanged(source: Terminal) {
         suppressLargeCursorRangeChanges = false
+        pinViewportToBottomIfNeeded(for: source)
         renderer?.markAllDirty(reason: "scrollChanged")
         setTerminalNeedsDisplay()
-        terminalDelegate?.scrolled(source: self, position: Double(source.buffer.yDisp) / Double(max(1, source.buffer.lines.count - source.rows)))
+        let displayBuffer = source.displayBuffer
+        terminalDelegate?.scrolled(source: self, position: Double(displayBuffer.yDisp) / Double(max(1, displayBuffer.lines.count - source.rows)))
     }
 
     public func rangeChanged(source: Terminal, startY: Int, endY: Int) {
@@ -408,12 +432,14 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     public func screenChanged(source: Terminal) {
         suppressLargeCursorRangeChanges = false
+        pinViewportToBottomIfNeeded(for: source)
         renderer?.markAllDirty(reason: "screenChanged")
         setTerminalNeedsDisplay()
     }
 
     public func lineBufferChanged(source: Terminal, startY: Int, endY: Int) {
-        renderer?.markDirtyBufferRows(startY: startY, endY: endY, terminal: source)
+        pinViewportToBottomIfNeeded(for: source)
+        renderer?.markAllDirty(reason: "lineBufferChanged")
         renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
     }
@@ -423,6 +449,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func bufferActivated(source: Terminal) {
+        pinViewportToBottomIfNeeded(for: source)
+        renderer?.clearCache()
+        renderer?.markAllDirty(reason: "bufferActivated")
+        setTerminalNeedsDisplay()
         terminalDelegate?.bufferActivated(source: self)
     }
 
@@ -488,7 +518,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func synchronizedOutputChanged(source: Terminal, active: Bool) {
-        // Handled by platform-specific implementations
+        pinViewportToBottomIfNeeded(for: source)
+        renderer?.clearCache()
+        renderer?.markAllDirty(reason: active ? "synchronizedOutputBegin" : "synchronizedOutputEnd")
+        setTerminalNeedsDisplay()
     }
 
     public func setTerminalTitle(source: Terminal, title: String) {
@@ -504,7 +537,11 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func scrolled(source: Terminal, yDisp: Int) {
-        terminalDelegate?.scrolled(source: self, position: Double(yDisp) / Double(max(1, source.buffer.lines.count - source.rows)))
+        renderer?.markAllDirty(reason: "viewportScrolled")
+        renderer?.markCursorDirty()
+        setTerminalNeedsDisplay()
+        let displayBuffer = source.displayBuffer
+        terminalDelegate?.scrolled(source: self, position: Double(displayBuffer.yDisp) / Double(max(1, displayBuffer.lines.count - source.rows)))
     }
 
     public func linefeed(source: Terminal) {
@@ -571,6 +608,67 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         setTerminalNeedsDisplay()
     }
 
+    open override func draw() {
+        if bounds.width > 1, bounds.height > 1 {
+            _ = syncTerminalSizeToView()
+        }
+        super.draw()
+    }
+
+    public func fittingTerminalSize() -> CGSize {
+        guard bounds.width > 1, bounds.height > 1 else {
+            return CGSize(width: max(1, terminal?.cols ?? 80), height: max(1, terminal?.rows ?? 24))
+        }
+        guard cellDimension.width > 0, cellDimension.height > 0 else {
+            return CGSize(width: max(1, terminal?.cols ?? 80), height: max(1, terminal?.rows ?? 24))
+        }
+
+        let cols = max(1, Int(bounds.width / cellDimension.width))
+        let rows = max(1, Int(bounds.height / cellDimension.height))
+        return CGSize(width: cols, height: rows)
+    }
+
+    @discardableResult
+    public func syncTerminalSizeToView() -> Bool {
+        guard let terminal else { return false }
+        guard bounds.width > 1, bounds.height > 1 else { return false }
+        guard cellDimension.width > 0, cellDimension.height > 0 else { return false }
+
+        updateDrawableMetrics()
+
+        let targetSize = fittingTerminalSize()
+        let newCols = Int(targetSize.width)
+        let newRows = Int(targetSize.height)
+        guard newCols > 0, newRows > 0 else { return false }
+
+        if newCols != terminal.cols || newRows != terminal.rows {
+            selection?.active = false
+            terminal.resize(cols: newCols, rows: newRows)
+            renderer?.markAllDirty(reason: "syncTerminalSizeToView")
+            setTerminalNeedsDisplay()
+            return true
+        }
+
+        return false
+    }
+
+    /// Force a complete redraw when the view is reattached or visibility changes.
+    public func refreshDisplay(clearCache: Bool = false, immediately: Bool = false) {
+        guard bounds.width > 1, bounds.height > 1 else { return }
+        _ = syncTerminalSizeToView()
+        if clearCache {
+            renderer?.clearCache()
+        } else {
+            renderer?.markAllDirty(reason: "refreshDisplay")
+        }
+        renderer?.markSelectionDirty()
+        renderer?.markCursorDirty()
+        setTerminalNeedsDisplay()
+        if immediately {
+            draw()
+        }
+    }
+
     public func captureVisibleBufferSnapshot() -> VisibleBufferSnapshot? {
         guard let terminal else { return nil }
         let buffer = terminal.displayBuffer
@@ -600,39 +698,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
             setTerminalNeedsDisplay()
             return
         }
-        guard let previous = snapshot,
-              let current = captureVisibleBufferSnapshot() else {
-            renderer.markDirtyViewportRows(IndexSet(integersIn: 0..<terminal.rows), terminal: terminal)
-            renderer.markSelectionDirty()
-            renderer.markCursorDirty()
-            setTerminalNeedsDisplay()
-            return
-        }
-
-        guard previous.cols == current.cols,
-              previous.rows == current.rows,
-              previous.topVisibleRow == current.topVisibleRow,
-              previous.rowSignatures.count == current.rowSignatures.count else {
-            renderer.markDirtyViewportRows(IndexSet(integersIn: 0..<terminal.rows), terminal: terminal)
-            renderer.markSelectionDirty()
-            renderer.markCursorDirty()
-            setTerminalNeedsDisplay()
-            return
-        }
-
-        var changedRows = IndexSet()
-        for row in 0..<current.rowSignatures.count where previous.rowSignatures[row] != current.rowSignatures[row] {
-            changedRows.insert(row)
-        }
-
-        if !changedRows.isEmpty {
-            renderer.markDirtyViewportRows(changedRows, terminal: terminal)
-        }
-
-        if previous.cursorCol != current.cursorCol || previous.cursorRow != current.cursorRow {
-            renderer.markCursorDirty()
-        }
-
+        _ = snapshot
+        renderer.markAllDirty(reason: "externalFeedFullRefresh")
+        renderer.markSelectionDirty()
+        renderer.markCursorDirty()
         setTerminalNeedsDisplay()
     }
 
@@ -677,10 +746,11 @@ open class MetalTerminalView: MTView, TerminalDelegate {
                 renderer?.update(terminal: terminal, fontSet: fontSet, cellDimension: cellDimension, scale: scale)
                 renderer?.clearCache()
                 // Resize terminal to fit view bounds
-                if bounds.width > 0 && bounds.height > 0 {
+                if bounds.width > 1 && bounds.height > 1 {
                     handleResize(newSize: bounds.size)
                 }
             }
+            refreshDisplay(clearCache: false, immediately: true)
         }
     }
 
@@ -688,7 +758,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     open override func layout() {
         super.layout()
         // Handle resize for auto layout based views
-        if bounds.width > 0 && bounds.height > 0 && cellDimension.width > 0 {
+        if bounds.width > 1 && bounds.height > 1 && cellDimension.width > 0 {
             handleResize(newSize: bounds.size)
         }
     }
@@ -697,8 +767,9 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     open override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
         // Resize when added to a superview with valid bounds
-        if superview != nil && bounds.width > 0 && bounds.height > 0 && cellDimension.width > 0 {
+        if superview != nil && bounds.width > 1 && bounds.height > 1 && cellDimension.width > 0 {
             handleResize(newSize: bounds.size)
+            refreshDisplay(immediately: true)
         }
     }
 
@@ -706,7 +777,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     open override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         // Use bounds.size which is in points (not pixels)
-        if bounds.width > 0 && bounds.height > 0 {
+        if bounds.width > 1 && bounds.height > 1 {
             handleResize(newSize: bounds.size)
         }
     }
@@ -714,7 +785,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Handle view resize by updating terminal dimensions
     private func handleResize(newSize: NSSize) {
         guard cellDimension.width > 0 && cellDimension.height > 0 else { return }
-        guard newSize.width > 0 && newSize.height > 0 else { return }
+        guard newSize.width > 1 && newSize.height > 1 else { return }
 
         updateDrawableMetrics()
 
@@ -731,6 +802,9 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     open override func layoutSubviews() {
         super.layoutSubviews()
         handleResize(newSize: bounds.size)
+        if window != nil {
+            refreshDisplay()
+        }
     }
 
     /// Handle view resize by updating terminal dimensions

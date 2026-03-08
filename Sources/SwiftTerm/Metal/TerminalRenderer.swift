@@ -169,6 +169,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     private var dirtyRect: CGRect? = nil
     private var lastRenderedCols: Int = -1
     private var lastRenderedRows: Int = -1
+    private var lastRenderedYDisp: Int = -1
     private var rowCache: [CachedRowVertices] = []
     private var cachedSelectionVertices: [TerminalVertex] = []
     private var cachedCursorVertices: [TerminalVertex] = []
@@ -453,6 +454,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         // Reset cached dimensions to force full redraw
         lastRenderedCols = -1
         lastRenderedRows = -1
+        lastRenderedYDisp = -1
         needsFullRebuild = true
     }
 
@@ -462,6 +464,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         rowCache.removeAll()
         cachedSelectionVertices.removeAll()
         cachedCursorVertices.removeAll()
+        lastRenderedYDisp = -1
         needsFullRebuild = true
         needsSelectionRebuild = true
         needsCursorRebuild = true
@@ -514,13 +517,15 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     private func rebuildCachesIfNeeded(terminal: Terminal, fontSet: FontSet, commandBuffer: MTLCommandBuffer) {
         let rows = terminal.rows
         let cols = terminal.cols
+        let yDisp = terminal.displayBuffer.yDisp
 
-        if needsFullRebuild || rowCache.count != rows || lastRenderedCols != cols || lastRenderedRows != rows {
+        if needsFullRebuild || rowCache.count != rows || lastRenderedCols != cols || lastRenderedRows != rows || lastRenderedYDisp != yDisp {
             rowCache = Array(repeating: CachedRowVertices(), count: rows)
             dirtyRows = rows > 0 ? IndexSet(integersIn: 0..<rows) : IndexSet()
             needsFullRebuild = false
             lastRenderedCols = cols
             lastRenderedRows = rows
+            lastRenderedYDisp = yDisp
             needsSelectionRebuild = true
             needsCursorRebuild = true
         }
