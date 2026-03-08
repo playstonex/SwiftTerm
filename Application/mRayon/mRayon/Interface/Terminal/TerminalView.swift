@@ -59,7 +59,7 @@ struct TerminalView: View {
     @State private var webBrowserPort: String = ""
     @StateObject private var speechInputController = TerminalSpeechInputController()
     @State private var liveTranscriptPreview: String = ""
-    private let terminalContentPadding = EdgeInsets(top: 10, leading: 12, bottom: 6, trailing: 12)
+    private let terminalContentPadding = EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
 
     var body: some View {
         Group {
@@ -348,9 +348,7 @@ struct TerminalView: View {
 
     @MainActor
     func updateTerminalSize() async {
-        let newSize = await Task.detached(priority: .userInitiated) {
-            context.termInterface.requestTerminalSize()
-        }.value
+        let newSize = context.termInterface.requestTerminalSize()
 
         guard newSize.width > 5, newSize.height > 5,
               newSize != terminalSize else { return }

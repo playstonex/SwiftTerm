@@ -21,10 +21,12 @@ struct TerminalView: View {
     @StateObject var store = RayonStore.shared
     @State var interfaceToken = UUID()
     @State var backgroundColor: Color = .black
+    @State private var terminalSize: CGSize = TerminalManager.Context.defaultTerminalSize
     @StateObject private var speechInputController = TerminalSpeechInputController()
     @State private var liveTranscriptPreview: String = ""
     @State private var isShowingWebBrowserSheet = false
     @State private var webBrowserPort: String = ""
+    private let terminalContentPadding = EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
     
     private var tmuxLogoImage: Image {
         if let img = NSImage(named: "tmux-logo") {
@@ -45,13 +47,19 @@ struct TerminalView: View {
     var body: some View {
         Group {
             if context.interfaceToken == interfaceToken {
-                ZStack {
-                    backgroundColor
-                        .ignoresSafeArea()
+                GeometryReader { proxy in
+                    ZStack {
+                        backgroundColor
+                            .ignoresSafeArea()
 
-                    context.termInterface
-                        .padding(4)
-                        .focusable()
+                        context.termInterface
+                            .padding(terminalContentPadding)
+                            .focusable()
+                            .onChange(of: proxy.size) { _, _ in
+                                guard context.interfaceToken == interfaceToken else { return }
+                                Task { await updateTerminalSize() }
+                            }
+                    }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if speechInputController.isRecording || !liveTranscriptPreview.isEmpty {
@@ -80,15 +88,14 @@ struct TerminalView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onChange(of: store.terminalFontSize) { oldValue, newValue in
                     context.termInterface.setTerminalFontSize(with: newValue)
+                    Task { await updateTerminalSize() }
                 }
                 .onChange(of: store.terminalFontName) { oldValue, newValue in
                     applyFont()
+                    Task { await updateTerminalSize() }
                 }
                 .onChange(of: store.terminalThemeName) { oldValue, newValue in
-                    // Schedule background update on next runloop cycle
-                    DispatchQueue.main.async {
-                        applyTheme()
-                    }
+                    applyTheme()
                 }
                 .onAppear {
                     context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
@@ -97,11 +104,9 @@ struct TerminalView: View {
                     if let color = Color(hex: store.terminalTheme.background) {
                         backgroundColor = color
                     }
-                    // Delay theme application to ensure WebView is ready
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        applyTheme()
-                        applyFont()
-                    }
+                    applyTheme()
+                    applyFont()
+                    Task { await updateTerminalSize() }
                 }
             } else {
                 Text("Terminal Transfer To Another Window")
@@ -387,6 +392,19 @@ struct TerminalView: View {
     func applyFont() {
         let fontName = store.terminalFontName
         context.termInterface.setTerminalFontName(with: fontName)
+    }
+
+    @MainActor
+    func updateTerminalSize() async {
+        let newSize = context.termInterface.requestTerminalSize()
+
+        guard newSize.width > 5, newSize.height > 5,
+              newSize != terminalSize else { return }
+
+        guard context.interfaceToken == interfaceToken else { return }
+        terminalSize = newSize
+        context.terminalSize = newSize
+        context.shell.explicitRequestStatusPickup()
     }
 }
 

@@ -19,6 +19,7 @@ public class SwiftTerminalView: NSView {
     private(set) public var metalView: MacMetalTerminalView!
     private let adapter: SwiftTerminalAdapter
     private var viewDelegate: MetalViewDelegateHandler?
+    private var lastLaidOutBounds: CGRect = .null
 
     // MARK: - Initialization
 
@@ -48,6 +49,7 @@ public class SwiftTerminalView: NSView {
 
         // Create Metal terminal view
         metalView = MacMetalTerminalView(frame: CGRect(x: 0, y: 0, width: 500, height: 500))
+        metalView.clearColor = MTLClearColorMake(0, 0, 0, 1)
 
         addSubview(metalView)
         metalView.translatesAutoresizingMaskIntoConstraints = false
@@ -137,9 +139,11 @@ public class SwiftTerminalView: NSView {
 
         // Set layer background color
         layer?.backgroundColor = NSColor(hex: theme.background).cgColor
+        metalView.clearColor = MTLClearColor(theme.background)
 
-        // Theme changes only affect colors; glyph cache remains valid.
+        // MTKView is paused and renders on demand, so force an immediate redraw here.
         metalView.setTerminalNeedsDisplay()
+        metalView.draw()
     }
 
     private func applyFont() {
@@ -155,6 +159,8 @@ public class SwiftTerminalView: NSView {
         }
 
         metalView.setupFont(font: font)
+        // MTKView is paused and renders on demand, so force an immediate redraw here.
+        metalView.draw()
     }
 
     // MARK: - Public API
@@ -164,19 +170,18 @@ public class SwiftTerminalView: NSView {
     }
 
     public func feed(data: Data) {
-        // Feed data to the terminal
         let bytes = Array(data)
-        metalView.terminal?.feed(buffer: bytes[...])
-        metalView.setTerminalNeedsDisplay()
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let snapshot = self.metalView.captureVisibleBufferSnapshot()
+            self.metalView.terminal?.feed(buffer: bytes[...])
+            self.metalView.applyExternalFeedDiff(from: snapshot)
+        }
     }
 
     public func feed(text: String) {
-        // Feed host output into the terminal buffer.
-        if let data = text.data(using: .utf8) {
-            let bytes = Array(data)
-            metalView.terminal?.feed(buffer: bytes[...])
-            metalView.setTerminalNeedsDisplay()
-        }
+        guard let data = text.data(using: .utf8) else { return }
+        feed(data: data)
     }
 
     public func getTerminal() -> Terminal {
@@ -194,6 +199,14 @@ public class SwiftTerminalView: NSView {
 
     public func updateFont() {
         applyFont()
+    }
+
+    public override func layout() {
+        super.layout()
+        guard bounds != lastLaidOutBounds else { return }
+        lastLaidOutBounds = bounds
+        metalView.frame = bounds
+        metalView.setTerminalNeedsDisplay()
     }
 
     /// Make the internal terminal view the first responder
@@ -276,6 +289,19 @@ private class MetalViewDelegateHandler: NSObject, MetalTerminalViewDelegate {
 
     func windowTitleChanged(source: MetalTerminalView, title: String) {
         adapter?.notifyTitle(title)
+    }
+}
+
+private extension MTLClearColor {
+    init(_ hex: String) {
+        let color = NSColor(hex: hex)
+        let rgb = color.usingColorSpace(.deviceRGB) ?? color
+        self.init(
+            red: Double(rgb.redComponent),
+            green: Double(rgb.greenComponent),
+            blue: Double(rgb.blueComponent),
+            alpha: Double(rgb.alphaComponent)
+        )
     }
 }
 
