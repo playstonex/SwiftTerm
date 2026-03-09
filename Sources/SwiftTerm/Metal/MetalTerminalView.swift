@@ -640,7 +640,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
         if newCols != terminal.cols || newRows != terminal.rows {
             selection?.active = false
-            terminal.resize(cols: newCols, rows: newRows)
+            resizeTerminalPreservingViewport(cols: newCols, rows: newRows)
             renderer?.markAllDirty(reason: "syncTerminalSizeToView")
             setTerminalNeedsDisplay()
             return true
@@ -818,11 +818,28 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         let newRows = max(1, Int(newSize.height / cellDimension.height))
 
         if newCols != terminal.cols || newRows != terminal.rows {
-            terminal.resize(cols: newCols, rows: newRows)
+            resizeTerminalPreservingViewport(cols: newCols, rows: newRows)
         }
         setTerminalNeedsDisplay()
     }
     #endif
+
+    private func resizeTerminalPreservingViewport(cols: Int, rows: Int) {
+        let oldDisplayBuffer = terminal.displayBuffer
+        let oldYDisp = oldDisplayBuffer.yDisp
+        let wasPinnedToBottom = oldDisplayBuffer.yDisp == oldDisplayBuffer.yBase
+
+        terminal.resize(cols: cols, rows: rows)
+
+        let newDisplayBuffer = terminal.displayBuffer
+        if wasPinnedToBottom {
+            terminal.setViewYDisp(newDisplayBuffer.yBase)
+            return
+        }
+
+        let maxYDisp = max(0, newDisplayBuffer.lines.count - rows)
+        terminal.setViewYDisp(max(0, min(oldYDisp, maxYDisp)))
+    }
 
     /// Resize the terminal
     public func resize(cols: Int, rows: Int) {

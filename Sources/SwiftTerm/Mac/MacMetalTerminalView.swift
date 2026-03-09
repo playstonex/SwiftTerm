@@ -251,6 +251,19 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         return Position(col: clampedCol, row: bufferRow)
     }
 
+    private func clampedScreenGridPosition(for event: NSEvent) -> Position? {
+        guard let terminal = terminal else { return nil }
+
+        let point = convert(event.locationInWindow, from: nil)
+        let col = Int(point.x / cellDimension.width)
+        let row = Int((frame.height - point.y) / cellDimension.height)
+
+        return Position(
+            col: max(0, min(col, terminal.cols - 1)),
+            row: max(0, min(row, terminal.rows - 1))
+        )
+    }
+
     /// Whether a mouse-reporting drag is in progress
     private var mouseTrackingActive: Bool = false
 
@@ -327,6 +340,22 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     override open func scrollWheel(with event: NSEvent) {
         guard let terminal = terminal else { return }
 
+        if terminal.mouseMode != .off && allowMouseReporting {
+            guard let hit = clampedScreenGridPosition(for: event) else { return }
+            let rawDelta = event.hasPreciseScrollingDeltas
+                ? event.scrollingDeltaY / max(cellDimension.height, 1)
+                : event.scrollingDeltaY
+            let steps = scrollingSteps(for: rawDelta)
+            guard steps != 0 else { return }
+
+            let button = steps > 0 ? 4 : 5
+            for _ in 0..<abs(steps) {
+                sendMouseEvent(button: button, col: hit.col, row: hit.row, pressed: true, modifierFlags: event.modifierFlags)
+                sendMouseEvent(button: button, col: hit.col, row: hit.row, pressed: false, modifierFlags: event.modifierFlags)
+            }
+            return
+        }
+
         let rawDelta = event.hasPreciseScrollingDeltas
             ? event.scrollingDeltaY / max(cellDimension.height, 1)
             : event.scrollingDeltaY
@@ -339,6 +368,20 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
                 setTerminalNeedsDisplay()
             }
         }
+    }
+
+    private func scrollingSteps(for rawDelta: CGFloat) -> Int {
+        let magnitude = abs(rawDelta)
+        if magnitude >= 10 {
+            return Int(rawDelta.rounded(.towardZero))
+        }
+        if magnitude >= 3 {
+            return Int(rawDelta.rounded(.toNearestOrAwayFromZero))
+        }
+        if magnitude >= 0.5 {
+            return rawDelta > 0 ? 1 : -1
+        }
+        return 0
     }
 
     private func sendMouseEvent(button: Int, col: Int, row: Int, pressed: Bool, modifierFlags: NSEvent.ModifierFlags, motion: Bool = false) {

@@ -42,11 +42,12 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     public var smartQuotesType: UITextSmartQuotesType = .no
     public var smartDashesType: UITextSmartDashesType = .no
     public var smartInsertDeleteType: UITextSmartInsertDeleteType = .no
-    public var keyboardType: UIKeyboardType = .asciiCapable
-    public var keyboardAppearance: UIKeyboardAppearance = .dark
+    public var keyboardType: UIKeyboardType = .default
+    public var keyboardAppearance: UIKeyboardAppearance = .default
     public var returnKeyType: UIReturnKeyType = .default
     public var enablesReturnKeyAutomatically: Bool = false
     public var isSecureTextEntry: Bool = false
+    public var textContentType: UITextContentType! = .none
 
     // MARK: - Input handling
 
@@ -850,12 +851,33 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         guard let terminal = terminal, cellDimension.height > 0 else { return }
 
         if gesture.state == .began {
+            if isFirstResponder {
+                _ = resignFirstResponder()
+            }
             terminal.userScrolling = true
         }
 
         let translation = gesture.translation(in: self)
         let scrollDelta = Int((-translation.y / cellDimension.height).rounded(.towardZero))
         guard scrollDelta != 0 else {
+            if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
+                terminal.userScrolling = false
+            }
+            return
+        }
+
+        if terminal.mouseMode != .off && allowMouseReporting {
+            let location = gesture.location(in: self)
+            let col = max(0, min(Int(location.x / cellDimension.width), terminal.cols - 1))
+            let row = max(0, min(Int(location.y / cellDimension.height), terminal.rows - 1))
+            let button = scrollDelta > 0 ? 4 : 5
+
+            for _ in 0..<abs(scrollDelta) {
+                sendTouchToTerminal(button: button, col: col, row: row, pressed: true, motion: false)
+                sendTouchToTerminal(button: button, col: col, row: row, pressed: false, motion: false)
+            }
+
+            gesture.setTranslation(.zero, in: self)
             if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
                 terminal.userScrolling = false
             }
@@ -906,6 +928,9 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let delta = currentLocation.y - previousLocation.y
 
         guard let terminal = terminal else { return }
+        if terminal.mouseMode != .off && allowMouseReporting {
+            return
+        }
         let displayBuffer = terminal.displayBuffer
 
         let scrollDelta = Int(-delta / cellDimension.height)
