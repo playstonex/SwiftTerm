@@ -82,6 +82,7 @@ struct TerminalView: View {
                             .onAppear {
                                 context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
                                 context.termInterface.setTerminalFontName(with: store.terminalFontName)
+                                context.termInterface.setReturnKeySendsLineFeed(store.terminalReturnKeySendsLineFeed)
                                 // Apply theme immediately without delay
                                 applyTheme()
                                 context.termInterface.refreshDisplay()
@@ -97,6 +98,9 @@ struct TerminalView: View {
                             }
                             .onChange(of: store.terminalThemeName) { _, _ in
                                 applyTheme()
+                            }
+                            .onChange(of: store.terminalReturnKeySendsLineFeed) { _, newValue in
+                                context.termInterface.setReturnKeySendsLineFeed(newValue)
                             }
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -417,8 +421,8 @@ struct TerminalView: View {
         #if canImport(UIKit)
         let userInfo = notification.userInfo ?? [:]
         let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
-        // Wait until the keyboard animation and safe-area/layout updates have settled before
-        // asking the terminal to recompute its rows, otherwise iPhone can briefly report a stale size.
+        // Resize after the keyboard animation settles so the visible rows match the actual
+        // unobscured terminal area. The terminal view preserves its current viewport on resize.
         DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
             context.termInterface.refreshDisplay()
             Task { await updateTerminalSize() }
@@ -727,6 +731,8 @@ struct ToolbarKey: Identifiable, Equatable, Codable {
 class ToolbarKeyStore: ObservableObject {
     static let shared = ToolbarKeyStore()
     private static let voiceKeyId = "voice"
+    private static let enterKeyId = "enter"
+    private static let newlineKeyId = "newline"
 
     @AppStorage("terminalToolbarKeys") private var keysData: Data = Data()
 
@@ -752,6 +758,8 @@ class ToolbarKeyStore: ObservableObject {
         ToolbarKey(id: ToolbarKeyStore.voiceKeyId, icon: "mic", label: String(localized: "Voice"), keySequence: "", isEnabled: ToolbarKeyStore.isSpeechRecognitionAvailable(), category: .control),
 
         // Custom keys
+        ToolbarKey(id: ToolbarKeyStore.enterKeyId, icon: "arrow.turn.down.left", label: String(localized: "Enter"), keySequence: "\r", isEnabled: true, category: .custom),
+        ToolbarKey(id: ToolbarKeyStore.newlineKeyId, icon: "return", label: String(localized: "Newline"), keySequence: "\n", isEnabled: true, category: .custom),
         ToolbarKey(id: "tab", icon: "arrow.right", label: "Tab", keySequence: "\u{0009}", isEnabled: true, category: .custom),
         ToolbarKey(id: "home", icon: "arrow.left.to.line", label: "Home", keySequence: "\u{0001}", isEnabled: false, category: .custom),
         ToolbarKey(id: "end", icon: "arrow.right.to.line", label: "End", keySequence: "\u{0005}", isEnabled: true, category: .custom),
@@ -776,13 +784,13 @@ class ToolbarKeyStore: ObservableObject {
 
     private init() {
         loadKeys()
-        // Ensure voice key exists in the list (for users upgrading from older versions)
-        ensureVoiceKeyExists()
+        // Ensure required keys exist in the list for users upgrading from older versions.
+        ensureRequiredKeysExist()
         // Update voice key availability after loading to respect current settings
         updateVoiceKeyAvailability()
     }
 
-    private func ensureVoiceKeyExists() {
+    private func ensureRequiredKeysExist() {
         if !availableKeys.contains(where: { $0.id == "keyboard_toggle" }) {
             let keyboardKey = ToolbarKey(
                 id: "keyboard_toggle",
@@ -798,9 +806,8 @@ class ToolbarKeyStore: ObservableObject {
                 availableKeys.insert(keyboardKey, at: min(availableKeys.count, 4))
             }
         }
-        // Check if voice key exists in the loaded keys
+
         if !availableKeys.contains(where: { $0.id == Self.voiceKeyId }) {
-            // Find the position to insert voice key (after "esc" in control category)
             if let escIndex = availableKeys.firstIndex(where: { $0.id == "esc" }) {
                 let voiceKey = ToolbarKey(
                     id: Self.voiceKeyId,
@@ -824,6 +831,41 @@ class ToolbarKeyStore: ObservableObject {
                 availableKeys.append(voiceKey)
             }
         }
+
+        if !availableKeys.contains(where: { $0.id == Self.enterKeyId }) {
+            let enterKey = ToolbarKey(
+                id: Self.enterKeyId,
+                icon: "arrow.turn.down.left",
+                label: String(localized: "Enter"),
+                keySequence: "\r",
+                isEnabled: true,
+                category: .custom
+            )
+            if let tabIndex = availableKeys.firstIndex(where: { $0.id == "tab" }) {
+                availableKeys.insert(enterKey, at: tabIndex)
+            } else {
+                availableKeys.append(enterKey)
+            }
+        }
+
+        if !availableKeys.contains(where: { $0.id == Self.newlineKeyId }) {
+            let newlineKey = ToolbarKey(
+                id: Self.newlineKeyId,
+                icon: "return",
+                label: String(localized: "Newline"),
+                keySequence: "\n",
+                isEnabled: true,
+                category: .custom
+            )
+            if let enterIndex = availableKeys.firstIndex(where: { $0.id == Self.enterKeyId }) {
+                availableKeys.insert(newlineKey, at: enterIndex + 1)
+            } else if let tabIndex = availableKeys.firstIndex(where: { $0.id == "tab" }) {
+                availableKeys.insert(newlineKey, at: tabIndex)
+            } else {
+                availableKeys.append(newlineKey)
+            }
+        }
+
         saveKeys()
     }
 

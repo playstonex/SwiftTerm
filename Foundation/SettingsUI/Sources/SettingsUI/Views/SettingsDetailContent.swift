@@ -242,6 +242,13 @@ public struct SettingsDetailContent: View {
                 Stepper("", value: $store.terminalFontSize, in: 5...30)
                     .labelsHidden()
             }
+
+            HStack {
+                Text("iOS Return Sends Line Feed")
+                Spacer()
+                Toggle("", isOn: $store.terminalReturnKeySendsLineFeed)
+                    .labelsHidden()
+            }
         }
     }
 

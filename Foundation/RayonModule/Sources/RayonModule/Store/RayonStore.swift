@@ -39,6 +39,7 @@ public class RayonStore: ObservableObject {
             UDTerminalFontName = fontName
         }
         terminalFontName = fontName
+        terminalReturnKeySendsLineFeed = UDTerminalReturnKeySendsLineFeed
         // Load tmux preferences
         useTmux = UDUseTmux
         tmuxSessionName = UDTmuxSessionName
@@ -126,6 +127,7 @@ public class RayonStore: ObservableObject {
             $saveTemporarySession.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $terminalFontSize.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $terminalFontName.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $terminalReturnKeySendsLineFeed.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $themePreference.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $terminalThemeName.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $useTmux.dropFirst().map { _ in () }.eraseToAnyPublisher(),
@@ -306,6 +308,9 @@ public class RayonStore: ObservableObject {
     @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalFontName", defaultValue: "Menlo")
     private var UDTerminalFontName: String
 
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalReturnKeySendsLineFeed", defaultValue: false)
+    private var UDTerminalReturnKeySendsLineFeed: Bool
+
     @Published public var terminalFontSize: Int = 14 {
         didSet {
             UDTerminalFontSize = terminalFontSize
@@ -333,6 +338,12 @@ public class RayonStore: ObservableObject {
     @Published public var terminalFontName: String = "Menlo" {
         didSet {
             UDTerminalFontName = terminalFontName
+        }
+    }
+
+    @Published public var terminalReturnKeySendsLineFeed: Bool = false {
+        didSet {
+            UDTerminalReturnKeySendsLineFeed = terminalReturnKeySendsLineFeed
         }
     }
 

@@ -14,6 +14,7 @@ public struct RDAppSettingsSync: Codable, Equatable {
         public var saveTemporarySession: Bool
         public var terminalFontSize: Int
         public var terminalFontName: String
+        public var terminalReturnKeySendsLineFeed: Bool
         public var themePreference: String
         public var terminalThemeName: String
         public var useTmux: Bool
@@ -24,6 +25,93 @@ public struct RDAppSettingsSync: Codable, Equatable {
         public var fileTransferMaxConcurrent: Int
         public var fileTransferRateLimitKBps: Int
         public var fileTransferResumeEnabled: Bool
+
+        public init(
+            timeout: Int,
+            monitorInterval: Int,
+            reducedViewEffects: Bool,
+            disableConformation: Bool,
+            storeRecent: Bool,
+            saveTemporarySession: Bool,
+            terminalFontSize: Int,
+            terminalFontName: String,
+            terminalReturnKeySendsLineFeed: Bool,
+            themePreference: String,
+            terminalThemeName: String,
+            useTmux: Bool,
+            tmuxSessionName: String,
+            tmuxAutoCreate: Bool,
+            openInterfaceAutomatically: Bool,
+            fileTransferConflictPolicy: String,
+            fileTransferMaxConcurrent: Int,
+            fileTransferRateLimitKBps: Int,
+            fileTransferResumeEnabled: Bool
+        ) {
+            self.timeout = timeout
+            self.monitorInterval = monitorInterval
+            self.reducedViewEffects = reducedViewEffects
+            self.disableConformation = disableConformation
+            self.storeRecent = storeRecent
+            self.saveTemporarySession = saveTemporarySession
+            self.terminalFontSize = terminalFontSize
+            self.terminalFontName = terminalFontName
+            self.terminalReturnKeySendsLineFeed = terminalReturnKeySendsLineFeed
+            self.themePreference = themePreference
+            self.terminalThemeName = terminalThemeName
+            self.useTmux = useTmux
+            self.tmuxSessionName = tmuxSessionName
+            self.tmuxAutoCreate = tmuxAutoCreate
+            self.openInterfaceAutomatically = openInterfaceAutomatically
+            self.fileTransferConflictPolicy = fileTransferConflictPolicy
+            self.fileTransferMaxConcurrent = fileTransferMaxConcurrent
+            self.fileTransferRateLimitKBps = fileTransferRateLimitKBps
+            self.fileTransferResumeEnabled = fileTransferResumeEnabled
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case timeout
+            case monitorInterval
+            case reducedViewEffects
+            case disableConformation
+            case storeRecent
+            case saveTemporarySession
+            case terminalFontSize
+            case terminalFontName
+            case terminalReturnKeySendsLineFeed
+            case themePreference
+            case terminalThemeName
+            case useTmux
+            case tmuxSessionName
+            case tmuxAutoCreate
+            case openInterfaceAutomatically
+            case fileTransferConflictPolicy
+            case fileTransferMaxConcurrent
+            case fileTransferRateLimitKBps
+            case fileTransferResumeEnabled
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            timeout = try container.decode(Int.self, forKey: .timeout)
+            monitorInterval = try container.decode(Int.self, forKey: .monitorInterval)
+            reducedViewEffects = try container.decode(Bool.self, forKey: .reducedViewEffects)
+            disableConformation = try container.decode(Bool.self, forKey: .disableConformation)
+            storeRecent = try container.decode(Bool.self, forKey: .storeRecent)
+            saveTemporarySession = try container.decode(Bool.self, forKey: .saveTemporarySession)
+            terminalFontSize = try container.decode(Int.self, forKey: .terminalFontSize)
+            terminalFontName = try container.decode(String.self, forKey: .terminalFontName)
+            terminalReturnKeySendsLineFeed = try container.decodeIfPresent(Bool.self, forKey: .terminalReturnKeySendsLineFeed) ?? false
+            themePreference = try container.decode(String.self, forKey: .themePreference)
+            terminalThemeName = try container.decode(String.self, forKey: .terminalThemeName)
+            useTmux = try container.decode(Bool.self, forKey: .useTmux)
+            tmuxSessionName = try container.decode(String.self, forKey: .tmuxSessionName)
+            tmuxAutoCreate = try container.decode(Bool.self, forKey: .tmuxAutoCreate)
+            openInterfaceAutomatically = try container.decode(Bool.self, forKey: .openInterfaceAutomatically)
+            fileTransferConflictPolicy = try container.decode(String.self, forKey: .fileTransferConflictPolicy)
+            fileTransferMaxConcurrent = try container.decode(Int.self, forKey: .fileTransferMaxConcurrent)
+            fileTransferRateLimitKBps = try container.decode(Int.self, forKey: .fileTransferRateLimitKBps)
+            fileTransferResumeEnabled = try container.decode(Bool.self, forKey: .fileTransferResumeEnabled)
+        }
     }
 
     public init(
@@ -36,6 +124,7 @@ public struct RDAppSettingsSync: Codable, Equatable {
         saveTemporarySession: Bool,
         terminalFontSize: Int,
         terminalFontName: String,
+        terminalReturnKeySendsLineFeed: Bool,
         themePreference: String,
         terminalThemeName: String,
         useTmux: Bool,
@@ -58,6 +147,7 @@ public struct RDAppSettingsSync: Codable, Equatable {
         self.saveTemporarySession = saveTemporarySession
         self.terminalFontSize = terminalFontSize
         self.terminalFontName = terminalFontName
+        self.terminalReturnKeySendsLineFeed = terminalReturnKeySendsLineFeed
         self.themePreference = themePreference
         self.terminalThemeName = terminalThemeName
         self.useTmux = useTmux
@@ -81,6 +171,7 @@ public struct RDAppSettingsSync: Codable, Equatable {
     public var saveTemporarySession: Bool
     public var terminalFontSize: Int
     public var terminalFontName: String
+    public var terminalReturnKeySendsLineFeed: Bool
     public var themePreference: String
     public var terminalThemeName: String
     public var useTmux: Bool
@@ -104,6 +195,7 @@ public struct RDAppSettingsSync: Codable, Equatable {
             saveTemporarySession: saveTemporarySession,
             terminalFontSize: terminalFontSize,
             terminalFontName: terminalFontName,
+            terminalReturnKeySendsLineFeed: terminalReturnKeySendsLineFeed,
             themePreference: themePreference,
             terminalThemeName: terminalThemeName,
             useTmux: useTmux,
@@ -172,6 +264,7 @@ extension RDAppSettingsSync: iCloudSyncItem {
             saveTemporarySession = decoded.saveTemporarySession
             terminalFontSize = decoded.terminalFontSize
             terminalFontName = decoded.terminalFontName
+            terminalReturnKeySendsLineFeed = decoded.terminalReturnKeySendsLineFeed
             themePreference = decoded.themePreference
             terminalThemeName = decoded.terminalThemeName
             useTmux = decoded.useTmux
@@ -192,6 +285,7 @@ extension RDAppSettingsSync: iCloudSyncItem {
             saveTemporarySession = record["saveTemporarySession"] as? Bool ?? true
             terminalFontSize = record["terminalFontSize"] as? Int ?? 14
             terminalFontName = record["terminalFontName"] as? String ?? "Menlo"
+            terminalReturnKeySendsLineFeed = record["terminalReturnKeySendsLineFeed"] as? Bool ?? false
             themePreference = record["themePreference"] as? String ?? "system"
             terminalThemeName = record["terminalThemeName"] as? String ?? "Default"
             useTmux = record["useTmux"] as? Bool ?? false
@@ -220,6 +314,7 @@ public extension RayonStore {
             saveTemporarySession: saveTemporarySession,
             terminalFontSize: terminalFontSize,
             terminalFontName: terminalFontName,
+            terminalReturnKeySendsLineFeed: terminalReturnKeySendsLineFeed,
             themePreference: themePreference,
             terminalThemeName: terminalThemeName,
             useTmux: useTmux,
@@ -244,6 +339,7 @@ public extension RayonStore {
         saveTemporarySession = settings.saveTemporarySession
         terminalFontSize = settings.terminalFontSize
         terminalFontName = settings.terminalFontName
+        terminalReturnKeySendsLineFeed = settings.terminalReturnKeySendsLineFeed
         themePreference = settings.themePreference
         terminalThemeName = settings.terminalThemeName
         useTmux = settings.useTmux

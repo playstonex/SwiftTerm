@@ -170,6 +170,15 @@ public struct STerminalView: NativeTerminalProtocol {
         }
         #endif
     }
+
+    public func setReturnKeySendsLineFeed(_ enabled: Bool) {
+        #if canImport(UIKit)
+        let bytes: [UInt8] = enabled ? [10] : [13]
+        DispatchQueue.main.async {
+            self.terminalView.setReturnKeyByteSequence(bytes)
+        }
+        #endif
+    }
 }
 
 // MARK: - SwiftUI View Representable

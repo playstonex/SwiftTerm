@@ -16,6 +16,8 @@
 @property (nonatomic, nullable, strong) NSRemoteChannelReceiveDataBlock receiveDataBlock;
 @property (nonatomic, nullable, strong) NSRemoteChannelContinuationBlock continuationDecisionBlock;
 @property (nonatomic, nullable, strong) NSRemoteChannelTerminalSizeBlock requestTerminalSizeBlock;
+@property (nonatomic, nonnull, strong) NSMutableData *pendingStdoutData;
+@property (nonatomic, nonnull, strong) NSMutableData *pendingStderrData;
 
 @property (nonatomic) CGSize currentTerminalSize;
 
@@ -41,6 +43,8 @@
         _channelCompleted = NO;
         _currentTerminalSize = CGSizeMake(0, 0);
         _exitStatus = 0;
+        _pendingStdoutData = [[NSMutableData alloc] init];
+        _pendingStderrData = [[NSMutableData alloc] init];
     }
     return self;
 }
@@ -102,6 +106,50 @@
     return YES;
 }
 
+- (void)unsafeDeliverPendingUTF8FromBuffer:(NSMutableData *)pendingBuffer {
+    if (pendingBuffer.length < 1 || !self.receiveDataBlock) {
+        return;
+    }
+
+    NSString *decoded = [[NSString alloc] initWithData:pendingBuffer
+                                              encoding:NSUTF8StringEncoding];
+    if (decoded) {
+        self.receiveDataBlock(decoded);
+        [pendingBuffer setLength:0];
+        return;
+    }
+
+    NSUInteger maxTailLength = MIN((NSUInteger)3, pendingBuffer.length);
+    for (NSUInteger tailLength = 1; tailLength <= maxTailLength; tailLength++) {
+        NSUInteger prefixLength = pendingBuffer.length - tailLength;
+        if (prefixLength < 1) {
+            continue;
+        }
+
+        NSData *prefix = [pendingBuffer subdataWithRange:NSMakeRange(0, prefixLength)];
+        decoded = [[NSString alloc] initWithData:prefix
+                                        encoding:NSUTF8StringEncoding];
+        if (!decoded) {
+            continue;
+        }
+
+        self.receiveDataBlock(decoded);
+        NSData *tail = [pendingBuffer subdataWithRange:NSMakeRange(prefixLength, tailLength)];
+        [pendingBuffer setData:tail];
+        return;
+    }
+}
+
+- (void)unsafeAppendReceivedBytes:(const char *)bytes
+                           length:(NSUInteger)length
+                     pendingBuffer:(NSMutableData *)pendingBuffer {
+    if (!bytes || length < 1) {
+        return;
+    }
+    [pendingBuffer appendBytes:bytes length:length];
+    [self unsafeDeliverPendingUTF8FromBuffer:pendingBuffer];
+}
+
 - (void)unsafeChannelRead {
     char buffer[BUFFER_SIZE];
     char errorBuffer[BUFFER_SIZE];
@@ -112,16 +160,14 @@
     long rcerr = libssh2_channel_read_stderr(self.representedChannel, errorBuffer, (ssize_t)sizeof(errorBuffer));
     
     if (rcout != LIBSSH2_ERROR_EAGAIN && rcout > 0) {
-        NSString *read = [[NSString alloc] initWithUTF8String:buffer];
-        if (self.receiveDataBlock) {
-            self.receiveDataBlock(read);
-        }
+        [self unsafeAppendReceivedBytes:buffer
+                                 length:(NSUInteger)rcout
+                           pendingBuffer:self.pendingStdoutData];
     }
     if (rcerr != LIBSSH2_ERROR_EAGAIN && rcerr > 0) {
-        NSString *read = [[NSString alloc] initWithUTF8String:errorBuffer];
-        if (self.receiveDataBlock) {
-            self.receiveDataBlock(read);
-        }
+        [self unsafeAppendReceivedBytes:errorBuffer
+                                 length:(NSUInteger)rcerr
+                           pendingBuffer:self.pendingStderrData];
     }
 }
 
@@ -236,6 +282,8 @@
     if (!self.channelCompleted) { self.channelCompleted = YES; }
     if (!self.representedSession) { return; }
     if (!self.representedChannel) { return; }
+    [self unsafeDeliverPendingUTF8FromBuffer:self.pendingStdoutData];
+    [self unsafeDeliverPendingUTF8FromBuffer:self.pendingStderrData];
     LIBSSH2_CHANNEL *channel = self.representedChannel;
     self.representedChannel = NULL;
     self.representedSession = NULL;

@@ -10,6 +10,7 @@ import UIKit
 import SwiftTerm
 import Metal
 import MetalKit
+import CoreText
 
 /// iOS terminal view using SwiftTerm with Metal rendering
 public class SwiftTerminalView: UIView {
@@ -20,7 +21,7 @@ public class SwiftTerminalView: UIView {
     private let adapter: SwiftTerminalAdapter
     private var viewDelegate: MetalViewDelegateHandler?
     private var lastLaidOutBounds: CGRect = .null
-    private var lastAppliedFontPixelSignature: Int = -1
+    private var lastAppliedFontSignature: Int = -1
     private var lastNotifiedTerminalSize: CGSize = .zero
     private var notificationObservers: [NSObjectProtocol] = []
 
@@ -151,22 +152,45 @@ public class SwiftTerminalView: UIView {
         let fontName = adapter.getCurrentFontName()
         let requestedFontSize = CGFloat(adapter.getCurrentFontSize())
 
-        let baseFont: UIFont
-        if let customFont = UIFont(name: fontName, size: requestedFontSize) {
-            baseFont = customFont
-        } else {
-            // Fallback to Menlo if custom font not found
-            baseFont = UIFont(name: "Menlo", size: requestedFontSize) ?? UIFont.monospacedSystemFont(ofSize: requestedFontSize, weight: .regular)
-        }
+        let baseFont = makeTerminalFont(named: fontName, size: requestedFontSize)
 
         let font = baseFont
-        let fontSignature = Int((font.pointSize * UIScreen.main.scale).rounded())
-        guard fontSignature != lastAppliedFontPixelSignature else { return }
-        lastAppliedFontPixelSignature = fontSignature
+        var hasher = Hasher()
+        hasher.combine(font.fontName)
+        hasher.combine(font.familyName)
+        hasher.combine(font.pointSize)
+        hasher.combine(UIScreen.main.scale)
+        let fontSignature = hasher.finalize()
+        guard fontSignature != lastAppliedFontSignature else { return }
+        lastAppliedFontSignature = fontSignature
 
         metalView.setupFont(font: font)
         // MTKView is paused and renders on demand, so force an immediate redraw here.
         metalView.draw()
+    }
+
+    private func makeTerminalFont(named fontName: String, size: CGFloat) -> UIFont {
+        let baseFont = UIFont(name: fontName, size: size)
+            ?? UIFont(name: "Menlo", size: size)
+            ?? UIFont.monospacedSystemFont(ofSize: size, weight: .regular)
+
+        let cascadeFonts = [
+            "PingFangSC-Regular",
+            "PingFangTC-Regular",
+            "HiraginoSansGB-W3",
+            "AppleSDGothicNeo-Regular",
+            "ArialUnicodeMS"
+        ].compactMap { fallbackName in
+            UIFontDescriptor(name: fallbackName, size: size)
+        }
+
+        guard !cascadeFonts.isEmpty else { return baseFont }
+
+        let descriptor = baseFont.fontDescriptor.addingAttributes([
+            UIFontDescriptor.AttributeName.cascadeList: cascadeFonts
+        ])
+
+        return UIFont(descriptor: descriptor, size: size)
     }
 
     // MARK: - Public API
@@ -215,6 +239,10 @@ public class SwiftTerminalView: UIView {
     public func refreshDisplay() {
         guard bounds.width > 1, bounds.height > 1 else { return }
         metalView.refreshDisplay(clearCache: true, immediately: true)
+    }
+
+    public func setReturnKeyByteSequence(_ bytes: [UInt8]) {
+        metalView.returnByteSequence = bytes
     }
 
     private func scheduleRefreshDisplay() {
@@ -279,17 +307,6 @@ public class SwiftTerminalView: UIView {
         return metalView.resignFirstResponder()
     }
 
-    // MARK: - Touch Handling
-
-    /// Forward touch events to the metalView so it can become first responder
-    public override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        super.touchesBegan(touches, with: event)
-        // Make the metalView the first responder to receive keyboard input
-        // The metalView handles its own tap gesture for this, but we also do it here for safety
-        if !metalView.isFirstResponder {
-            _ = metalView.becomeFirstResponder()
-        }
-    }
 }
 
 // MARK: - Metal View Delegate Handler

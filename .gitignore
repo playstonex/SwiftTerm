@@ -66,6 +66,7 @@
 .swiftpm
 .tern-port
 .vscode-test
+.vscode/
 .vuepress/dist
 .yarn-integrity
 .yarn/build-state.yml

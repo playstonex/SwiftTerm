@@ -87,6 +87,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
     private var bufferAccessLock = NSLock()
     // Persistent history for copy functionality (keeps last 50000 chars)
     private var outputHistory: String = ""
+    private var pendingHistoryControlSequence: String = ""
     private let maxHistorySize = 50000
     private let historyLock = NSLock()
 
@@ -122,16 +123,7 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
         // So we should NOT add user input to history here to avoid duplication.
         // For SSH mode, we still add to history here since SSH output callback adds display output.
         if !shouldRouteToMosh {
-            historyLock.lock()
-            outputHistory += str
-            // Keep history at max size by removing old content
-            if outputHistory.count > maxHistorySize {
-                let removeCount = outputHistory.count - maxHistorySize
-                outputHistory = String(outputHistory.dropFirst(removeCount))
-            }
-            historyLock.unlock()
-
-            debugPrint("[TerminalContext] insertBuffer: \(str.prefix(50)), history size: \(outputHistory.count)")
+            appendToHistory(str)
         }
 
         // Route to Mosh if connected, otherwise use SSH
@@ -150,20 +142,36 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     func addToHistory(_ str: String) {
         historyLock.lock()
-        outputHistory += str
-        // Keep history at max size by removing old content
-        if outputHistory.count > maxHistorySize {
-            let removeCount = outputHistory.count - maxHistorySize
-            outputHistory = String(outputHistory.dropFirst(removeCount))
-        }
+        appendToHistoryLocked(str)
         historyLock.unlock()
-
-        debugPrint("[TerminalContext] addToHistory: \(str.prefix(50)), history size: \(outputHistory.count)")
     }
 
     func getOutputHistoryStrippedANSI() -> String {
         let history = getOutputHistory()
-        return history.stripANSIEscapeCodes()
+        return history.stripANSIEscapeCodes().normalizedTerminalTranscript()
+    }
+
+    private func appendToHistory(_ str: String) {
+        historyLock.lock()
+        appendToHistoryLocked(str)
+        historyLock.unlock()
+    }
+
+    private func appendToHistoryLocked(_ str: String) {
+        let combined = pendingHistoryControlSequence + str
+        let split = combined.splittingTrailingIncompleteANSIEscapeSequence()
+        pendingHistoryControlSequence = split.trailingFragment
+
+        let visibleText = split.completeText
+            .stripANSIEscapeCodes()
+
+        guard !visibleText.isEmpty else { return }
+
+        outputHistory += visibleText
+        if outputHistory.count > maxHistorySize {
+            let removeCount = outputHistory.count - maxHistorySize
+            outputHistory = String(outputHistory.dropFirst(removeCount))
+        }
     }
 
     /// Handle output received from Mosh UDP session
@@ -717,8 +725,8 @@ extension String {
         result = result.replacingOccurrences(of: "\u{1B}\\][^\u{07}]*\u{07}", with: "", options: .regularExpression)
         result = result.replacingOccurrences(of: "\u{1B}\\][^\u{1B}]*\u{1B}\\\\", with: "", options: .regularExpression)
 
-        // Remove CSI sequences (Control Sequence Introducer) like [1m, [31;1m, [?2004h, [K, [A
-        result = result.replacingOccurrences(of: "\u{1B}\\[[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)
+        // Remove CSI sequences (Control Sequence Introducer) with final bytes in 0x40...0x7E.
+        result = result.replacingOccurrences(of: "\u{1B}\\[[0-?]*[ -/]*[@-~]", with: "", options: .regularExpression)
 
         // Remove bracket sequences without ESC (sometimes captured separately)
         result = result.replacingOccurrences(of: "\\[0-9;?]*[a-zA-Z]", with: "", options: .regularExpression)
@@ -739,5 +747,95 @@ extension String {
         }
 
         return result
+    }
+
+    func splittingTrailingIncompleteANSIEscapeSequence() -> (completeText: String, trailingFragment: String) {
+        guard let escapeIndex = lastIndex(of: "\u{1B}") else {
+            return (self, "")
+        }
+
+        let tail = String(self[escapeIndex...])
+        guard !tail.isCompleteANSIEscapeSequence else {
+            return (self, "")
+        }
+
+        return (String(self[..<escapeIndex]), tail)
+    }
+
+    var isCompleteANSIEscapeSequence: Bool {
+        guard first == "\u{1B}" else { return true }
+        guard count >= 2 else { return false }
+
+        let chars = Array(self)
+        switch chars[1] {
+        case "[":
+            return chars.dropFirst(2).contains { character in
+                guard let scalar = character.unicodeScalars.first?.value else { return false }
+                return (0x40...0x7E).contains(scalar)
+            }
+        case "]":
+            if contains("\u{07}") { return true }
+            return contains("\u{1B}\\")
+        case "(":
+            return count >= 3
+        default:
+            return count >= 2
+        }
+    }
+
+    func normalizedTerminalTranscript() -> String {
+        var lines: [[Character]] = [[]]
+        var currentLineIndex = 0
+        var cursor = 0
+
+        func currentLine() -> [Character] {
+            lines[currentLineIndex]
+        }
+
+        func setCurrentLine(_ value: [Character]) {
+            lines[currentLineIndex] = value
+        }
+
+        for character in self {
+            switch character {
+            case "\n":
+                lines.append([])
+                currentLineIndex += 1
+                cursor = 0
+            case "\r":
+                cursor = 0
+            case "\u{08}", "\u{7F}":
+                guard cursor > 0 else { continue }
+                var line = currentLine()
+                line.remove(at: cursor - 1)
+                setCurrentLine(line)
+                cursor -= 1
+            default:
+                guard !character.isTerminalHistoryIgnoredControl else { continue }
+                var line = currentLine()
+                if cursor < line.count {
+                    line[cursor] = character
+                } else {
+                    line.append(character)
+                }
+                setCurrentLine(line)
+                cursor += 1
+            }
+        }
+
+        return lines.map { String($0) }.joined(separator: "\n")
+    }
+}
+
+private extension Character {
+    var isTerminalHistoryIgnoredControl: Bool {
+        unicodeScalars.allSatisfy { scalar in
+            switch scalar.value {
+            case 0x00...0x07, 0x0B, 0x0C, 0x0E...0x1F:
+                return true
+            default:
+                return false
+            }
+        }
     }
 }
