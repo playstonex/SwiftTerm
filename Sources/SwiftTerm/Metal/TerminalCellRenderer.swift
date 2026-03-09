@@ -84,14 +84,24 @@ class TerminalCellRenderer {
             while col < cols {
                 let charData = line[col]
 
-                // Get background color
-                let bgColor = resolveColor(charData.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                // Get background color — placeholder cells (width==0) inherit the wide char's bg.
+                let bgColor: SIMD4<Float>
+                if charData.width == 0 && col > 0 {
+                    bgColor = resolveColor(line[col - 1].attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                } else {
+                    bgColor = resolveColor(charData.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                }
 
                 // Run-length encode background colors for efficiency
                 var runLength = 1
                 while col + runLength < cols {
                     let nextChar = line[col + runLength]
-                    let nextBgColor = resolveColor(nextChar.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                    let nextBgColor: SIMD4<Float>
+                    if nextChar.width == 0 && col + runLength > 0 {
+                        nextBgColor = resolveColor(line[col + runLength - 1].attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                    } else {
+                        nextBgColor = resolveColor(nextChar.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                    }
                     if nextBgColor == bgColor && nextChar.attribute.style == charData.attribute.style {
                         runLength += 1
                     } else {
@@ -342,12 +352,25 @@ class TerminalCellRenderer {
         var col = 0
         while col < cols {
             let charData = line[col]
-            let bgColor = resolveColor(charData.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+            // For placeholder cells (width==0, continuation of a wide char), use the
+            // preceding wide char's background so the full 2-cell span gets one color.
+            let bgColor: SIMD4<Float>
+            if charData.width == 0 && col > 0 {
+                bgColor = resolveColor(line[col - 1].attribute.bg, terminal: terminal, isFg: false, isBold: false)
+            } else {
+                bgColor = resolveColor(charData.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+            }
 
             var runLength = 1
             while col + runLength < cols {
                 let nextChar = line[col + runLength]
-                let nextBgColor = resolveColor(nextChar.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                // Treat placeholder cells as having the same bg as the wide char they belong to.
+                let nextBgColor: SIMD4<Float>
+                if nextChar.width == 0 && col + runLength > 0 {
+                    nextBgColor = resolveColor(line[col + runLength - 1].attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                } else {
+                    nextBgColor = resolveColor(nextChar.attribute.bg, terminal: terminal, isFg: false, isBold: false)
+                }
                 if nextBgColor == bgColor && nextChar.attribute.style == charData.attribute.style {
                     runLength += 1
                 } else {

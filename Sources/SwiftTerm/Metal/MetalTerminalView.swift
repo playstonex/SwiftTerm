@@ -278,7 +278,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         updateDrawableMetrics()
 
         // Resize terminal to fit current view bounds if bounds are valid
-        if bounds.width > 0 && bounds.height > 0 {
+        if bounds.width > 1 && bounds.height > 1 {
             handleResize(newSize: bounds.size)
         }
     }
@@ -298,7 +298,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         }
 
         // Trigger resize after font setup to ensure proper dimensions
-        if bounds.width > 0 && bounds.height > 0 {
+        if bounds.width > 1 && bounds.height > 1 {
             handleResize(newSize: bounds.size)
         }
     }
@@ -640,7 +640,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
         if newCols != terminal.cols || newRows != terminal.rows {
             selection?.active = false
-            terminal.resize(cols: newCols, rows: newRows)
+            resizeTerminalPreservingViewport(cols: newCols, rows: newRows)
             renderer?.markAllDirty(reason: "syncTerminalSizeToView")
             setTerminalNeedsDisplay()
             return true
@@ -695,6 +695,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
             setTerminalNeedsDisplay()
             return
         }
+        // Correctness currently takes priority over partial redraws here. External feeds can
+        // change viewport state, alternate-buffer content, and cursor placement in ways that
+        // previously left stale rows on screen. Keep the snapshot plumbing in place so the
+        // diff path can be restored later once the invalidation model is reliable again.
         _ = snapshot
         renderer.markAllDirty(reason: "externalFeedFullRefresh")
         renderer.markSelectionDirty()
@@ -814,11 +818,28 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         let newRows = max(1, Int(newSize.height / cellDimension.height))
 
         if newCols != terminal.cols || newRows != terminal.rows {
-            terminal.resize(cols: newCols, rows: newRows)
+            resizeTerminalPreservingViewport(cols: newCols, rows: newRows)
         }
         setTerminalNeedsDisplay()
     }
     #endif
+
+    private func resizeTerminalPreservingViewport(cols: Int, rows: Int) {
+        let oldDisplayBuffer = terminal.displayBuffer
+        let oldYDisp = oldDisplayBuffer.yDisp
+        let wasPinnedToBottom = oldDisplayBuffer.yDisp == oldDisplayBuffer.yBase
+
+        terminal.resize(cols: cols, rows: rows)
+
+        let newDisplayBuffer = terminal.displayBuffer
+        if wasPinnedToBottom {
+            terminal.setViewYDisp(newDisplayBuffer.yBase)
+            return
+        }
+
+        let maxYDisp = max(0, newDisplayBuffer.lines.count - rows)
+        terminal.setViewYDisp(max(0, min(oldYDisp, maxYDisp)))
+    }
 
     /// Resize the terminal
     public func resize(cols: Int, rows: Int) {
