@@ -19,6 +19,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     public var markedTextStyle: [NSAttributedString.Key: Any]?
 
+    public lazy var tokenizer: UITextInputTokenizer = UITextInputStringTokenizer(textInput: self)
+
     // MARK: - IME state (linear-offset based, matching iOSTextInput.swift pattern)
 
     /// Buffer holding the current composing text from the IME.
@@ -33,6 +35,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         end: IMETextPosition(offset: 0)
     )
 
+    public var returnByteSequence: [UInt8] = [13]
+
     public var markedTextRange: UITextRange? {
         return _markedTextRange
     }
@@ -40,9 +44,13 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     public var selectedTextRange: UITextRange? {
         get { return _selectedTextRange }
         set {
-            if let r = newValue as? IMETextRange {
-                _selectedTextRange = r
-            }
+            guard let newValue, let range = coerceTextRange(newValue) else { return }
+            let isSameRange = range.startOffset == _selectedTextRange.startOffset
+                && range.endOffset == _selectedTextRange.endOffset
+            guard !isSameRange else { return }
+            inputDelegate?.selectionWillChange(self)
+            _selectedTextRange = range
+            inputDelegate?.selectionDidChange(self)
         }
     }
 
@@ -163,45 +171,133 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func insertText(_ text: String) {
-        // If there's an active marked (composing) range, unmark first to commit it,
-        // then send the final text. This handles the IME commit path.
-        if _markedTextRange != nil {
-            // Clear IME state and send the committed text directly
-            textInputStorage = ""
-            _markedTextRange = nil
-            _selectedTextRange = IMETextRange(
-                start: IMETextPosition(offset: 0),
-                end: IMETextPosition(offset: 0)
-            )
-            send(text: text)
-            return
-        }
-
-        let hasPendingHardwareKey = pendingKittyKeyEvent != nil
-        if terminal.keyboardEnhancementFlags.isEmpty || !hasPendingHardwareKey {
-            send(text: text)
-            return
-        }
-        sendKittyTextInput(text)
+        let rangeToReplace = _markedTextRange ?? _selectedTextRange
+        beginTextInputEdit()
+        let insertionOffset = rangeToReplace.startOffset
+        textInputStorage.replaceSubrange(rangeToReplace.fullRange(in: textInputStorage), with: text)
+        _markedTextRange = nil
+        let insertedPosition = IMETextPosition(offset: insertionOffset + utf16Length(of: text))
+        _selectedTextRange = IMETextRange(start: insertedPosition, end: insertedPosition)
+        endTextInputEdit()
+        sendCommittedText(text)
     }
 
     open func deleteBackward() {
-        let hasPendingHardwareKey = pendingKittyKeyEvent != nil
-        if terminal.keyboardEnhancementFlags.isEmpty || !hasPendingHardwareKey {
+        let rangeToDelete = _markedTextRange ?? _selectedTextRange
+        var newCursorOffset = rangeToDelete.startOffset
+        if rangeToDelete.isEmpty {
+            guard newCursorOffset > 0 else {
+                send([backspaceSendsControlH ? 8 : 0x7f])
+                return
+            }
+
+            beginTextInputEdit()
+            let deleteRange = IMETextRange(
+                start: IMETextPosition(offset: newCursorOffset - 1),
+                end: IMETextPosition(offset: newCursorOffset)
+            )
+            textInputStorage.removeSubrange(deleteRange.fullRange(in: textInputStorage))
+            _markedTextRange = nil
+            newCursorOffset -= 1
+            let cursor = IMETextPosition(offset: newCursorOffset)
+            _selectedTextRange = IMETextRange(start: cursor, end: cursor)
+            endTextInputEdit()
             send([backspaceSendsControlH ? 8 : 0x7f])
             return
         }
-        _ = sendKittyEvent(
-            KittyKeyEvent(
-                key: .functional(.backspace),
-                modifiers: [],
-                eventType: .press,
-                text: nil,
-                shiftedKey: nil,
-                baseLayoutKey: nil,
-                composing: false
+
+        beginTextInputEdit()
+        let oldText = String(textInputStorage[rangeToDelete.fullRange(in: textInputStorage)])
+        textInputStorage.removeSubrange(rangeToDelete.fullRange(in: textInputStorage))
+        _markedTextRange = nil
+        let cursor = IMETextPosition(offset: newCursorOffset)
+        _selectedTextRange = IMETextRange(start: cursor, end: cursor)
+        endTextInputEdit()
+
+        let hasPendingHardwareKey = pendingKittyKeyEvent != nil
+        if terminal.keyboardEnhancementFlags.isEmpty || !hasPendingHardwareKey {
+            for _ in oldText {
+                send([backspaceSendsControlH ? 8 : 0x7f])
+            }
+            return
+        }
+        for _ in oldText {
+            _ = sendKittyEvent(
+                KittyKeyEvent(
+                    key: .functional(.backspace),
+                    modifiers: [],
+                    eventType: .press,
+                    text: nil,
+                    shiftedKey: nil,
+                    baseLayoutKey: nil,
+                    composing: false
+                )
             )
+        }
+    }
+
+    private func beginTextInputEdit() {
+        inputDelegate?.selectionWillChange(self)
+        inputDelegate?.textWillChange(self)
+    }
+
+    private func endTextInputEdit() {
+        inputDelegate?.textDidChange(self)
+        inputDelegate?.selectionDidChange(self)
+    }
+
+    private func utf16Length(of string: String) -> Int {
+        (string as NSString).length
+    }
+
+    private func clampOffset(_ offset: Int) -> Int {
+        max(0, min(offset, utf16Length(of: textInputStorage)))
+    }
+
+    private func coerceTextPosition(_ position: UITextPosition) -> IMETextPosition? {
+        guard let position = position as? IMETextPosition else { return nil }
+        let clampedOffset = clampOffset(position.offset)
+        return clampedOffset == position.offset ? position : IMETextPosition(offset: clampedOffset)
+    }
+
+    private func coerceTextRange(_ range: UITextRange) -> IMETextRange? {
+        if let range = range as? IMETextRange {
+            let start = clampOffset(range.startOffset)
+            let end = clampOffset(range.endOffset)
+            if start == range.startOffset, end == range.endOffset {
+                return range
+            }
+            return IMETextRange(start: IMETextPosition(offset: start), end: IMETextPosition(offset: end))
+        }
+
+        guard let start = coerceTextPosition(range.start),
+              let end = coerceTextPosition(range.end) else {
+            return nil
+        }
+        return IMETextRange(start: start, end: end)
+    }
+
+    private func cursorRect() -> CGRect {
+        guard let terminal = terminal else { return .zero }
+        return CGRect(
+            x: CGFloat(terminal.buffer.x) * cellDimension.width,
+            y: CGFloat(terminal.buffer.y) * cellDimension.height,
+            width: max(2, cellDimension.width),
+            height: cellDimension.height
         )
+    }
+
+    private func sendCommittedText(_ text: String) {
+        let hasPendingHardwareKey = pendingKittyKeyEvent != nil
+        if !terminal.keyboardEnhancementFlags.isEmpty && hasPendingHardwareKey {
+            sendKittyTextInput(text)
+            return
+        }
+        if text == "\n" {
+            send(returnByteSequence)
+            return
+        }
+        send(text: text)
     }
 
     // MARK: - Hardware Keyboard Support
@@ -983,11 +1079,11 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     // MARK: - UITextInput protocol
 
     open func text(in range: UITextRange) -> String? {
-        if let r = range as? IMETextRange {
-            guard r.startOffset <= r.endOffset, r.endOffset <= textInputStorage.count else { return nil }
-            let start = textInputStorage.index(textInputStorage.startIndex, offsetBy: r.startOffset)
-            let end = textInputStorage.index(textInputStorage.startIndex, offsetBy: r.endOffset)
-            return String(textInputStorage[start..<end])
+        if let range = coerceTextRange(range) {
+            if range.isEmpty {
+                return ""
+            }
+            return String(textInputStorage[range.fullRange(in: textInputStorage)])
         }
         // Fallback: return selected terminal text
         guard let selection = selection, selection.active else { return nil }
@@ -995,77 +1091,65 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func replace(_ range: UITextRange, withText text: String) {
-        insertText(text)
+        guard _markedTextRange == nil, let range = coerceTextRange(range) else { return }
+
+        beginTextInputEdit()
+        let oldText = String(textInputStorage[range.fullRange(in: textInputStorage)])
+        textInputStorage.replaceSubrange(range.fullRange(in: textInputStorage), with: text)
+        let insertionOffset = range.startOffset + utf16Length(of: text)
+        let insertedPosition = IMETextPosition(offset: insertionOffset)
+        _selectedTextRange = IMETextRange(start: insertedPosition, end: insertedPosition)
+        endTextInputEdit()
+
+        for _ in oldText {
+            send([backspaceSendsControlH ? 8 : 0x7f])
+        }
+        if !text.isEmpty {
+            sendCommittedText(text)
+        }
     }
 
     open func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
-        let newText = markedText ?? ""
+        let replacementRange = _markedTextRange ?? _selectedTextRange
+        let rangeStartOffset = replacementRange.startOffset
+        beginTextInputEdit()
 
-        inputDelegate?.textWillChange(self)
-        inputDelegate?.selectionWillChange(self)
-
-        if let marked = _markedTextRange {
-            // Replace the existing marked range in storage
-            let startIdx = textInputStorage.index(textInputStorage.startIndex, offsetBy: marked.startOffset)
-            let endIdx = textInputStorage.index(textInputStorage.startIndex, offsetBy: marked.endOffset)
-            textInputStorage.replaceSubrange(startIdx..<endIdx, with: newText)
-            let newEnd = marked.startOffset + newText.count
+        if let markedText {
+            textInputStorage.replaceSubrange(replacementRange.fullRange(in: textInputStorage), with: markedText)
+            let markedLength = utf16Length(of: markedText)
+            let selectedLocation = max(0, min(selectedRange.location, markedLength))
+            let selectedLength = max(0, min(selectedRange.length, markedLength - selectedLocation))
             _markedTextRange = IMETextRange(
-                start: IMETextPosition(offset: marked.startOffset),
-                end: IMETextPosition(offset: newEnd)
+                start: IMETextPosition(offset: rangeStartOffset),
+                end: IMETextPosition(offset: rangeStartOffset + markedLength)
+            )
+            _selectedTextRange = IMETextRange(
+                start: IMETextPosition(offset: rangeStartOffset + selectedLocation),
+                end: IMETextPosition(offset: rangeStartOffset + selectedLocation + selectedLength)
             )
         } else {
-            // No existing marked range — replace entire storage
-            textInputStorage = newText
-            _markedTextRange = newText.isEmpty ? nil : IMETextRange(
-                start: IMETextPosition(offset: 0),
-                end: IMETextPosition(offset: newText.count)
-            )
-        }
-
-        // Update selected range within the new marked text
-        let markedStart = _markedTextRange?.startOffset ?? 0
-        let selStart = min(markedStart + selectedRange.location, textInputStorage.count)
-        let selEnd = min(selStart + selectedRange.length, textInputStorage.count)
-        _selectedTextRange = IMETextRange(
-            start: IMETextPosition(offset: selStart),
-            end: IMETextPosition(offset: selEnd)
-        )
-
-        if newText.isEmpty {
+            textInputStorage.removeSubrange(replacementRange.fullRange(in: textInputStorage))
             _markedTextRange = nil
+            let cursor = IMETextPosition(offset: rangeStartOffset)
+            _selectedTextRange = IMETextRange(start: cursor, end: cursor)
         }
 
-        inputDelegate?.selectionDidChange(self)
-        inputDelegate?.textDidChange(self)
+        endTextInputEdit()
     }
 
     open func unmarkText() {
         guard let marked = _markedTextRange else { return }
 
-        inputDelegate?.textWillChange(self)
-        inputDelegate?.selectionWillChange(self)
-
-        // Extract the committed text from the marked range
-        let startIdx = textInputStorage.index(textInputStorage.startIndex, offsetBy: marked.startOffset)
-        let endIdx = textInputStorage.index(textInputStorage.startIndex, offsetBy: marked.endOffset)
-        let committedText = String(textInputStorage[startIdx..<endIdx])
-
-        // Clear IME state
-        textInputStorage = ""
-        _markedTextRange = nil
-        _selectedTextRange = IMETextRange(
-            start: IMETextPosition(offset: 0),
-            end: IMETextPosition(offset: 0)
-        )
-
-        inputDelegate?.selectionDidChange(self)
-        inputDelegate?.textDidChange(self)
-
-        // Send the committed text to the terminal
-        if !committedText.isEmpty {
-            send(text: committedText)
+        if let committedText = text(in: marked), !committedText.isEmpty {
+            insertText(committedText)
+            return
         }
+
+        beginTextInputEdit()
+        let rangeEnd = IMETextPosition(offset: marked.endOffset)
+        _selectedTextRange = IMETextRange(start: rangeEnd, end: rangeEnd)
+        _markedTextRange = nil
+        endTextInputEdit()
     }
 
     open var beginningOfDocument: UITextPosition {
@@ -1073,18 +1157,18 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open var endOfDocument: UITextPosition {
-        return IMETextPosition(offset: textInputStorage.count)
+        return IMETextPosition(offset: utf16Length(of: textInputStorage))
     }
 
     open func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
-        guard let from = fromPosition as? IMETextPosition,
-              let to = toPosition as? IMETextPosition else { return nil }
+        guard let from = coerceTextPosition(fromPosition),
+              let to = coerceTextPosition(toPosition) else { return nil }
         return IMETextRange(start: from, end: to)
     }
 
     open func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
-        guard let pos = position as? IMETextPosition else { return nil }
-        let newOffset = max(0, min(pos.offset + offset, textInputStorage.count))
+        guard let pos = coerceTextPosition(position) else { return nil }
+        let newOffset = clampOffset(pos.offset + offset)
         return IMETextPosition(offset: newOffset)
     }
 
@@ -1093,69 +1177,66 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
-        guard let pos1 = position as? IMETextPosition,
-              let pos2 = other as? IMETextPosition else { return .orderedSame }
+        guard let pos1 = coerceTextPosition(position),
+              let pos2 = coerceTextPosition(other) else { return .orderedSame }
         if pos1.offset < pos2.offset { return .orderedAscending }
         if pos1.offset > pos2.offset { return .orderedDescending }
         return .orderedSame
     }
 
     open func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
-        guard let from = from as? IMETextPosition,
-              let to = toPosition as? IMETextPosition else { return 0 }
+        guard let from = coerceTextPosition(from),
+              let to = coerceTextPosition(toPosition) else { return 0 }
         return to.offset - from.offset
     }
 
     open func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
-        return nil
+        guard let range = coerceTextRange(range) else { return nil }
+        switch direction {
+        case .left, .up:
+            return range.start
+        case .right, .down:
+            return range.end
+        @unknown default:
+            return range.end
+        }
     }
 
     open func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
-        return nil
-    }
-
-    open var tokenizer: UITextInputTokenizer {
-        return IMETextInputTokenizer()
+        guard let position = coerceTextPosition(position) else { return nil }
+        switch direction {
+        case .left, .up:
+            return IMETextRange(start: IMETextPosition(offset: 0), end: position)
+        case .right, .down:
+            return IMETextRange(start: position, end: IMETextPosition(offset: utf16Length(of: textInputStorage)))
+        @unknown default:
+            return IMETextRange(start: position, end: IMETextPosition(offset: utf16Length(of: textInputStorage)))
+        }
     }
 
     open func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-        // IME composing range — return a rect at the cursor position
-        if let r = range as? IMETextRange, !r.isEmpty {
-            guard let terminal = terminal else { return [] }
-            let x = CGFloat(terminal.buffer.x) * cellDimension.width
-            let y = CGFloat(terminal.buffer.y) * cellDimension.height
-            let w = CGFloat(r.endOffset - r.startOffset) * cellDimension.width
-            return [IMETextSelectionRect(rect: CGRect(x: x, y: y, width: w, height: cellDimension.height))]
+        if let range = coerceTextRange(range), !range.isEmpty {
+            var rect = cursorRect()
+            rect.size.width = max(cellDimension.width, CGFloat(range.length) * cellDimension.width)
+            return [IMETextSelectionRect(rect: rect, range: range, string: textInputStorage)]
         }
         return []
     }
 
     open func caretRect(for position: UITextPosition) -> CGRect {
-        guard let terminal = terminal else { return .zero }
-        return CGRect(
-            x: CGFloat(terminal.buffer.x) * cellDimension.width,
-            y: CGFloat(terminal.buffer.y) * cellDimension.height,
-            width: 2,
-            height: cellDimension.height
-        )
+        cursorRect()
     }
 
     open func closestPosition(to point: CGPoint) -> UITextPosition? {
-        return IMETextPosition(offset: 0)
+        _selectedTextRange.start
     }
 
     open func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
-        return closestPosition(to: point)
+        coerceTextRange(range)?.start
     }
 
     open func firstRect(for range: UITextRange) -> CGRect {
-        guard let terminal = terminal else { return .zero }
-        return CGRect(
-            x: CGFloat(terminal.buffer.x) * cellDimension.width,
-            y: CGFloat(terminal.buffer.y) * cellDimension.height,
-            width: cellDimension.width,
-            height: cellDimension.height
-        )
+        cursorRect()
     }
 
     open func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
@@ -1167,8 +1248,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func characterRange(at point: CGPoint) -> UITextRange? {
-        let pos = IMETextPosition(offset: 0)
-        return IMETextRange(start: pos, end: pos)
+        IMETextRange(start: IMETextPosition(offset: 0), end: IMETextPosition(offset: utf16Length(of: textInputStorage)))
     }
 
     // MARK: - View lifecycle
@@ -1322,43 +1402,55 @@ private class IMETextPosition: UITextPosition {
 }
 
 /// Linear-offset text range for IME composing state.
-private class IMETextRange: UITextRange {
+private final class IMETextRange: UITextRange {
     private let _start: IMETextPosition
     private let _end: IMETextPosition
 
     var startOffset: Int { _start.offset }
     var endOffset: Int { _end.offset }
+    var length: Int { endOffset - startOffset }
 
     override var start: UITextPosition { _start }
     override var end: UITextPosition { _end }
     override var isEmpty: Bool { _start.offset == _end.offset }
 
     init(start: IMETextPosition, end: IMETextPosition) {
-        self._start = start
-        self._end = end
+        if start.offset <= end.offset {
+            self._start = start
+            self._end = end
+        } else {
+            self._start = end
+            self._end = start
+        }
         super.init()
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    func fullRange(in baseString: String) -> Range<String.Index> {
+        let startIndex = String.Index(utf16Offset: startOffset, in: baseString)
+        let endIndex = String.Index(utf16Offset: endOffset, in: baseString)
+        return startIndex..<endIndex
+    }
 }
 
 /// Text selection rect for IME candidate display.
 private class IMETextSelectionRect: UITextSelectionRect {
     override var rect: CGRect { _rect }
     override var writingDirection: NSWritingDirection { .leftToRight }
-    override var containsStart: Bool { true }
-    override var containsEnd: Bool { true }
+    override var containsStart: Bool { _containsStart }
+    override var containsEnd: Bool { _containsEnd }
     override var isVertical: Bool { false }
 
     private let _rect: CGRect
-    init(rect: CGRect) { self._rect = rect; super.init() }
-}
+    private let _containsStart: Bool
+    private let _containsEnd: Bool
 
-/// Minimal tokenizer — the terminal has no word/sentence structure for the IME.
-private class IMETextInputTokenizer: NSObject, UITextInputTokenizer {
-    func rangeEnclosingPosition(_ position: UITextPosition, with granularity: UITextGranularity, inDirection direction: UITextDirection) -> UITextRange? { nil }
-    func isPosition(_ position: UITextPosition, atBoundary granularity: UITextGranularity, inDirection direction: UITextDirection) -> Bool { false }
-    func isPosition(_ position: UITextPosition, withinTextUnit granularity: UITextGranularity, inDirection direction: UITextDirection) -> Bool { true }
-    func position(from position: UITextPosition, toBoundary granularity: UITextGranularity, inDirection direction: UITextDirection) -> UITextPosition? { nil }
+    init(rect: CGRect, range: IMETextRange, string: String) {
+        self._rect = rect
+        self._containsStart = range.startOffset == 0
+        self._containsEnd = range.endOffset == (string as NSString).length
+        super.init()
+    }
 }
 #endif
