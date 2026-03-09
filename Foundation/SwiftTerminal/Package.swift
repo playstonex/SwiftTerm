@@ -8,7 +8,9 @@ let packageDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent
 let localSwiftTermURL = packageDirectory
     .appendingPathComponent("../../External/SwiftTerm")
     .standardizedFileURL
-let useLocalSwiftTerm = FileManager.default.fileExists(atPath: localSwiftTermURL.appendingPathComponent("Package.swift").path)
+let localOverrideEnabled = ProcessInfo.processInfo.environment["GOODTERM_USE_LOCAL_SWIFTTERM"] == "1"
+let useLocalSwiftTerm = localOverrideEnabled
+    && FileManager.default.fileExists(atPath: localSwiftTermURL.appendingPathComponent("Package.swift").path)
 let swiftTermDependency: Package.Dependency = useLocalSwiftTerm
     ? .package(path: localSwiftTermURL.path)
     : .package(url: "https://github.com/playstonex/SwiftTerm.git", branch: "main")
