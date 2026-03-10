@@ -894,6 +894,14 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let eventType: KittyKeyboardEventType
     }
 
+    private var prefersLocalScrollbackForPan: Bool {
+        guard let terminal = terminal else { return false }
+        let displayBuffer = terminal.displayBuffer
+        return !terminal.isDisplayBufferAlternate
+            && displayBuffer.hasScrollback
+            && displayBuffer.lines.count > displayBuffer.rows
+    }
+
     // MARK: - Gesture handling
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
@@ -986,7 +994,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             return
         }
 
-        if terminal.mouseMode != .off && allowMouseReporting {
+        if terminal.mouseMode != .off && allowMouseReporting && !prefersLocalScrollbackForPan {
             let location = gesture.location(in: self)
             let col = max(0, min(Int(location.x / cellDimension.width), terminal.cols - 1))
             let row = max(0, min(Int(location.y / cellDimension.height), terminal.rows - 1))
@@ -1048,7 +1056,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let delta = currentLocation.y - previousLocation.y
 
         guard let terminal = terminal else { return }
-        if terminal.mouseMode != .off && allowMouseReporting {
+        if terminal.mouseMode != .off && allowMouseReporting && !prefersLocalScrollbackForPan {
             return
         }
         let displayBuffer = terminal.displayBuffer
