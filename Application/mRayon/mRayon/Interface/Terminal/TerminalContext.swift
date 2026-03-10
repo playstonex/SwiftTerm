@@ -176,14 +176,25 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     /// Handle output received from Mosh UDP session
     /// - Parameter str: The output string from Mosh
-    func handleMoshOutput(_ str: String) {
-        debugPrint("[Mosh] handleMoshOutput received: \(str.prefix(100).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...")
-        
+    func handleMoshOutput(_ data: Data) {
+        let preview = TerminalContext.decodeMoshText(data)
+        debugPrint("[Mosh] handleMoshOutput received: \(preview.prefix(100).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...")
+
         Task { @MainActor in
-            self.termInterface.write(str)
+            self.termInterface.write(data: data)
         }
-        
-        addToHistory(str)
+
+        addToHistory(preview)
+    }
+
+    private static func decodeMoshText(_ data: Data) -> String {
+        if let utf8 = String(data: data, encoding: .utf8) {
+            return utf8
+        }
+        if let latin1 = String(data: data, encoding: .isoLatin1) {
+            return latin1
+        }
+        return String(decoding: data, as: UTF8.self)
     }
 
     var continueDecision: Bool = true {
@@ -504,6 +515,9 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
                 // Create and connect Mosh session
                 let session = NMSession()
                 moshSession = session
+                let moshConnectionResult = DispatchSemaphore(value: 0)
+                let moshStateLock = NSLock()
+                var didEstablishMosh = false
 
                 session.connect(
                     host: moshParams.ip,
@@ -511,35 +525,52 @@ class TerminalContext: ObservableObject, Identifiable, Equatable {
                     key: moshParams.key,
                     initialRows: UInt16(self.terminalSize.height),
                     initialCols: UInt16(self.terminalSize.width),
-                    stateHandler: { @MainActor [weak self] state in
-                        switch state {
-                        case .connecting:
-                            self?.putInformation("[i] UDP connecting...")
-                        case .connected:
-                            self?.moshConnected = true
-                            self?.putInformation("[+] UDP socket ready")
-                        case .disconnected:
-                            self?.putInformation("[!] UDP disconnected")
-                        case .failed(let error):
-                            self?.putInformation("[!] UDP connection failed: \(error)")
+                        stateHandler: { @MainActor [weak self] state in
+                            switch state {
+                            case .connecting:
+                                self?.putInformation("[i] UDP connecting...")
+                            case .connected:
+                                moshStateLock.lock()
+                                didEstablishMosh = true
+                                moshStateLock.unlock()
+                                self?.moshConnected = true
+                                self?.putInformation("[+] UDP socket ready")
+                                moshConnectionResult.signal()
+                            case .disconnected:
+                                self?.putInformation("[!] UDP disconnected")
+                                moshConnectionResult.signal()
+                            case .failed(let error):
+                                self?.putInformation("[!] UDP connection failed: \(error)")
+                                moshConnectionResult.signal()
+                            }
+                        },
+                        receiveHandler: { @MainActor [weak self] output in
+                            self?.handleMoshOutput(output)
                         }
-                    },
-                    receiveHandler: { @MainActor [weak self] output in
-                        self?.handleMoshOutput(output)
+                    )
+
+                let waitResult = moshConnectionResult.wait(timeout: .now() + 5)
+                moshStateLock.lock()
+                let shouldUseMosh = didEstablishMosh
+                moshStateLock.unlock()
+
+                if waitResult == .success, shouldUseMosh {
+                    putInformation("[+] Mosh session active (SSH bootstrap detached)")
+                    shell.requestDisconnectAndWait()
+                    while continueDecision {
+                        Thread.sleep(forTimeInterval: 0.05)
                     }
-                )
+                    return
+                }
+
+                putInformation("[i] UDP session was not established, falling back to SSH")
+                session.disconnect()
+                moshSession = nil
+                moshConnected = false
             } else {
                 putInformation("[i] mosh-server not available, using SSH")
                 moshConnected = false
             }
-        }
-
-        if moshModeActive, moshConnected {
-            putInformation("[+] Mosh session active (SSH bootstrap detached)")
-            while continueDecision {
-                Thread.sleep(forTimeInterval: 0.05)
-            }
-            return
         }
 
         // Prepare tmux bootstrap command before entering the terminal loop.

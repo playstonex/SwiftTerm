@@ -126,9 +126,10 @@ extension TerminalManager {
 
         /// Handle output received from Mosh UDP session
         /// - Parameter str: The output string from Mosh
-        func handleMoshOutput(_ str: String) {
+        func handleMoshOutput(_ data: Data) {
+            let output = Context.decodeMoshText(data)
             Task { @MainActor in
-                self.termInterface.write(str)
+                self.termInterface.write(data: data)
             }
             
             // Notify observers (Skills, etc.)
@@ -137,18 +138,28 @@ extension TerminalManager {
             observerLock.unlock()
 
             for observer in observers {
-                observer(str)
+                observer(output)
             }
 
             // Add to persistent history (for copy and AI analysis)
             historyLock.lock()
-            outputHistory += str
+            outputHistory += output
             // Keep history at max size by removing old content
             if outputHistory.count > maxHistorySize {
                 let removeCount = outputHistory.count - maxHistorySize
                 outputHistory = String(outputHistory.dropFirst(removeCount))
             }
             historyLock.unlock()
+        }
+
+        private static func decodeMoshText(_ data: Data) -> String {
+            if let utf8 = String(data: data, encoding: .utf8) {
+                return utf8
+            }
+            if let latin1 = String(data: data, encoding: .isoLatin1) {
+                return latin1
+            }
+            return String(decoding: data, as: UTF8.self)
         }
 
         func getBuffer() -> String {
@@ -485,6 +496,9 @@ extension TerminalManager {
                     // Create and connect Mosh session
                     let session = NMSession()
                     moshSession = session
+                    let moshConnectionResult = DispatchSemaphore(value: 0)
+                    let moshStateLock = NSLock()
+                    var didEstablishMosh = false
 
                     session.connect(
                         host: moshParams.ip,
@@ -497,30 +511,47 @@ extension TerminalManager {
                             case .connecting:
                                 self?.putInformation("[i] UDP connecting...")
                             case .connected:
+                                moshStateLock.lock()
+                                didEstablishMosh = true
+                                moshStateLock.unlock()
                                 self?.moshConnected = true
                                 self?.putInformation("[+] UDP socket ready")
+                                moshConnectionResult.signal()
                             case .disconnected:
                                 self?.putInformation("[!] UDP disconnected")
+                                moshConnectionResult.signal()
                             case .failed(let error):
                                 self?.putInformation("[!] UDP connection failed: \(error)")
+                                moshConnectionResult.signal()
                             }
                         },
                         receiveHandler: { @MainActor [weak self] output in
                             self?.handleMoshOutput(output)
                         }
                     )
+
+                    let waitResult = moshConnectionResult.wait(timeout: .now() + 5)
+                    moshStateLock.lock()
+                    let shouldUseMosh = didEstablishMosh
+                    moshStateLock.unlock()
+
+                    if waitResult == .success, shouldUseMosh {
+                        putInformation("[+] Mosh session active (SSH bootstrap detached)")
+                        shell.requestDisconnectAndWait()
+                        while continueDecision {
+                            Thread.sleep(forTimeInterval: 0.05)
+                        }
+                        return
+                    }
+
+                    putInformation("[i] UDP session was not established, falling back to SSH")
+                    session.disconnect()
+                    moshSession = nil
+                    moshConnected = false
                 } else {
                     putInformation("[i] mosh-server not available, using SSH")
                     moshConnected = false
                 }
-            }
-
-            if moshModeActive, moshConnected {
-                putInformation("[+] Mosh session active (SSH bootstrap detached)")
-                while continueDecision {
-                    Thread.sleep(forTimeInterval: 0.05)
-                }
-                return
             }
 
             // Prepare tmux bootstrap command before entering the terminal loop.

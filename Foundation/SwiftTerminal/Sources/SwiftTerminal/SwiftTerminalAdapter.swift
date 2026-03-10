@@ -26,6 +26,7 @@ public protocol NativeTerminalProtocol {
     @discardableResult func setupCopyChain(callback: ((String) -> Void)?) -> Self
     @discardableResult func setupNavigationChain(callback: (() -> Void)?) -> Self
     func write(_ str: String)
+    func write(data: Data)
     func requestTerminalSize() -> CGSize
     func setTerminalFontSize(with size: Int)
     func setTerminalFontName(with name: String)
@@ -142,6 +143,11 @@ public final class SwiftTerminalAdapter: NativeTerminalProtocol {
         // This method is for displaying output to the terminal
         // It should NOT call bufferCallback which is for user input
         // The platform-specific view implements write using terminal.feed()
+    }
+
+    public func write(data: Data) {
+        // This method is for displaying raw terminal bytes to the terminal.
+        // The platform-specific view implements write using terminal.feed().
     }
 
     public func requestTerminalSize() -> CGSize {

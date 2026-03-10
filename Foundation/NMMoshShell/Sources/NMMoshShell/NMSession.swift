@@ -31,7 +31,7 @@ public final class NMSession: @unchecked Sendable {
     }
 
     public typealias StateHandler = (State) -> Void
-    public typealias ReceiveHandler = (String) -> Void
+    public typealias ReceiveHandler = (Data) -> Void
 
     // MARK: - Constants
 
@@ -779,9 +779,12 @@ public final class NMSession: @unchecked Sendable {
             if debugLogging { print("[Mosh] Decoded HostMessage with \(hostMessage.instructions.count) instructions") }
             for instruction in hostMessage.instructions {
                 if let hostbytes = instruction.hostbytes {
-                    let str = decodeTerminalBytes(hostbytes.hoststring)
-                    if debugLogging { print("[Mosh] HostBytes(\(str.count) chars): \(str.prefix(80).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...") }
-                    notifyReceive(str)
+                    let payload = hostbytes.hoststring
+                    if debugLogging {
+                        let preview = previewTerminalBytes(payload)
+                        print("[Mosh] HostBytes(\(payload.count) bytes): \(preview.prefix(80).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...")
+                    }
+                    notifyReceive(payload)
                 }
                 if let echoack = instruction.echoack {
                     if debugLogging { print("[Mosh] EchoAck: \(echoack.echoAckNum)") }
@@ -789,14 +792,15 @@ public final class NMSession: @unchecked Sendable {
                 }
             }
         } else {
-            // Try as raw string
-            let str = decodeTerminalBytes(diff)
-            if debugLogging { print("[Mosh] Raw string diff(\(str.count) chars): \(str.prefix(80).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...") }
-            notifyReceive(str)
+            if debugLogging {
+                let preview = previewTerminalBytes(diff)
+                print("[Mosh] Raw diff(\(diff.count) bytes): \(preview.prefix(80).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...")
+            }
+            notifyReceive(diff)
         }
     }
 
-    private func decodeTerminalBytes(_ data: Data) -> String {
+    private func previewTerminalBytes(_ data: Data) -> String {
         if let str = String(data: data, encoding: .utf8) {
             return str
         }
@@ -892,7 +896,11 @@ public final class NMSession: @unchecked Sendable {
     }
 
     private func notifyReceive(_ string: String) {
-        receiveHandler?(string)
+        receiveHandler?(Data(string.utf8))
+    }
+
+    private func notifyReceive(_ data: Data) {
+        receiveHandler?(data)
     }
 }
 

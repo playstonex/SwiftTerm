@@ -81,6 +81,12 @@ public struct STerminalView: NativeTerminalProtocol {
         }
     }
 
+    public func write(data: Data) {
+        DispatchQueue.main.async {
+            self.terminalView.feed(data: data)
+        }
+    }
+
     public func requestTerminalSize() -> CGSize {
         terminalView.requestTerminalSize()
     }
