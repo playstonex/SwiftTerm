@@ -1,19 +1,7 @@
 // swift-tools-version:5.9
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
-import Foundation
 import PackageDescription
-
-let packageDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-let localSwiftTermURL = packageDirectory
-    .appendingPathComponent("../../External/SwiftTerm")
-    .standardizedFileURL
-let localOverrideEnabled = ProcessInfo.processInfo.environment["GOODTERM_USE_LOCAL_SWIFTTERM"] == "1"
-let useLocalSwiftTerm = localOverrideEnabled
-    && FileManager.default.fileExists(atPath: localSwiftTermURL.appendingPathComponent("Package.swift").path)
-let swiftTermDependency: Package.Dependency = useLocalSwiftTerm
-    ? .package(path: localSwiftTermURL.path)
-    : .package(url: "https://github.com/playstonex/SwiftTerm.git", branch: "main")
 
 let package = Package(
     name: "SwiftTerminal",
@@ -28,7 +16,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        swiftTermDependency
+        .package(url: "https://github.com/playstonex/SwiftTerm.git", branch: "main"),
     ],
     targets: [
         .target(
