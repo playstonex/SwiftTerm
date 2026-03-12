@@ -9,18 +9,26 @@ import Combine
 import Foundation
 import RayonModule
 
-class TerminalManager: ObservableObject {
+@MainActor
+final class TerminalManager: ObservableObject {
     static let shared = TerminalManager()
     private init() {}
 
     @Published var sessionContexts: [Context] = []
 
+    private func shutdown(_ context: Context) {
+        context.processShutdown()
+        context.shell.destroyPermanently()
+    }
+
     func createSession(withMachineObject machine: RDMachine, force: Bool = false) {
-        let index = sessionContexts.firstIndex { $0.machine.id == machine.id }
-        if index != nil, !force {
+        let sessionExists = sessionContexts.contains { $0.machine.id == machine.id }
+        if sessionExists, !force {
             UIBridge.requiresConfirmation(message: "A session for \(machine.name) is already in place, are you sure to open another?") { confirmed in
                 if confirmed {
-                    self.createSession(withMachineObject: machine, force: true)
+                    Task { @MainActor in
+                        self.createSession(withMachineObject: machine, force: true)
+                    }
                 }
             }
             return
@@ -46,10 +54,7 @@ class TerminalManager: ObservableObject {
     }
 
     func sessionExists(for machine: RDMachine.ID) -> Bool {
-        for context in sessionContexts where context.machine.id == machine {
-            return true
-        }
-        return false
+        sessionContexts.contains { $0.machine.id == machine }
     }
 
     func sessionAlive(forMachine machineId: RDMachine.ID) -> Bool {
@@ -69,27 +74,20 @@ class TerminalManager: ObservableObject {
     }
 
     func closeSession(withMachineID machineId: RDMachine.ID) {
-        let index = sessionContexts.firstIndex { $0.machine.id == machineId }
-        if let index = index {
-            let context = sessionContexts.remove(at: index)
-            context.processShutdown()
-            context.shell.destroyPermanently()
-        }
+        guard let index = sessionContexts.firstIndex(where: { $0.machine.id == machineId }) else { return }
+        let context = sessionContexts.remove(at: index)
+        shutdown(context)
     }
 
     func closeSession(withContextID contextId: Context.ID) {
-        let index = sessionContexts.firstIndex { $0.id == contextId }
-        if let index = index {
-            let context = sessionContexts.remove(at: index)
-            context.processShutdown()
-            context.shell.destroyPermanently()
-        }
+        guard let index = sessionContexts.firstIndex(where: { $0.id == contextId }) else { return }
+        let context = sessionContexts.remove(at: index)
+        shutdown(context)
     }
 
     func closeAll() {
         for context in sessionContexts {
-            context.processShutdown()
-            context.shell.destroyPermanently()
+            shutdown(context)
         }
         sessionContexts = []
     }

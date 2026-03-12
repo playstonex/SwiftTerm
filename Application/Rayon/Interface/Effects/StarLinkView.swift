@@ -45,7 +45,7 @@ struct StarLinkView: View {
                 }
             }
             .expended()
-            .onChange(of: r.size) { newValue in
+            .onChange(of: r.size) { _, newValue in
                 if canvasSize != newValue { canvasSize = newValue }
             }
             .offset(x: canvasWiggle.width, y: canvasWiggle.height)

@@ -26,6 +26,8 @@ struct TerminalView: View {
     @State private var liveTranscriptPreview: String = ""
     @State private var isShowingWebBrowserSheet = false
     @State private var webBrowserPort: String = ""
+    @State private var isShowingSearch = false
+    @StateObject private var searchSession = TerminalSearchSession()
     private let terminalContentPadding = EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
     
     private var tmuxLogoImage: Image {
@@ -85,6 +87,11 @@ struct TerminalView: View {
                         .background(.ultraThinMaterial)
                     }
                 }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if isShowingSearch {
+                        TerminalSearchPanel(session: searchSession, isPresented: $isShowingSearch)
+                    }
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .onChange(of: store.terminalFontSize) { oldValue, newValue in
                     context.termInterface.setTerminalFontSize(with: newValue)
@@ -107,7 +114,16 @@ struct TerminalView: View {
                     applyTheme()
                     applyFont()
                     context.termInterface.refreshDisplay()
+                    refreshSearchTranscript()
                     Task { await updateTerminalSize() }
+                }
+                .onChange(of: context.historyRevision) { _, _ in
+                    refreshSearchTranscript()
+                }
+                .onChange(of: isShowingSearch) { _, isPresented in
+                    if isPresented {
+                        refreshSearchTranscript()
+                    }
                 }
             } else {
                 Text("Terminal Transfer To Another Window")
@@ -115,7 +131,7 @@ struct TerminalView: View {
         }
         .id(context.id) // Force view refresh for different contexts
         .onAppear {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 context.interfaceToken = interfaceToken
             }
         }
@@ -139,6 +155,18 @@ struct TerminalView: View {
             ToolbarItem { // divider
                 Button {} label: { HStack { Divider().frame(height: 15) } }
                     .disabled(true)
+            }
+            ToolbarItem {
+                Button {
+                    isShowingSearch.toggle()
+                    if isShowingSearch {
+                        refreshSearchTranscript()
+                    }
+                } label: {
+                    Label("Search Transcript", systemImage: "magnifyingglass")
+                }
+                .keyboardShortcut("f", modifiers: [.command])
+                .disabled(context.closed && context.getOutputHistoryStrippedANSI().isEmpty)
             }
             // Tmux button - only shown when in a tmux session
             if context.isInTmuxSession {
@@ -290,11 +318,7 @@ struct TerminalView: View {
             ToolbarItem {
                 Button {
                     if context.closed {
-                        DispatchQueue.global().async {
-                            self.context.putInformation("[i] Reconnect will use the information you provide previously,")
-                            self.context.putInformation("    if the machine was edited, create a new terminal.")
-                            self.context.processBootstrap()
-                        }
+                        context.reconnectInBackground()
                     } else {
                         UIBridge.requiresConfirmation(
                             message: "Are you sure you want to close the terminal?"
@@ -393,6 +417,10 @@ struct TerminalView: View {
     func applyFont() {
         let fontName = store.terminalFontName
         context.termInterface.setTerminalFontName(with: fontName)
+    }
+
+    func refreshSearchTranscript() {
+        searchSession.updateTranscript(context.getOutputHistoryStrippedANSI())
     }
 
     @MainActor
@@ -731,7 +759,8 @@ private struct WebBrowserPortInputSheet: View {
         if let context = browserManager.begin(for: session) {
             dismiss()
             // Open browser in new window
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 let browserView = WebBrowserViewMac(context: context)
                 let window = NSWindow(
                     contentRect: NSRect(x: 0, y: 0, width: 1000, height: 700),
@@ -757,11 +786,11 @@ private struct WebBrowserPortInputSheet: View {
 private class WebBrowserWindowDelegate: NSObject, NSWindowDelegate {
     private weak var context: WebBrowserContextMac?
 
+    @MainActor
     private static var delegates: NSMapTable<NSUUID, WebBrowserWindowDelegate> = {
         let table = NSMapTable<NSUUID, WebBrowserWindowDelegate>(keyOptions: .strongMemory, valueOptions: .weakMemory)
         return table
     }()
-    private static let lock = NSLock()
 
     private let contextId: UUID
 
@@ -771,22 +800,19 @@ private class WebBrowserWindowDelegate: NSObject, NSWindowDelegate {
         super.init()
     }
 
+    @MainActor
     static func store(_ delegate: WebBrowserWindowDelegate, for id: UUID) {
-        lock.lock()
         delegates.setObject(delegate, forKey: id as NSUUID)
-        lock.unlock()
     }
 
+    @MainActor
     static func remove(for id: UUID) {
-        lock.lock()
         delegates.removeObject(forKey: id as NSUUID)
-        lock.unlock()
     }
 
+    @MainActor
     static func get(for id: UUID) -> WebBrowserWindowDelegate? {
-        lock.lock()
         let delegate = delegates.object(forKey: id as NSUUID)
-        lock.unlock()
         return delegate
     }
 
@@ -794,7 +820,7 @@ private class WebBrowserWindowDelegate: NSObject, NSWindowDelegate {
         let id = contextId
         // Defer delegate self-destruction until AppKit finishes its window closed event loop.
         // Doing this synchronously while AppKit is iterating delegates can crash inside libobjc!
-        DispatchQueue.main.async {
+        Task { @MainActor in
             WebBrowserWindowDelegate.remove(for: id)
             WebBrowserManagerMac.shared.end(for: id)
         }
@@ -803,19 +829,18 @@ private class WebBrowserWindowDelegate: NSObject, NSWindowDelegate {
 
 // MARK: - Web Browser Manager (macOS)
 
+@MainActor
 private class WebBrowserManagerMac: ObservableObject {
     static let shared = WebBrowserManagerMac()
 
     private init() {}
 
     @Published var browsers: [WebBrowserContextMac] = []
-    fileprivate let portAllocationLock = NSLock()
 
     var usedLocalPorts: Set<Int> {
         Set(browsers.map { $0.localPort }.filter { $0 > 0 })
     }
 
-    @MainActor
     func begin(for session: RDBrowserSession) -> WebBrowserContextMac? {
         // Check if session already has a running browser
         if let existing = browsers.first(where: { $0.id == session.id }) {
@@ -836,7 +861,6 @@ private class WebBrowserManagerMac: ObservableObject {
         return context
     }
 
-    @MainActor
     func end(for sessionId: UUID) {
         guard let index = browsers.firstIndex(where: { $0.id == sessionId }) else {
             return
@@ -846,7 +870,6 @@ private class WebBrowserManagerMac: ObservableObject {
         context.disconnect()
     }
 
-    @MainActor
     func endAll() {
         for context in browsers {
             context.disconnect()
@@ -922,55 +945,54 @@ private class WebBrowserContextMac: ObservableObject, Identifiable {
         self.machine = machine
     }
 
-    func allocateLocalPort() -> Int {
-        var usedPorts = Set<Int>()
-        WebBrowserManagerMac.shared.portAllocationLock.lock()
-        for browser in WebBrowserManagerMac.shared.browsers {
-            usedPorts.insert(browser.localPort)
+    private func updateConnectionState(_ state: ConnectionState, errorMessage: String? = nil) {
+        Task { @MainActor [weak self, state, errorMessage] in
+            self?.connectionState = state
+            self?.errorMessage = errorMessage
         }
+    }
 
+    private func updateConnectionSetup(localPort: Int, state: ConnectionState) {
+        Task { @MainActor [weak self, localPort, state] in
+            self?.localPort = localPort
+            self?.connectionState = state
+        }
+    }
+
+    @MainActor
+    func allocateLocalPort() -> Int {
+        let usedPorts = WebBrowserManagerMac.shared.usedLocalPorts
         let preferredPorts = [3000, 3001, 3002, 4000, 5000, 5001, 8000, 8080, 8081, 8888, 9000]
         for port in preferredPorts {
             if !usedPorts.contains(port) {
-                WebBrowserManagerMac.shared.portAllocationLock.unlock()
                 return port
             }
         }
 
         for port in 10000...65535 {
             if !usedPorts.contains(port) {
-                WebBrowserManagerMac.shared.portAllocationLock.unlock()
                 return port
             }
         }
-        WebBrowserManagerMac.shared.portAllocationLock.unlock()
         return 0
     }
 
+    @MainActor
     func connectAndForward() {
         guard session.isValid() else {
-            DispatchQueue.main.async {
-                self.connectionState = .error("Invalid session configuration")
-                self.errorMessage = "Invalid session configuration"
-            }
+            updateConnectionState(.error("Invalid session configuration"), errorMessage: "Invalid session configuration")
             return
         }
 
         let port = allocateLocalPort()
         guard port > 0 else {
-            DispatchQueue.main.async {
-                self.connectionState = .error("Failed to allocate local port")
-                self.errorMessage = "Failed to allocate local port"
-            }
+            updateConnectionState(.error("Failed to allocate local port"), errorMessage: "Failed to allocate local port")
             return
         }
 
-        DispatchQueue.main.async {
-            self.localPort = port
-            self.connectionState = .connecting
-        }
+        updateConnectionSetup(localPort: port, state: .connecting)
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task.detached(priority: .userInitiated) { [weak self] in
             self?.performConnection(localPort: port)
         }
     }
@@ -986,25 +1008,18 @@ private class WebBrowserContextMac: ObservableObject, Identifiable {
         let remotePort = machine.remotePort
 
         guard shell.isConnected else {
-            DispatchQueue.main.async {
-                self.connectionState = .error("Failed to connect to \(remoteAddress):\(remotePort)")
-                self.errorMessage = "Failed to connect to \(remoteAddress):\(remotePort)"
-            }
+            let message = "Failed to connect to \(remoteAddress):\(remotePort)"
+            updateConnectionState(.error(message), errorMessage: message)
             return
         }
 
-        DispatchQueue.main.async {
-            self.connectionState = .authenticating
-        }
+        updateConnectionState(.authenticating)
 
         if let identityId = machine.associatedIdentity,
            let uuid = UUID(uuidString: identityId) {
             let identity = RayonStore.shared.identityGroup[uuid]
             guard !identity.username.isEmpty else {
-                DispatchQueue.main.async {
-                    self.connectionState = .error("Invalid identity configuration")
-                    self.errorMessage = "Invalid identity configuration"
-                }
+                updateConnectionState(.error("Invalid identity configuration"), errorMessage: "Invalid identity configuration")
                 return
             }
             identity.callAuthenticationWith(remote: shell)
@@ -1018,26 +1033,18 @@ private class WebBrowserContextMac: ObservableObject, Identifiable {
         }
 
         guard shell.isAuthenticated else {
-            DispatchQueue.main.async {
-                self.connectionState = .error("Authentication failed")
-                self.errorMessage = "Authentication failed"
-            }
+            updateConnectionState(.error("Authentication failed"), errorMessage: "Authentication failed")
             return
         }
 
-        DispatchQueue.main.async {
-            self.connectionState = .creatingTunnel
-        }
+        updateConnectionState(.creatingTunnel)
 
         shell.createPortForward(
             withLocalPort: NSNumber(value: localPort),
             withForwardTargetHost: session.remoteHost,
             withForwardTargetPort: NSNumber(value: session.remotePort)
         ) { [weak self] in
-            DispatchQueue.main.async {
-                self?.connectionState = .connected
-                self?.errorMessage = nil
-            }
+            self?.updateConnectionState(.connected, errorMessage: nil)
         } withContinuationHandler: { [weak self] in
             guard let self = self else { return false }
             return !self.isClosed
@@ -1046,25 +1053,24 @@ private class WebBrowserContextMac: ObservableObject, Identifiable {
 
     func disconnect() {
         self.isClosed = true
-        let cleanup = {
+        let cleanup = { [weak self] in
+            guard let self else { return }
             self.webView?.stopLoading()
             self.webView?.loadHTMLString("", baseURL: nil)
             self.webView = nil
             self.connectionState = .disconnected
             self.localPort = 0
         }
-        
-        if Thread.isMainThread {
+
+        Task { @MainActor in
             cleanup()
-        } else {
-            DispatchQueue.main.async(execute: cleanup)
         }
 
-        DispatchQueue.global().async { [self] in
+        Task.detached(priority: .userInitiated) { [self] in
             // Keep self securely alive to safely destruct NSRemoteShell
             self.shell.requestDisconnectAndWait()
             self.shell.destroyPermanently()
-            DispatchQueue.main.async { _ = self }
+            await MainActor.run { _ = self }
         }
     }
 
@@ -1368,13 +1374,13 @@ private struct WebViewRepresentableMac: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.parent.isLoading = true
             }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation?) {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.parent.isLoading = false
                 self.parent.estimatedProgress = 1.0
                 if let url = webView.url {
@@ -1384,13 +1390,13 @@ private struct WebViewRepresentableMac: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation?, withError error: Error) {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.parent.isLoading = false
             }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation?, withError error: Error) {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.parent.isLoading = false
             }
         }

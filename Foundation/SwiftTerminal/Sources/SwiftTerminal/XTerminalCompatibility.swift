@@ -20,11 +20,12 @@ import UIKit
 /// XTerminal-compatible wrapper for SwiftTerminal
 /// This provides full compatibility with the existing XTerminal protocol
 public protocol XTerminal: AnyObject {
+    @discardableResult func setupEventChain(callback: ((TerminalEvent) -> Void)?) -> Self
     @discardableResult func setupBufferChain(callback: ((String) -> Void)?) -> Self
     @discardableResult func setupTitleChain(callback: ((String) -> Void)?) -> Self
     @discardableResult func setupBellChain(callback: (() -> Void)?) -> Self
     @discardableResult func setupSizeChain(callback: ((CGSize) -> Void)?) -> Self
-    @discardableResult func setupCopyChain(callback: ((String) -> Void)?) -> Self
+    @discardableResult func setupCopyChain(callback: ((TerminalClipboardPayload) -> Void)?) -> Self
     @discardableResult func setupNavigationChain(callback: (() -> Void)?) -> Self
     func write(_ str: String)
     func requestTerminalSize() -> CGSize
@@ -169,6 +170,12 @@ public class NativeTerminalView: NSView, XTerminal {
     }
 
     @discardableResult
+    public func setupEventChain(callback: ((TerminalEvent) -> Void)?) -> Self {
+        adapter.setupEventChain(callback: callback)
+        return self
+    }
+
+    @discardableResult
     public func setupBufferChain(callback: ((String) -> Void)?) -> Self {
         adapter.setupBufferChain(callback: callback)
         return self
@@ -193,7 +200,7 @@ public class NativeTerminalView: NSView, XTerminal {
     }
 
     @discardableResult
-    public func setupCopyChain(callback: ((String) -> Void)?) -> Self {
+    public func setupCopyChain(callback: ((TerminalClipboardPayload) -> Void)?) -> Self {
         adapter.setupCopyChain(callback: callback)
         return self
     }
@@ -440,6 +447,12 @@ public class NativeTerminalView: UIView, XTerminal {
     }
 
     @discardableResult
+    public func setupEventChain(callback: ((TerminalEvent) -> Void)?) -> Self {
+        adapter.setupEventChain(callback: callback)
+        return self
+    }
+
+    @discardableResult
     public func setupBufferChain(callback: ((String) -> Void)?) -> Self {
         adapter.setupBufferChain(callback: callback)
         return self
@@ -464,7 +477,7 @@ public class NativeTerminalView: UIView, XTerminal {
     }
 
     @discardableResult
-    public func setupCopyChain(callback: ((String) -> Void)?) -> Self {
+    public func setupCopyChain(callback: ((TerminalClipboardPayload) -> Void)?) -> Self {
         adapter.setupCopyChain(callback: callback)
         return self
     }

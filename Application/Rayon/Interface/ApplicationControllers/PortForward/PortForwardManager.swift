@@ -65,7 +65,7 @@ struct PortForwardManager: View {
 //                table
             }
         }
-        .onChange(of: selection) { newValue in
+        .onChange(of: selection) { _, newValue in
             // bug when deletion
             var rebuild = Set<RDPortForward.ID>()
             for value in newValue {
@@ -168,11 +168,8 @@ struct PortForwardManager: View {
                     Text(data.getMachineName() ?? "Not Selected")
                     Spacer()
                     Button {
-                        DispatchQueue.global().async {
-                            let selection = RayonUtil.selectOneMachine()
-                            mainActor {
-                                store.portForwardGroup[data.id].usingMachine = selection
-                            }
+                        Task {
+                            store.portForwardGroup[data.id].usingMachine = await RayonUtil.selectOneMachine()
                         }
                     } label: {
                         Text("...")

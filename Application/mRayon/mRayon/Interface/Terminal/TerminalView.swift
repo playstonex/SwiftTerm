@@ -60,6 +60,8 @@ struct TerminalView: View {
     @StateObject private var speechInputController = TerminalSpeechInputController()
     @State private var liveTranscriptPreview: String = ""
     @State private var isKeyboardVisible = false
+    @State private var isShowingSearch = false
+    @StateObject private var searchSession = TerminalSearchSession()
     private let terminalContentPadding = EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
 
     var body: some View {
@@ -86,6 +88,7 @@ struct TerminalView: View {
                                 // Apply theme immediately without delay
                                 applyTheme()
                                 context.termInterface.refreshDisplay()
+                                refreshSearchTranscript()
                                 Task { @MainActor in
                                     await updateTerminalSize()
                                 }
@@ -102,6 +105,19 @@ struct TerminalView: View {
                             .onChange(of: store.terminalReturnKeySendsLineFeed) { _, newValue in
                                 context.termInterface.setReturnKeySendsLineFeed(newValue)
                             }
+                            .onChange(of: context.historyRevision) { _, _ in
+                                refreshSearchTranscript()
+                            }
+                            .onChange(of: isShowingSearch) { _, isPresented in
+                                if isPresented {
+                                    refreshSearchTranscript()
+                                }
+                            }
+                    }
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        if isShowingSearch {
+                            TerminalSearchPanel(session: searchSession, isPresented: $isShowingSearch)
+                        }
                     }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if !context.destroyedSession {
@@ -140,11 +156,7 @@ struct TerminalView: View {
                                     isShowingToolbarSettings: $isShowingToolbarSettings,
                                     keyStore: ToolbarKeyStore.shared,
                                     onReconnect: {
-                                        DispatchQueue.global().async {
-                                            context.putInformation(String(localized: "[i] Reconnect will use the information you provide previously,"))
-                                            context.putInformation(String(localized: "    if the machine was edited, create a new terminal."))
-                                            context.processBootstrap()
-                                        }
+                                        context.reconnectInBackground()
                                     },
                                     onClose: {
                                         if context.closed {
@@ -170,9 +182,9 @@ struct TerminalView: View {
                                         }
                                     },
                                     onCopy: {
-                                        let cleanHistory = context.getOutputHistoryStrippedANSI()
-                                        if !cleanHistory.isEmpty {
-                                            UIPasteboard.general.string = cleanHistory
+                                        let transcript = context.getOutputHistoryStrippedANSI()
+                                        if !transcript.isEmpty {
+                                            TerminalClipboardPayload(plainText: transcript).writeToPasteboard()
                                             UIBridge.presentSuccess(with: String(localized: "Copied"))
                                         } else {
                                             UIBridge.presentError(with: String(localized: "Terminal content is empty"))
@@ -215,7 +227,7 @@ struct TerminalView: View {
         .id(context.id) // Force view refresh for different contexts
         .disabled(context.destroyedSession)
         .onAppear {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 context.interfaceToken = interfaceToken
             }
         }
@@ -341,6 +353,15 @@ struct TerminalView: View {
                     }
 
                     Button {
+                        isShowingSearch.toggle()
+                        if isShowingSearch {
+                            refreshSearchTranscript()
+                        }
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                    }
+
+                    Button {
                         assistantManager.toggle()
                     } label: {
                         Image(systemName: "sidebar.right")
@@ -417,13 +438,18 @@ struct TerminalView: View {
         context.termInterface.setTerminalFontName(with: fontName)
     }
 
+    func refreshSearchTranscript() {
+        searchSession.updateTranscript(context.getOutputHistoryStrippedANSI())
+    }
+
     private func handleKeyboardTransition(notification: Notification) {
         #if canImport(UIKit)
         let userInfo = notification.userInfo ?? [:]
         let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
         // Resize after the keyboard animation settles so the visible rows match the actual
         // unobscured terminal area. The terminal view preserves its current viewport on resize.
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.05) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64((duration + 0.05) * 1_000_000_000))
             context.termInterface.refreshDisplay()
             Task { await updateTerminalSize() }
         }
@@ -1010,8 +1036,14 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
 
     private func requestPermissions() async throws {
         let recordPermission = await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { granted in
-                continuation.resume(returning: granted)
+            if #available(iOS 17.0, *) {
+                AVAudioApplication.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            } else {
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
             }
         }
         guard recordPermission else { throw SpeechError.permissionDenied }
@@ -1267,7 +1299,8 @@ private struct WebBrowserPortInputSheet: View {
         if let context = browserManager.begin(for: session) {
             dismiss()
             // Navigate to the browser view
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 let browserView = WebBrowserView(context: context)
                 let hostingController = UIHostingController(rootView: browserView)
                 hostingController.modalPresentationStyle = .fullScreen

@@ -54,13 +54,6 @@ struct PickIdentityView: View {
                 } label: {
                     Label("Create New Identity", systemImage: "arrow.right")
                 }
-                .background(
-                    NavigationLink(isActive: $openCreate) {
-                        EditIdentityView()
-                    } label: {
-                        Group {}
-                    }
-                )
                 ForEach(
                     store
                         .identityGroup
@@ -96,7 +89,10 @@ struct PickIdentityView: View {
                 }
             }
         }
-        .onChange(of: rawSelection) { newValue in
+        .navigationDestination(isPresented: $openCreate) {
+            EditIdentityView()
+        }
+        .onChange(of: rawSelection) { _, newValue in
             selection = newValue
         }
     }

@@ -16,6 +16,9 @@ public struct SyncSnapshot: Codable, Identifiable {
         public var useTmux: Bool
         public var tmuxSessionName: String
         public var tmuxAutoCreate: Bool
+        public var terminalCommandNotificationsEnabled: Bool
+        public var terminalCommandNotificationsOnlyWhenInactive: Bool
+        public var terminalCommandNotificationMinimumDuration: Int
         public var openInterfaceAutomatically: Bool
         public var fileTransferConflictPolicy: String
         public var fileTransferMaxConcurrent: Int
@@ -37,6 +40,9 @@ public struct SyncSnapshot: Codable, Identifiable {
             useTmux: Bool,
             tmuxSessionName: String,
             tmuxAutoCreate: Bool,
+            terminalCommandNotificationsEnabled: Bool,
+            terminalCommandNotificationsOnlyWhenInactive: Bool,
+            terminalCommandNotificationMinimumDuration: Int,
             openInterfaceAutomatically: Bool,
             fileTransferConflictPolicy: String,
             fileTransferMaxConcurrent: Int,
@@ -57,6 +63,9 @@ public struct SyncSnapshot: Codable, Identifiable {
             self.useTmux = useTmux
             self.tmuxSessionName = tmuxSessionName
             self.tmuxAutoCreate = tmuxAutoCreate
+            self.terminalCommandNotificationsEnabled = terminalCommandNotificationsEnabled
+            self.terminalCommandNotificationsOnlyWhenInactive = terminalCommandNotificationsOnlyWhenInactive
+            self.terminalCommandNotificationMinimumDuration = terminalCommandNotificationMinimumDuration
             self.openInterfaceAutomatically = openInterfaceAutomatically
             self.fileTransferConflictPolicy = fileTransferConflictPolicy
             self.fileTransferMaxConcurrent = fileTransferMaxConcurrent
@@ -79,6 +88,9 @@ public struct SyncSnapshot: Codable, Identifiable {
             case useTmux
             case tmuxSessionName
             case tmuxAutoCreate
+            case terminalCommandNotificationsEnabled
+            case terminalCommandNotificationsOnlyWhenInactive
+            case terminalCommandNotificationMinimumDuration
             case openInterfaceAutomatically
             case fileTransferConflictPolicy
             case fileTransferMaxConcurrent
@@ -102,6 +114,9 @@ public struct SyncSnapshot: Codable, Identifiable {
             useTmux = try container.decode(Bool.self, forKey: .useTmux)
             tmuxSessionName = try container.decode(String.self, forKey: .tmuxSessionName)
             tmuxAutoCreate = try container.decode(Bool.self, forKey: .tmuxAutoCreate)
+            terminalCommandNotificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .terminalCommandNotificationsEnabled) ?? true
+            terminalCommandNotificationsOnlyWhenInactive = try container.decodeIfPresent(Bool.self, forKey: .terminalCommandNotificationsOnlyWhenInactive) ?? true
+            terminalCommandNotificationMinimumDuration = try container.decodeIfPresent(Int.self, forKey: .terminalCommandNotificationMinimumDuration) ?? 10
             openInterfaceAutomatically = try container.decode(Bool.self, forKey: .openInterfaceAutomatically)
             fileTransferConflictPolicy = try container.decode(String.self, forKey: .fileTransferConflictPolicy)
             fileTransferMaxConcurrent = try container.decode(Int.self, forKey: .fileTransferMaxConcurrent)
@@ -143,7 +158,7 @@ public struct SyncSnapshot: Codable, Identifiable {
 public extension RayonStore {
     private static let maxSyncSnapshotCount = 30
 
-    public func createSyncSnapshot(reason: String) {
+    func createSyncSnapshot(reason: String) {
         let settings = SyncSnapshot.Settings(
             timeout: timeout,
             monitorInterval: monitorInterval,
@@ -159,6 +174,9 @@ public extension RayonStore {
             useTmux: useTmux,
             tmuxSessionName: tmuxSessionName,
             tmuxAutoCreate: tmuxAutoCreate,
+            terminalCommandNotificationsEnabled: terminalCommandNotificationsEnabled,
+            terminalCommandNotificationsOnlyWhenInactive: terminalCommandNotificationsOnlyWhenInactive,
+            terminalCommandNotificationMinimumDuration: terminalCommandNotificationMinimumDuration,
             openInterfaceAutomatically: openInterfaceAutomatically,
             fileTransferConflictPolicy: fileTransferConflictPolicy,
             fileTransferMaxConcurrent: fileTransferMaxConcurrent,
@@ -185,12 +203,12 @@ public extension RayonStore {
         storeEncryptedDefault(to: .syncSnapshotsEncrypted, with: snapshots)
     }
 
-    public func listSyncSnapshots() -> [SyncSnapshot] {
+    func listSyncSnapshots() -> [SyncSnapshot] {
         readEncryptedDefault(from: .syncSnapshotsEncrypted, [SyncSnapshot]()) ?? []
     }
 
     @discardableResult
-    public func rollbackSyncSnapshot(id: UUID) -> Bool {
+    func rollbackSyncSnapshot(id: UUID) -> Bool {
         guard let target = listSyncSnapshots().first(where: { $0.id == id }) else {
             return false
         }
@@ -215,6 +233,9 @@ public extension RayonStore {
             self.useTmux = target.settings.useTmux
             self.tmuxSessionName = target.settings.tmuxSessionName
             self.tmuxAutoCreate = target.settings.tmuxAutoCreate
+            self.terminalCommandNotificationsEnabled = target.settings.terminalCommandNotificationsEnabled
+            self.terminalCommandNotificationsOnlyWhenInactive = target.settings.terminalCommandNotificationsOnlyWhenInactive
+            self.terminalCommandNotificationMinimumDuration = target.settings.terminalCommandNotificationMinimumDuration
             self.openInterfaceAutomatically = target.settings.openInterfaceAutomatically
             self.fileTransferConflictPolicy = target.settings.fileTransferConflictPolicy
             self.fileTransferMaxConcurrent = target.settings.fileTransferMaxConcurrent

@@ -197,14 +197,7 @@ class BatchSnippetExecContext: ObservableObject {
                 self.receivedBuffer[machine, default: ""].append(output)
             }
         } withContinuationHandler: {
-            let sem = DispatchSemaphore(value: 0)
-            var get = false
-            self.safeAccess {
-                defer { sem.signal() }
-                get = self.shellContinue[machine, default: false]
-            }
-            sem.wait()
-            return get
+            self.safeAccessShellContinue[machine, default: false]
         }
         safeAccess {
             self.shellObjects.removeValue(forKey: machine)

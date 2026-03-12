@@ -1803,10 +1803,10 @@ struct SkillCardRow: View {
     private func runSkill() {
         isRunning = true
 
-        Task {
+        Task { @MainActor in
             let executor = SkillExecutor()
-            await executor.execute(skill: skill, shell: context.shell) { result in
-                DispatchQueue.main.async {
+            executor.execute(skill: skill, shell: context.shell) { _ in
+                Task { @MainActor in
                     isRunning = false
                 }
             }

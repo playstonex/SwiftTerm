@@ -62,7 +62,9 @@ struct MachineView: View {
         }
         .animation(.interactiveSpring(), value: content)
         .animation(.interactiveSpring(), value: searchKey)
-        .background(navigationSheet)
+        .navigationDestination(isPresented: $openEditView) {
+            EditMachineView()
+        }
         .navigationTitle("Machine")
         .toolbar {
             ToolbarItem {
@@ -75,15 +77,6 @@ struct MachineView: View {
         }
     }
 
-    var navigationSheet: some View {
-        Group {
-            NavigationLink(isActive: $openEditView) {
-                EditMachineView()
-            } label: {
-                Group {}
-            }
-        }
-    }
 }
 
 struct MachineView_Previews: PreviewProvider {

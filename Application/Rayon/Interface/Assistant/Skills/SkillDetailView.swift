@@ -207,9 +207,9 @@ struct SkillDetailView: View {
         self.execution = execution
 
         let executor = SkillExecutor()
-        Task {
-            await executor.execute(skill: skill, shell: context.shell) { result in
-                DispatchQueue.main.async {
+        Task { @MainActor in
+            executor.execute(skill: skill, shell: context.shell) { _ in
+                Task { @MainActor in
                     isRunning = false
                     showingExecution = true
                 }

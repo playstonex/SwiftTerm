@@ -9,15 +9,20 @@ import Combine
 import RayonModule
 import SwiftUI
 
-class TerminalManager: ObservableObject {
+@MainActor
+final class TerminalManager: ObservableObject {
     static let shared = TerminalManager()
 
     private init() {}
 
     @Published var terminals: [TerminalContext] = []
 
+    private func shutdown(_ terminal: TerminalContext) {
+        terminal.processShutdown()
+        terminal.destroyedSession = true
+    }
+
     func begin(for machineId: RDMachine.ID, force: Bool = false) {
-        assert(Thread.isMainThread, "accessing to property terminals requires main thread")
         debugPrint("\(self) \(#function) \(machineId)")
         if !force {
             for terminal in terminals where terminal.machine.id == machineId {
@@ -27,7 +32,9 @@ class TerminalManager: ObservableObject {
                     guard confirmed else {
                         return
                     }
-                    self.begin(for: machineId, force: true)
+                    Task { @MainActor in
+                        self.begin(for: machineId, force: true)
+                    }
                 }
                 return
             }
@@ -43,7 +50,6 @@ class TerminalManager: ObservableObject {
     }
 
     func begin(for command: SSHCommandReader, force: Bool = false) {
-        assert(Thread.isMainThread, "accessing to property terminals requires main thread")
         debugPrint("\(self) \(#function) \(command.command)")
         if !force {
             for terminal in terminals where terminal.command == command {
@@ -53,7 +59,9 @@ class TerminalManager: ObservableObject {
                     guard confirmed else {
                         return
                     }
-                    self.begin(for: command, force: true)
+                    Task { @MainActor in
+                        self.begin(for: command, force: true)
+                    }
                 }
                 return
             }
@@ -64,13 +72,9 @@ class TerminalManager: ObservableObject {
     }
 
     func end(for contextId: UUID) {
-        mainActor { [self] in
-            debugPrint("\(self) \(#function) \(contextId)")
-            let index = terminals.firstIndex { $0.id == contextId }
-            guard let index = index else { return }
-            let term = terminals.remove(at: index)
-            term.processShutdown()
-            term.destroyedSession = true
-        }
+        debugPrint("\(self) \(#function) \(contextId)")
+        guard let index = terminals.firstIndex(where: { $0.id == contextId }) else { return }
+        let term = terminals.remove(at: index)
+        shutdown(term)
     }
 }

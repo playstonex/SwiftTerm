@@ -72,7 +72,9 @@ struct WebBrowserListView: View {
         }
         .animation(.interactiveSpring(), value: content)
         .animation(.interactiveSpring(), value: searchKey)
-        .background(navigationSheet)
+        .navigationDestination(isPresented: $openEditView) {
+            EditBrowserSessionView()
+        }
         .navigationTitle("Web Browser")
         .toolbar {
             ToolbarItem {
@@ -85,15 +87,6 @@ struct WebBrowserListView: View {
         }
     }
 
-    var navigationSheet: some View {
-        Group {
-            NavigationLink(isActive: $openEditView) {
-                EditBrowserSessionView()
-            } label: {
-                Group {}
-            }
-        }
-    }
 }
 
 // MARK: - Session Element View
@@ -228,13 +221,9 @@ struct WebBrowserSessionElementView: View {
             }
             .offset(x: 0, y: 4)
         }
-        .background(
-            NavigationLink(isActive: $openEdit) {
-                EditBrowserSessionView { sessionId }
-            } label: {
-                Group {}
-            }
-        )
+        .navigationDestination(isPresented: $openEdit) {
+            EditBrowserSessionView { sessionId }
+        }
     }
 
     func startBrowserSession() {
@@ -242,7 +231,7 @@ struct WebBrowserSessionElementView: View {
             UIBridge.presentError(with: "Invalid browser session configuration")
             return
         }
-        guard let context = browserManager.begin(for: session) else {
+        guard browserManager.begin(for: session) != nil else {
             return
         }
         // Navigate to browser view after connection starts

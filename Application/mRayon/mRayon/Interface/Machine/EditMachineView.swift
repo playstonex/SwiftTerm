@@ -44,7 +44,7 @@ struct EditMachineView: View {
                 TextField("Host Address", text: $remoteAddress)
                     .disableAutocorrection(true)
                     .textInputAutocapitalization(.never)
-                    .onChange(of: remoteAddress) { newValue in
+                    .onChange(of: remoteAddress) { _, newValue in
                         let get = newValue.replacingOccurrences(of: "。", with: ".")
                         if remoteAddress != get { remoteAddress = get }
                     }
@@ -58,11 +58,8 @@ struct EditMachineView: View {
 
             Section {
                 Button {
-                    DispatchQueue.global().async {
-                        let identity = RayonUtil.selectIdentity()
-                        mainActor {
-                            self.associatedIdentity = identity
-                        }
+                    Task {
+                        associatedIdentity = await RayonUtil.selectIdentity()
                     }
                 } label: {
                     Label("Select Identity", systemImage: "arrow.right")

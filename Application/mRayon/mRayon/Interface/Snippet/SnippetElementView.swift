@@ -49,13 +49,9 @@ struct SnippetElementView: View {
             Color(UIColor.systemGray6)
                 .roundedCorner()
         )
-        .background(
-            NavigationLink(isActive: $openEdit) {
-                EditSnippetView { identity }
-            } label: {
-                Group {}
-            }
-        )
+        .navigationDestination(isPresented: $openEdit) {
+            EditSnippetView { identity }
+        }
         .onTapGesture {
             debugPrint(#function)
         }

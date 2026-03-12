@@ -20,117 +20,48 @@ enum RayonUtil {
 
     typealias DeviceOwnershipCheckSuccess = Bool
     static func deviceOwnershipAuthenticate(onComplete: @escaping (DeviceOwnershipCheckSuccess) -> Void) {
-        DispatchQueue.global().async {
+        Task.detached(priority: .userInitiated) {
             guard deviceHasPassword() else {
-                onComplete(true)
+                await MainActor.run {
+                    onComplete(true)
+                }
                 return
             }
             let context = LAContext()
             let reason = "Performing privacy sensitive operation requires device ownership authenticated"
-            context.evaluatePolicy(
-                .deviceOwnerAuthentication,
-                localizedReason: reason
-            ) { success, error in
-                mainActor {
-                    if success {
-                        debugPrint(#function, "success")
-                        onComplete(true)
-                    } else {
-                        debugPrint(#function, "failure", error?.localizedDescription ?? "Unknown Error")
-                        onComplete(false)
-                    }
+            let (success, errorDescription) = await withCheckedContinuation { continuation in
+                context.evaluatePolicy(
+                    .deviceOwnerAuthentication,
+                    localizedReason: reason
+                ) { success, error in
+                    continuation.resume(returning: (success, error?.localizedDescription ?? "Unknown Error"))
+                }
+            }
+
+            await MainActor.run {
+                if success {
+                    debugPrint(#function, "success")
+                    onComplete(true)
+                } else {
+                    debugPrint(#function, "failure", errorDescription)
+                    onComplete(false)
                 }
             }
         }
     }
 
-    static func selectIdentity() -> RDIdentity.ID? {
-        assert(!Thread.isMainThread, "select identity must be called from background thread")
-
-        var selection: RDIdentity.ID?
-        let sem = DispatchSemaphore(value: 0)
-
+    static func selectIdentity() async -> RDIdentity.ID? {
         debugPrint("Picking Identity")
 
-        mainActor {
-            let picker = NavigationView {
-                PickIdentityView {
-                    selection = $0
-                    sem.signal()
-                }
-            }
-            .expended()
-            .navigationViewStyle(StackNavigationViewStyle())
-            let controller = UIHostingController(rootView: picker)
-            controller.isModalInPresentation = true
-            controller.modalTransitionStyle = .coverVertical
-            controller.modalPresentationStyle = .formSheet
-            controller.preferredContentSize = preferredPopOverSize
-            UIWindow.shutUpKeyWindow?
-                .topMostViewController?
-                .present(controller, animated: true, completion: nil)
-        }
-
-        sem.wait()
-
-        return selection
-    }
-
-    static func selectMachine(canSelectMany: Bool = true) -> [RDMachine.ID] {
-        assert(!Thread.isMainThread, "select identity must be called from background thread")
-
-        var selection: [RDMachine.ID] = []
-        let sem = DispatchSemaphore(value: 0)
-
-        debugPrint("Picking Machine")
-
-        mainActor {
-            let picker = NavigationView {
-                PickMachineView(completion: {
-                    selection = $0
-                    sem.signal()
-                }, canSelectMany: canSelectMany)
-            }
-            .expended()
-            .navigationViewStyle(StackNavigationViewStyle())
-            let controller = UIHostingController(rootView: picker)
-            controller.isModalInPresentation = true
-            controller.modalTransitionStyle = .coverVertical
-            controller.modalPresentationStyle = .formSheet
-            controller.preferredContentSize = preferredPopOverSize
-            UIWindow.shutUpKeyWindow?
-                .topMostViewController?
-                .present(controller, animated: true, completion: nil)
-        }
-
-        sem.wait()
-
-        return selection
-    }
-
-    static func selectOneMachine() -> [RDMachine.ID] {
-        selectMachine(canSelectMany: false)
-    }
-
-    static func createExecuteFor(snippet: RDSnippet) {
-        DispatchQueue.global().async {
-            let machineIds = selectMachine()
-            debugPrint(machineIds)
-            guard !machineIds.isEmpty else {
-                return
-            }
-            // so that picker is closed
-            mainActor(delay: 0.6) {
-                let runner = NavigationView {
-                    let context = SnippetExecuteContext(snippet: snippet, machineGroup: machineIds.map { machineId in
-                        RayonStore.shared.machineGroup[machineId]
-                    })
-                    SnippetExecuteView(context: context)
+        return await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                let picker = NavigationStack {
+                    PickIdentityView {
+                        continuation.resume(returning: $0)
+                    }
                 }
                 .expended()
-                .navigationViewStyle(StackNavigationViewStyle())
-                .navigationBarTitleDisplayMode(.inline)
-                let controller = UIHostingController(rootView: runner)
+                let controller = UIHostingController(rootView: picker)
                 controller.isModalInPresentation = true
                 controller.modalTransitionStyle = .coverVertical
                 controller.modalPresentationStyle = .formSheet
@@ -139,6 +70,61 @@ enum RayonUtil {
                     .topMostViewController?
                     .present(controller, animated: true, completion: nil)
             }
+        }
+    }
+
+    static func selectMachine(canSelectMany: Bool = true) async -> [RDMachine.ID] {
+        debugPrint("Picking Machine")
+
+        return await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                let picker = NavigationStack {
+                    PickMachineView(completion: {
+                        continuation.resume(returning: $0)
+                    }, canSelectMany: canSelectMany)
+                }
+                .expended()
+                let controller = UIHostingController(rootView: picker)
+                controller.isModalInPresentation = true
+                controller.modalTransitionStyle = .coverVertical
+                controller.modalPresentationStyle = .formSheet
+                controller.preferredContentSize = preferredPopOverSize
+                UIWindow.shutUpKeyWindow?
+                    .topMostViewController?
+                    .present(controller, animated: true, completion: nil)
+            }
+        }
+    }
+
+    static func selectOneMachine() async -> [RDMachine.ID] {
+        await selectMachine(canSelectMany: false)
+    }
+
+    static func createExecuteFor(snippet: RDSnippet) {
+        Task(priority: .userInitiated) { @MainActor in
+            let machineIds = await selectMachine()
+            debugPrint(machineIds)
+            guard !machineIds.isEmpty else {
+                return
+            }
+
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            let runner = NavigationStack {
+                let context = SnippetExecuteContext(snippet: snippet, machineGroup: machineIds.map { machineId in
+                    RayonStore.shared.machineGroup[machineId]
+                })
+                SnippetExecuteView(context: context)
+            }
+            .expended()
+            .navigationBarTitleDisplayMode(.inline)
+            let controller = UIHostingController(rootView: runner)
+            controller.isModalInPresentation = true
+            controller.modalTransitionStyle = .coverVertical
+            controller.modalPresentationStyle = .formSheet
+            controller.preferredContentSize = preferredPopOverSize
+            UIWindow.shutUpKeyWindow?
+                .topMostViewController?
+                .present(controller, animated: true, completion: nil)
         }
     }
 }

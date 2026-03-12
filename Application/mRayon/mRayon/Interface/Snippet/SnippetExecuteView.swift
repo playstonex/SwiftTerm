@@ -81,7 +81,7 @@ struct SnippetExecuteView: View {
                         }
                     }
                 }
-                .onChange(of: r.size) { newValue in
+                .onChange(of: r.size) { _, newValue in
                     widthInstructor = newValue
                 }
             }

@@ -137,41 +137,40 @@ struct SnippetFloatingPanelView: View {
     }
 
     func begin() {
-        DispatchQueue.global().async {
+        Task { @MainActor in
             let snippet = RayonStore.shared.snippetGroup[snippet]
             guard snippet.code.count > 0 else {
                 return
             }
-            let machines = RayonUtil.selectMachine()
+            let machines = await RayonUtil.selectMachine()
             guard machines.count > 0 else {
                 return
             }
-            mainActor {
-                var panelRef: NSPanel?
-                var windowRef: NSWindow?
-                let controller = NSHostingController(rootView: Group {
-                    BatchSnippetExecView(snippet: snippet, machines: machines) {
-                        if let panelRef = panelRef {
-                            if let windowRef = windowRef {
-                                windowRef.endSheet(panelRef)
-                            } else {
-                                panelRef.close()
-                            }
+
+            var panelRef: NSPanel?
+            var windowRef: NSWindow?
+            let controller = NSHostingController(rootView: Group {
+                BatchSnippetExecView(snippet: snippet, machines: machines) {
+                    if let panelRef = panelRef {
+                        if let windowRef = windowRef {
+                            windowRef.endSheet(panelRef)
+                        } else {
+                            panelRef.close()
                         }
                     }
-                    .frame(width: 700, height: 400)
-                })
-                let panel = NSPanel(contentViewController: controller)
-                panelRef = panel
-                panel.title = ""
-                panel.titleVisibility = .hidden
-
-                if let keyWindow = RayonUtil.findWindow() {
-                    windowRef = keyWindow
-                    keyWindow.beginSheet(panel) { _ in }
-                } else {
-                    panel.makeKeyAndOrderFront(nil)
                 }
+                .frame(width: 700, height: 400)
+            })
+            let panel = NSPanel(contentViewController: controller)
+            panelRef = panel
+            panel.title = ""
+            panel.titleVisibility = .hidden
+
+            if let keyWindow = RayonUtil.findWindow() {
+                windowRef = keyWindow
+                keyWindow.beginSheet(panel) { _ in }
+            } else {
+                panel.makeKeyAndOrderFront(nil)
             }
         }
     }

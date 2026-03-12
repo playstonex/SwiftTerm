@@ -148,9 +148,6 @@ public struct SettingsDetailContent: View {
             fileTransferSettingsView
         case .tmuxSettings:
             tmuxSettingsView
-
-        default:
-            Text("Coming Soon")
         }
     }
 
@@ -248,6 +245,31 @@ public struct SettingsDetailContent: View {
                 Spacer()
                 Toggle("", isOn: $store.terminalReturnKeySendsLineFeed)
                     .labelsHidden()
+            }
+
+            HStack {
+                Text("Command Notifications")
+                Spacer()
+                Toggle("", isOn: $store.terminalCommandNotificationsEnabled)
+                    .labelsHidden()
+            }
+
+            HStack {
+                Text("Only When App Is Inactive")
+                Spacer()
+                Toggle("", isOn: $store.terminalCommandNotificationsOnlyWhenInactive)
+                    .labelsHidden()
+                    .disabled(!store.terminalCommandNotificationsEnabled)
+            }
+
+            HStack {
+                Text("Notification Threshold")
+                Spacer()
+                Text("\(store.terminalCommandNotificationMinimumDuration)s")
+                    .foregroundStyle(.secondary)
+                Stepper("", value: $store.terminalCommandNotificationMinimumDuration, in: 1...3600)
+                    .labelsHidden()
+                    .disabled(!store.terminalCommandNotificationsEnabled)
             }
         }
     }
@@ -945,7 +967,7 @@ public struct SettingsDetailContent: View {
                 #if os(macOS)
                 // UIBridge is a Rayon app-specific utility
                 // For SettingsUI module, we'll use Alert instead
-                NSAlert(error: error)
+                NSAlert(error: error).runModal()
                 #else
                 print("Export failed: \(error.localizedDescription)")
                 #endif

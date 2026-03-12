@@ -62,7 +62,9 @@ struct SnippetView: View {
         }
         .animation(.interactiveSpring(), value: content)
         .animation(.interactiveSpring(), value: searchKey)
-        .background(navigationSheet)
+        .navigationDestination(isPresented: $openEditView) {
+            EditSnippetView()
+        }
         .navigationTitle("Snippet")
         .toolbar {
             ToolbarItem {
@@ -75,15 +77,6 @@ struct SnippetView: View {
         }
     }
 
-    var navigationSheet: some View {
-        Group {
-            NavigationLink(isActive: $openEditView) {
-                EditSnippetView()
-            } label: {
-                Group {}
-            }
-        }
-    }
 }
 
 struct SnippetView_Previews: PreviewProvider {

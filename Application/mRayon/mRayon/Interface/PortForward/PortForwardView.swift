@@ -74,7 +74,9 @@ struct PortForwardView: View {
         }
         .animation(.interactiveSpring(), value: content)
         .animation(.interactiveSpring(), value: searchKey)
-        .background(navigationSheet)
+        .navigationDestination(isPresented: $openEditView) {
+            EditPortForwardView()
+        }
         .navigationTitle("Port Forward")
         .toolbar {
             ToolbarItem {
@@ -87,13 +89,4 @@ struct PortForwardView: View {
         }
     }
 
-    var navigationSheet: some View {
-        Group {
-            NavigationLink(isActive: $openEditView) {
-                EditPortForwardView()
-            } label: {
-                Group {}
-            }
-        }
-    }
 }

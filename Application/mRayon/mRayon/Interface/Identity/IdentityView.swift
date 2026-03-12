@@ -65,7 +65,9 @@ struct IdentityView: View {
         }
         .animation(.interactiveSpring(), value: content)
         .animation(.interactiveSpring(), value: searchKey)
-        .background(navigationSheet)
+        .navigationDestination(isPresented: $openEditView) {
+            EditIdentityView()
+        }
         .navigationTitle("Identity")
         .toolbar {
             ToolbarItem {
@@ -78,15 +80,6 @@ struct IdentityView: View {
         }
     }
 
-    var navigationSheet: some View {
-        Group {
-            NavigationLink(isActive: $openEditView) {
-                EditIdentityView()
-            } label: {
-                Group {}
-            }
-        }
-    }
 }
 
 struct IdentityView_Previews: PreviewProvider {

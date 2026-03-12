@@ -44,6 +44,9 @@ public class RayonStore: ObservableObject {
         useTmux = UDUseTmux
         tmuxSessionName = UDTmuxSessionName
         tmuxAutoCreate = UDTmuxAutoCreate
+        terminalCommandNotificationsEnabled = UDTerminalCommandNotificationsEnabled
+        terminalCommandNotificationsOnlyWhenInactive = UDTerminalCommandNotificationsOnlyWhenInactive
+        terminalCommandNotificationMinimumDuration = UDTerminalCommandNotificationMinimumDuration
         speechInputEngine = UDSpeechInputEngine
         speechInputLocaleIdentifier = UDSpeechInputLocaleIdentifier
         fileTransferConflictPolicy = UDFileTransferConflictPolicy
@@ -133,6 +136,9 @@ public class RayonStore: ObservableObject {
             $useTmux.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $tmuxSessionName.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $tmuxAutoCreate.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $terminalCommandNotificationsEnabled.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $terminalCommandNotificationsOnlyWhenInactive.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            $terminalCommandNotificationMinimumDuration.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $speechInputEngine.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $speechInputLocaleIdentifier.dropFirst().map { _ in () }.eraseToAnyPublisher(),
             $openInterfaceAutomatically.dropFirst().map { _ in () }.eraseToAnyPublisher()
@@ -373,6 +379,40 @@ public class RayonStore: ObservableObject {
     @Published public var tmuxAutoCreate: Bool = true {
         didSet {
             UDTmuxAutoCreate = tmuxAutoCreate
+        }
+    }
+
+    // MARK: - Terminal Notifications
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalCommandNotificationsEnabled", defaultValue: true)
+    private var UDTerminalCommandNotificationsEnabled: Bool
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalCommandNotificationsOnlyWhenInactive", defaultValue: true)
+    private var UDTerminalCommandNotificationsOnlyWhenInactive: Bool
+
+    @UserDefaultsWrapper(key: "wiki.qaq.rayon.terminalCommandNotificationMinimumDuration", defaultValue: 10)
+    private var UDTerminalCommandNotificationMinimumDuration: Int
+
+    @Published public var terminalCommandNotificationsEnabled: Bool = true {
+        didSet {
+            UDTerminalCommandNotificationsEnabled = terminalCommandNotificationsEnabled
+        }
+    }
+
+    @Published public var terminalCommandNotificationsOnlyWhenInactive: Bool = true {
+        didSet {
+            UDTerminalCommandNotificationsOnlyWhenInactive = terminalCommandNotificationsOnlyWhenInactive
+        }
+    }
+
+    @Published public var terminalCommandNotificationMinimumDuration: Int = 10 {
+        didSet {
+            let clamped = max(1, terminalCommandNotificationMinimumDuration)
+            if clamped != terminalCommandNotificationMinimumDuration {
+                terminalCommandNotificationMinimumDuration = clamped
+                return
+            }
+            UDTerminalCommandNotificationMinimumDuration = terminalCommandNotificationMinimumDuration
         }
     }
 

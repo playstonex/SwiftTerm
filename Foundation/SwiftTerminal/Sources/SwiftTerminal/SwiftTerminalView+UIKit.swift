@@ -83,7 +83,7 @@ public class SwiftTerminalView: UIView {
     private func setupDelegates() {
         viewDelegate = MetalViewDelegateHandler(adapter: adapter)
         metalView.terminalDelegate = viewDelegate
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.syncAndNotifyTerminalSizeIfNeeded()
         }
     }
@@ -248,11 +248,12 @@ public class SwiftTerminalView: UIView {
     private func scheduleRefreshDisplay() {
         // Reattachment and foregrounding can race with Auto Layout and MTKView drawable updates.
         // A second refresh on the next short tick avoids leaving the terminal with stale content.
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.refreshDisplay()
             self?.syncAndNotifyTerminalSizeIfNeeded()
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 50_000_000)
             self?.refreshDisplay()
             self?.syncAndNotifyTerminalSizeIfNeeded()
         }

@@ -20,92 +20,80 @@ enum RayonUtil {
         return nil
     }
 
-    static func selectIdentity() -> RDIdentity.ID? {
-        assert(!Thread.isMainThread, "select identity must be called from background thread")
-
-        var selection: RDIdentity.ID?
-        let sem = DispatchSemaphore(value: 0)
-
+    static func selectIdentity() async -> RDIdentity.ID? {
         debugPrint("Picking Identity")
 
-        mainActor {
-            var panelRef: NSPanel?
-            var windowRef: NSWindow?
-            let controller = NSHostingController(rootView: Group {
-                IdentityPickerSheetView {
-                    selection = $0
-                    if let panel = panelRef {
-                        if let windowRef = windowRef {
-                            windowRef.endSheet(panel)
-                        } else {
-                            panel.close()
+        return await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                var panelRef: NSPanel?
+                var windowRef: NSWindow?
+                let controller = NSHostingController(rootView: Group {
+                    IdentityPickerSheetView {
+                        if let panel = panelRef {
+                            if let windowRef = windowRef {
+                                windowRef.endSheet(panel)
+                            } else {
+                                panel.close()
+                            }
                         }
+                        continuation.resume(returning: $0)
                     }
-                    sem.signal()
-                }
-                .environmentObject(RayonStore.shared)
-                .frame(width: 700, height: 400)
-            })
-            let panel = NSPanel(contentViewController: controller)
-            panelRef = panel
-            panel.title = ""
-            panel.titleVisibility = .hidden
-
-            if let keyWindow = findWindow() {
-                windowRef = keyWindow
-                keyWindow.beginSheet(panel) { _ in }
-            } else {
-                sem.signal()
-            }
-        }
-        sem.wait()
-        return selection
-    }
-
-    static func selectMachine(allowMany: Bool = true) -> [RDMachine.ID] {
-        assert(!Thread.isMainThread, "select identity must be called from background thread")
-
-        var selection = [RDMachine.ID]()
-        let sem = DispatchSemaphore(value: 0)
-
-        debugPrint("Picking Machine")
-
-        mainActor {
-            var panelRef: NSPanel?
-            var windowRef: NSWindow?
-            let controller = NSHostingController(rootView: Group {
-                MachinePickerView(onComplete: {
-                    selection = $0
-                    if let panel = panelRef {
-                        if let windowRef = windowRef {
-                            windowRef.endSheet(panel)
-                        } else {
-                            panel.close()
-                        }
-                    }
-                    sem.signal()
-                }, allowSelectMany: allowMany)
                     .environmentObject(RayonStore.shared)
                     .frame(width: 700, height: 400)
-            })
-            let panel = NSPanel(contentViewController: controller)
-            panelRef = panel
-            panel.title = ""
-            panel.titleVisibility = .hidden
+                })
+                let panel = NSPanel(contentViewController: controller)
+                panelRef = panel
+                panel.title = ""
+                panel.titleVisibility = .hidden
 
-            if let keyWindow = findWindow() {
-                windowRef = keyWindow
-                keyWindow.beginSheet(panel) { _ in }
-            } else {
-                sem.signal()
+                if let keyWindow = findWindow() {
+                    windowRef = keyWindow
+                    keyWindow.beginSheet(panel) { _ in }
+                } else {
+                    continuation.resume(returning: nil)
+                }
             }
         }
-        sem.wait()
-        return selection
     }
 
-    static func selectOneMachine() -> RDMachine.ID? {
-        selectMachine(allowMany: false).first
+    static func selectMachine(allowMany: Bool = true) async -> [RDMachine.ID] {
+        debugPrint("Picking Machine")
+
+        return await withCheckedContinuation { continuation in
+            Task { @MainActor in
+                var panelRef: NSPanel?
+                var windowRef: NSWindow?
+                let controller = NSHostingController(rootView: Group {
+                    MachinePickerView(onComplete: {
+                        if let panel = panelRef {
+                            if let windowRef = windowRef {
+                                windowRef.endSheet(panel)
+                            } else {
+                                panel.close()
+                            }
+                        }
+                        continuation.resume(returning: $0)
+                    }, allowSelectMany: allowMany)
+                        .environmentObject(RayonStore.shared)
+                        .frame(width: 700, height: 400)
+                })
+                let panel = NSPanel(contentViewController: controller)
+                panelRef = panel
+                panel.title = ""
+                panel.titleVisibility = .hidden
+
+                if let keyWindow = findWindow() {
+                    windowRef = keyWindow
+                    keyWindow.beginSheet(panel) { _ in }
+                } else {
+                    continuation.resume(returning: [])
+                }
+            }
+        }
+    }
+
+    static func selectOneMachine() async -> RDMachine.ID? {
+        await selectMachine(allowMany: false).first
     }
 }
 

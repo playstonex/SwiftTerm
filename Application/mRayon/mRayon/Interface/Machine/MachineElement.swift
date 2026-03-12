@@ -180,13 +180,9 @@ struct MachineElementView: View {
                 .roundedCorner()
             
         )
-        .background(
-            NavigationLink(isActive: $openEdit) {
-                EditMachineView { machine }
-            } label: {
-                Group {}
-            }
-        )
+        .navigationDestination(isPresented: $openEdit) {
+            EditMachineView { machine }
+        }
     }
     
     

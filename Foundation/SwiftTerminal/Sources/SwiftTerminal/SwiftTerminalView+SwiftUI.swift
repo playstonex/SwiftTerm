@@ -39,6 +39,12 @@ public struct STerminalView: NativeTerminalProtocol {
     // MARK: - NativeTerminalProtocol Implementation
 
     @discardableResult
+    public func setupEventChain(callback: ((TerminalEvent) -> Void)?) -> Self {
+        adapter.setupEventChain(callback: callback)
+        return self
+    }
+
+    @discardableResult
     public func setupBufferChain(callback: ((String) -> Void)?) -> Self {
         adapter.setupBufferChain(callback: callback)
         return self
@@ -63,7 +69,7 @@ public struct STerminalView: NativeTerminalProtocol {
     }
 
     @discardableResult
-    public func setupCopyChain(callback: ((String) -> Void)?) -> Self {
+    public func setupCopyChain(callback: ((TerminalClipboardPayload) -> Void)?) -> Self {
         adapter.setupCopyChain(callback: callback)
         return self
     }
@@ -76,13 +82,13 @@ public struct STerminalView: NativeTerminalProtocol {
 
     public func write(_ str: String) {
         // Must be called on main thread for UI updates
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalView.feed(text: str)
         }
     }
 
     public func write(data: Data) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalView.feed(data: data)
         }
     }
@@ -93,14 +99,14 @@ public struct STerminalView: NativeTerminalProtocol {
 
     public func setTerminalFontSize(with size: Int) {
         adapter.setTerminalFontSize(with: size)
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalView.updateFont()
         }
     }
 
     public func setTerminalFontName(with name: String) {
         adapter.setTerminalFontName(with: name)
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalView.updateFont()
         }
     }
@@ -147,7 +153,7 @@ public struct STerminalView: NativeTerminalProtocol {
             brightCyan: brightCyan,
             brightWhite: brightWhite
         )
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalView.updateTheme()
         }
     }
@@ -158,20 +164,20 @@ public struct STerminalView: NativeTerminalProtocol {
     }
 
     public func refreshDisplay() {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalView.refreshDisplay()
         }
     }
 
     public func activateKeyboard() {
-        DispatchQueue.main.async {
-            _ = self.terminalView.makeTerminalFirstResponder()
+        Task { @MainActor in
+            self.terminalView.makeTerminalFirstResponder()
         }
     }
 
     public func dismissKeyboard() {
         #if canImport(UIKit)
-        DispatchQueue.main.async {
+        Task { @MainActor in
             _ = self.terminalView.resignTerminalFirstResponder()
         }
         #endif
@@ -180,7 +186,7 @@ public struct STerminalView: NativeTerminalProtocol {
     public func setReturnKeySendsLineFeed(_ enabled: Bool) {
         #if canImport(UIKit)
         let bytes: [UInt8] = enabled ? [10] : [13]
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalView.setReturnKeyByteSequence(bytes)
         }
         #endif
@@ -193,14 +199,15 @@ public struct STerminalView: NativeTerminalProtocol {
 extension STerminalView: NSViewRepresentable {
     public func makeNSView(context: Context) -> SwiftTerminalView {
         // Set up the view to become first responder when the window becomes key
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)
             self.terminalView.makeTerminalFirstResponder()
         }
         return terminalView
     }
 
     public func updateNSView(_ nsView: SwiftTerminalView, context: Context) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             nsView.refreshDisplay()
         }
     }
@@ -215,14 +222,15 @@ extension STerminalView: NSViewRepresentable {
 extension STerminalView: UIViewRepresentable {
     public func makeUIView(context: Context) -> SwiftTerminalView {
         // Delay first responder activation slightly to allow the view to be in a window
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 100_000_000)
             self.terminalView.makeTerminalFirstResponder()
         }
         return terminalView
     }
 
     public func updateUIView(_ uiView: SwiftTerminalView, context: Context) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             uiView.refreshDisplay()
         }
     }

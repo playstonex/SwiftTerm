@@ -64,13 +64,9 @@ struct IdentityElementView: View {
             Color(bgColor())
                 .roundedCorner()
         )
-        .background(
-            NavigationLink(isActive: $openEdit) {
-                EditIdentityView { identity }
-            } label: {
-                Group {}
-            }
-        )
+        .navigationDestination(isPresented: $openEdit) {
+            EditIdentityView { identity }
+        }
         .onTapGesture {
             openEdit = true
         }

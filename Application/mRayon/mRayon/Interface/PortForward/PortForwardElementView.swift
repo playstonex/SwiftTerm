@@ -166,13 +166,9 @@ struct PortForwardElementView: View {
             )
             .roundedCorner()
         )
-        .background(
-            NavigationLink(isActive: $openEdit) {
-                EditPortForwardView { forward }
-            } label: {
-                Group {}
-            }
-        )
+        .navigationDestination(isPresented: $openEdit) {
+            EditPortForwardView { forward }
+        }
     }
 
     func startForwardSession() {

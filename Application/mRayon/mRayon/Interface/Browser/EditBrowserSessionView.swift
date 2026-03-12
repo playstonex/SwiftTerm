@@ -70,11 +70,8 @@ struct EditBrowserSessionView: View {
 
             Section {
                 Button {
-                    DispatchQueue.global().async {
-                        let machine = RayonUtil.selectOneMachine()
-                        mainActor {
-                            usingMachine = machine.first
-                        }
+                    Task {
+                        usingMachine = await RayonUtil.selectOneMachine().first
                     }
                 } label: {
                     Label("Select Machine", systemImage: "server.rack")

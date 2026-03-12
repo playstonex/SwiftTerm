@@ -50,7 +50,8 @@ struct mRayonApp: App {
                     let editor = SCodeEditor()
                     let xterm = STerminalView()
 //                    checkAgreement()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
                         withExtendedLifetime(editor) {
                             debugPrint("editor \(editor) prewarm done")
                         }
@@ -59,7 +60,7 @@ struct mRayonApp: App {
                         }
                     }
                 }
-                .onChange(of: store.licenseAgreed) { _ in
+                .onChange(of: store.licenseAgreed) { _, _ in
                     checkAgreement()
                 }
 

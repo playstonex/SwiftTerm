@@ -261,7 +261,7 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
             },
             withContinuationHandler: {
                 // Parse output for connection parameters
-                if let params = self.parseMoshServerOutput(capturedOutput) {
+                if self.parseMoshServerOutput(capturedOutput) != nil {
                     return true
                 }
                 return true
@@ -330,13 +330,10 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
         } withWriteDataBuffer: { [weak self] in
             self?.getBuffer() ?? ""
         } withOutputDataBuffer: { [weak self] output in
-            let sem = DispatchSemaphore(value: 0)
             Task { @MainActor in
                 self?.termInterface.write(output)
-                self?.handleShellOutput(output)
-                sem.signal()
             }
-            sem.wait()
+            self?.handleShellOutput(output)
         } withContinuationHandler: { [weak self] in
             self?.continueDecision ?? false
         }

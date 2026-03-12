@@ -19,7 +19,7 @@ public struct AES {
             var keyBuilder = ""
             #if os(macOS)
                 let platformExpert = IOServiceGetMatchingService(
-                    kIOMasterPortDefault,
+                    kIOMainPortDefault,
                     IOServiceMatching("IOPlatformExpertDevice")
                 )
                 guard platformExpert > 0 else {

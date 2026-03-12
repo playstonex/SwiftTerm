@@ -11,9 +11,27 @@ import NMMoshShell
 import RayonModule
 import SwiftUI
 import SwiftTerminal
+#if canImport(AppKit)
+import AppKit
+#endif
 
 extension TerminalManager {
-    class Context: ObservableObject, Identifiable, Equatable {
+    final class Context: ObservableObject, Identifiable, Equatable {
+        private final class LockedState<Value> {
+            private let lock = NSLock()
+            private var value: Value
+
+            init(_ value: Value) {
+                self.value = value
+            }
+
+            func withValue<T>(_ operation: (inout Value) -> T) -> T {
+                lock.lock()
+                defer { lock.unlock() }
+                return operation(&value)
+            }
+        }
+
         var id: UUID = .init()
 
         var navigationTitle: String {
@@ -27,9 +45,12 @@ extension TerminalManager {
 
         private var title: String = "" {
             didSet {
-                DispatchQueue.main.async {
-                    self.navigationSubtitle = self.title
-                }
+                publishNavigationSubtitle()
+            }
+        }
+        @Published private(set) var currentWorkingDirectory: String = "" {
+            didSet {
+                publishNavigationSubtitle()
             }
         }
 
@@ -56,6 +77,7 @@ extension TerminalManager {
         @Published var interfaceToken: UUID = .init()
         @Published var interfaceDisabled: Bool = false
         @Published var isInTmuxSession: Bool = false
+        @Published private(set) var historyRevision: Int = 0
 
         static let defaultTerminalSize = CGSize(width: 80, height: 40)
 
@@ -73,30 +95,38 @@ extension TerminalManager {
             }
         }
 
-        private var _dataBuffer: String = ""
-        private var bufferAccessLock = NSLock()
+        private let dataBufferState = LockedState("")
 
         // Persistent history for copy and AI analysis (keeps last 50000 chars)
-        private var outputHistory: String = ""
+        private let outputHistoryState = LockedState("")
         private let maxHistorySize = 50000
-        private let historyLock = NSLock()
 
         // Output Observers (for Skills and other non-destructive consumers)
-        private var outputObservers: [UUID: (String) -> Void] = [:]
-        private let observerLock = NSLock()
+        private let outputObserverState = LockedState([UUID: (String) -> Void]())
+        private let commandMonitor = TerminalCommandMonitor()
 
         func addOutputObserver(_ observer: @escaping (String) -> Void) -> UUID {
-            observerLock.lock()
-            defer { observerLock.unlock() }
             let id = UUID()
-            outputObservers[id] = observer
+            outputObserverState.withValue { observers in
+                observers[id] = observer
+            }
             return id
         }
 
         func removeOutputObserver(_ id: UUID) {
-            observerLock.lock()
-            defer { observerLock.unlock() }
-            outputObservers.removeValue(forKey: id)
+            outputObserverState.withValue { observers in
+                _ = observers.removeValue(forKey: id)
+            }
+        }
+
+        private func appendToOutputHistory(_ str: String) {
+            outputHistoryState.withValue { outputHistory in
+                outputHistory += str
+                if outputHistory.count > maxHistorySize {
+                    let removeCount = outputHistory.count - maxHistorySize
+                    outputHistory = String(outputHistory.dropFirst(removeCount))
+                }
+            }
         }
 
         // MARK: Output Handling
@@ -105,23 +135,17 @@ extension TerminalManager {
         /// - Parameter str: The output string from the shell
         func handleShellOutput(_ str: String) {
             // Notify observers (Skills, etc.)
-            observerLock.lock()
-            let observers = outputObservers.values
-            observerLock.unlock()
+            let observers = outputObserverState.withValue { Array($0.values) }
 
             for observer in observers {
                 observer(str)
             }
 
             // Add to persistent history (for copy and AI analysis)
-            historyLock.lock()
-            outputHistory += str
-            // Keep history at max size by removing old content
-            if outputHistory.count > maxHistorySize {
-                let removeCount = outputHistory.count - maxHistorySize
-                outputHistory = String(outputHistory.dropFirst(removeCount))
-            }
-            historyLock.unlock()
+            appendToOutputHistory(str)
+
+            publishHistoryRevision()
+            consumeCommandMonitorOutput(str)
         }
 
         /// Handle output received from Mosh UDP session
@@ -133,23 +157,17 @@ extension TerminalManager {
             }
             
             // Notify observers (Skills, etc.)
-            observerLock.lock()
-            let observers = outputObservers.values
-            observerLock.unlock()
+            let observers = outputObserverState.withValue { Array($0.values) }
 
             for observer in observers {
                 observer(output)
             }
 
             // Add to persistent history (for copy and AI analysis)
-            historyLock.lock()
-            outputHistory += output
-            // Keep history at max size by removing old content
-            if outputHistory.count > maxHistorySize {
-                let removeCount = outputHistory.count - maxHistorySize
-                outputHistory = String(outputHistory.dropFirst(removeCount))
-            }
-            historyLock.unlock()
+            appendToOutputHistory(output)
+
+            publishHistoryRevision()
+            consumeCommandMonitorOutput(output)
         }
 
         private static func decodeMoshText(_ data: Data) -> String {
@@ -163,36 +181,49 @@ extension TerminalManager {
         }
 
         func getBuffer() -> String {
-            bufferAccessLock.lock()
-            defer { bufferAccessLock.unlock() }
-            let copy = _dataBuffer
-            _dataBuffer = ""
-            return copy
+            dataBufferState.withValue { dataBuffer in
+                let copy = dataBuffer
+                dataBuffer = ""
+                return copy
+            }
         }
 
         func insertBuffer(_ str: String) {
-            bufferAccessLock.lock()
-            let shouldRouteToMosh = moshConnected && moshSession != nil
-            if !shouldRouteToMosh {
-                // Add to data buffer (for SSH/UI/Shell Input)
-                _dataBuffer += str
+            routeInput(str, trackAsUserInput: true)
+        }
+
+        private func insertInternalBuffer(_ str: String) {
+            routeInput(str, trackAsUserInput: false)
+        }
+
+        private func routeInput(_ str: String, trackAsUserInput: Bool) {
+            if trackAsUserInput {
+                Task {
+                    await commandMonitor.registerUserInput(str)
+                }
             }
-            bufferAccessLock.unlock()
+
+            let shouldRouteToMosh = dataBufferState.withValue { dataBuffer in
+                let shouldRoute = moshConnected && moshSession != nil
+                if !shouldRoute {
+                    // Add to data buffer (for SSH/UI/Shell Input)
+                    dataBuffer += str
+                }
+                return shouldRoute
+            }
 
             // Route to Mosh if connected, otherwise use SSH
             if shouldRouteToMosh, let mosh = moshSession {
                 mosh.sendString(str)
             } else {
-                Context.queue.async { [weak self] in
+                Task.detached(priority: .userInitiated) { [weak self] in
                     self?.shell.explicitRequestStatusPickup()
                 }
             }
         }
 
         func getOutputHistory() -> String {
-            historyLock.lock()
-            defer { historyLock.unlock() }
-            return outputHistory
+            outputHistoryState.withValue { $0 }
         }
 
         func getOutputHistoryStrippedANSI() -> String {
@@ -200,10 +231,65 @@ extension TerminalManager {
             return history.stripANSIEscapeCodes()
         }
 
+        private func publishNavigationSubtitle() {
+            let subtitle = currentWorkingDirectory.isEmpty ? title : currentWorkingDirectory
+            Task { @MainActor [weak self, subtitle] in
+                self?.navigationSubtitle = subtitle
+            }
+        }
+
+        private func publishHistoryRevision() {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.historyRevision = self.historyRevision &+ 1
+            }
+        }
+
+        private func consumeCommandMonitorOutput(_ output: String) {
+            Task { [weak self] in
+                guard let self else { return }
+                let update = await self.commandMonitor.consumeOutput(output)
+                await MainActor.run {
+                    if let workingDirectory = update.workingDirectory {
+                        self.currentWorkingDirectory = workingDirectory
+                    }
+                    if !update.commandCompletions.isEmpty {
+                        self.handleCommandCompletions(update.commandCompletions)
+                    }
+                }
+            }
+        }
+
+        @MainActor
+        private func handleCommandCompletions(_ completions: [TerminalCommandCompletion]) {
+            guard RayonStore.shared.terminalCommandNotificationsEnabled else { return }
+
+            let minimumDuration = TimeInterval(RayonStore.shared.terminalCommandNotificationMinimumDuration)
+            for completion in completions where completion.duration >= minimumDuration {
+                if RayonStore.shared.terminalCommandNotificationsOnlyWhenInactive, isApplicationActiveForTerminalNotifications() {
+                    continue
+                }
+                TerminalCommandNotificationCenter.notify(
+                    host: machine.name.isEmpty ? machine.remoteAddress : machine.name,
+                    completion: completion
+                )
+            }
+        }
+
+        @MainActor
+        private func isApplicationActiveForTerminalNotifications() -> Bool {
+            #if canImport(AppKit)
+            return NSApp.isActive
+            #else
+            return false
+            #endif
+        }
+
         var continueDecision: Bool = true {
             didSet {
-                DispatchQueue.main.async {
-                    self.interfaceDisabled = !self.continueDecision
+                let disabled = !continueDecision
+                Task { @MainActor [weak self, disabled] in
+                    self?.interfaceDisabled = disabled
                 }
             }
         }
@@ -212,19 +298,13 @@ extension TerminalManager {
 
         let termInterface: STerminalView = .init()
 
-        private static let queue = DispatchQueue(
-            label: "wiki.qaq.terminal",
-            qos: DispatchQoS.userInitiated,
-            attributes: .concurrent
-        )
-
         init(machine: RDMachine) {
             self.machine = machine
             command = nil
             remoteType = .machine
             title = machine.name
-            Context.queue.async {
-                self.processBootstrap()
+            Task.detached(priority: .userInitiated) {
+                await self.processBootstrap()
             }
         }
 
@@ -239,8 +319,8 @@ extension TerminalManager {
             self.command = command
             title = command.command
             remoteType = .machine
-            Context.queue.async {
-                self.processBootstrap()
+            Task.detached(priority: .userInitiated) {
+                await self.processBootstrap()
             }
         }
 
@@ -259,6 +339,30 @@ extension TerminalManager {
             termInterface.write(str + "\r\n")
         }
 
+        func reconnectInBackground() {
+            Task.detached(priority: .userInitiated) { [weak self] in
+                guard let self else { return }
+                self.putInformation("[i] Reconnect will use the information you provide previously,")
+                self.putInformation("    if the machine was edited, create a new terminal.")
+                await self.processBootstrap()
+            }
+        }
+
+        private func handleTerminalEvent(_ event: TerminalEvent) {
+            switch event {
+            case .input(let buffer):
+                insertBuffer(buffer)
+            case .title(let str):
+                title = str
+            case .bell:
+                break
+            case .size(let size):
+                terminalSize = size
+            case .copy(let payload):
+                payload.writeToPasteboard()
+            }
+        }
+
         private func normalizedTmuxSessionName(_ raw: String) -> String {
             let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed.isEmpty { return "default" }
@@ -274,12 +378,16 @@ extension TerminalManager {
             "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
         }
 
+        private func buildPOSIXShellCommand(_ command: String) -> String {
+            "sh -lc \(singleQuotedShellString(command))"
+        }
+
         private func buildTmuxBootstrapCommand(sessionName: String, autoCreate: Bool) -> String {
             let quotedSession = singleQuotedShellString(sessionName)
             let tmuxAction = autoCreate
                 ? "\"$TMUX_BIN\" new-session -A -s \(quotedSession)"
                 : "\"$TMUX_BIN\" attach-session -t \(quotedSession)"
-            return """
+            let command = """
             TMUX_BIN="$(command -v tmux 2>/dev/null || true)"; \
             if [ -z "$TMUX_BIN" ]; then \
               for p in /opt/homebrew/bin/tmux /usr/local/bin/tmux /usr/bin/tmux; do \
@@ -292,6 +400,7 @@ extension TerminalManager {
               \(tmuxAction); \
             fi
             """
+            return buildPOSIXShellCommand(command)
         }
 
         private struct MoshServerParams {
@@ -300,7 +409,7 @@ extension TerminalManager {
             let key: String
         }
 
-        private func startMoshServer() -> MoshServerParams? {
+        private func startMoshServer() async -> MoshServerParams? {
             let serverCmd = [
                 "mosh-server", "new", "-s",
                 "-c", "256",
@@ -312,31 +421,25 @@ extension TerminalManager {
 
             putInformation("[*] Executing: \(serverCmd)")
 
-            shell.beginExecute(
-                withCommand: serverCmd,
-                withTimeout: timeout,
-                withOnCreate: {},
-                withOutput: { output in
-                    // Capture and log each chunk of output
-                    capturedOutput += output
-                    print("[Mosh Debug] Output chunk: \(output.prefix(100))")
-                },
-                withContinuationHandler: {
-                    print("[Mosh Debug] Complete output: \(capturedOutput)")
-                    // Parse output for connection parameters
-                    if let params = self.parseMoshServerOutput(capturedOutput) {
-                        print("[Mosh Debug] Parsed params: IP=\(params.ip), PORT=\(params.port), KEY=\(params.key.prefix(10))...")
+            await withCheckedContinuation { continuation in
+                shell.beginExecute(
+                    withCommand: serverCmd,
+                    withTimeout: timeout,
+                    withOnCreate: {},
+                    withOutput: { output in
+                        // Capture and log each chunk of output
+                        capturedOutput += output
+                        print("[Mosh Debug] Output chunk: \(output.prefix(100))")
+                    },
+                    withContinuationHandler: {
+                        print("[Mosh Debug] Complete output: \(capturedOutput)")
+                        continuation.resume()
                         return true
                     }
-                    print("[Mosh Debug] Failed to parse mosh-server output")
-                    return true
-                }
-            )
+                )
+            }
 
-            // Wait for command to complete (on background thread - acceptable)
-            Thread.sleep(forTimeInterval: 2.0)
-
-            print("[Mosh Debug] After sleep, captured output length: \(capturedOutput.count)")
+            print("[Mosh Debug] Command output length: \(capturedOutput.count)")
 
             let params = parseMoshServerOutput(capturedOutput)
             if params == nil {
@@ -344,6 +447,157 @@ extension TerminalManager {
                 putInformation("[i] Output: \(capturedOutput.prefix(200))")
             }
             return params
+        }
+
+        private func connectMoshSession(with moshParams: MoshServerParams) async -> Bool {
+            let session = NMSession()
+            moshSession = session
+
+            let stateStream = AsyncStream<NMSession.State> { continuation in
+                let stateHandler: NMSession.StateHandler = { [weak self] state in
+                    Task { @MainActor [weak self] in
+                        switch state {
+                        case .connecting:
+                            self?.putInformation("[i] UDP connecting...")
+                        case .connected:
+                            self?.moshConnected = true
+                            self?.putInformation("[+] UDP socket ready")
+                        case .disconnected:
+                            self?.putInformation("[!] UDP disconnected")
+                        case .failed(let error):
+                            self?.putInformation("[!] UDP connection failed: \(error)")
+                        }
+                    }
+
+                    continuation.yield(state)
+                    switch state {
+                    case .connected, .disconnected, .failed:
+                        continuation.finish()
+                    case .connecting:
+                        break
+                    }
+                }
+                let receiveHandler: NMSession.ReceiveHandler = { [weak self] output in
+                    Task { @MainActor [weak self] in
+                        self?.handleMoshOutput(output)
+                    }
+                }
+
+                session.connect(
+                    host: moshParams.ip,
+                    port: UInt16(moshParams.port) ?? 60001,
+                    key: moshParams.key,
+                    initialRows: UInt16(self.terminalSize.height),
+                    initialCols: UInt16(self.terminalSize.width),
+                    stateHandler: stateHandler,
+                    receiveHandler: receiveHandler
+                )
+            }
+
+            let connected = await withTaskGroup(of: Bool.self, returning: Bool.self) { group in
+                group.addTask {
+                    for await state in stateStream {
+                        switch state {
+                        case .connected:
+                            return true
+                        case .disconnected, .failed:
+                            return false
+                        case .connecting:
+                            continue
+                        }
+                    }
+                    return false
+                }
+                group.addTask {
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    return false
+                }
+
+                let result = await group.next() ?? false
+                group.cancelAll()
+                return result
+            }
+
+            if !connected {
+                session.disconnect()
+                moshSession = nil
+                moshConnected = false
+            }
+            return connected
+        }
+
+        private func waitForTerminalClosure() async {
+            while continueDecision {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+            }
+        }
+
+        private func buildShellIntegrationInstallCommand(script: String, path: String) -> String {
+            let quotedPath = singleQuotedShellString(path)
+            let command = """
+            cat > \(quotedPath) <<'__RAYON_OSC133_EOF__'
+            \(script)
+            __RAYON_OSC133_EOF__
+            chmod 600 \(quotedPath)
+            """
+            return buildPOSIXShellCommand(command)
+        }
+
+        private func prepareShellIntegrationCommand(tmuxSessionName: String? = nil) async -> String? {
+            let shellKind = await detectInteractiveShellKind(tmuxSessionName: tmuxSessionName)
+            guard let bootstrapScript = TerminalCommandMonitor.shellIntegrationBootstrap(for: shellKind),
+                  let scriptPath = TerminalCommandMonitor.shellIntegrationScriptPath(for: shellKind),
+                  let sourceCommand = TerminalCommandMonitor.shellIntegrationSourceCommand(for: shellKind)
+            else {
+                return nil
+            }
+
+            let installCommand = buildShellIntegrationInstallCommand(script: bootstrapScript, path: scriptPath)
+            if let result = try? await executeCommandForSkill(installCommand, timeout: 5),
+               result.exitCode == 0
+            {
+                return sourceCommand + "\n"
+            }
+
+            return nil
+        }
+
+        private func detectInteractiveShellKind(tmuxSessionName: String? = nil) async -> TerminalShellKind {
+            if let tmuxSessionName {
+                let paneCommand = "tmux display-message -p -t \(singleQuotedShellString(tmuxSessionName)) '#{pane_current_command}' 2>/dev/null"
+                if let result = try? await executeCommandForSkill(paneCommand, timeout: 5),
+                   let detectedPath = trimmedCommandOutput(from: result.output)
+                {
+                    let shellKind = TerminalCommandMonitor.shellKind(from: detectedPath)
+                    if shellKind != .unknown {
+                        return shellKind
+                    }
+                }
+
+                if let result = try? await executeCommandForSkill(#"tmux show -gv default-shell 2>/dev/null"#, timeout: 5),
+                   let detectedPath = trimmedCommandOutput(from: result.output)
+                {
+                    let shellKind = TerminalCommandMonitor.shellKind(from: detectedPath)
+                    if shellKind != .unknown {
+                        return shellKind
+                    }
+                }
+            }
+
+            if let result = try? await executeCommandForSkill(#"printf '%s\n' "$SHELL""#, timeout: 5),
+               let detectedPath = trimmedCommandOutput(from: result.output)
+            {
+                return TerminalCommandMonitor.shellKind(from: detectedPath)
+            }
+
+            return .unknown
+        }
+
+        private func trimmedCommandOutput(from output: String) -> String? {
+            output
+                .split(whereSeparator: \.isNewline)
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                .last { !$0.isEmpty }
         }
 
         private func parseMoshServerOutput(_ output: String) -> MoshServerParams? {
@@ -394,9 +648,11 @@ extension TerminalManager {
             return MoshServerParams(ip: finalIP, port: finalPort, key: finalKey)
         }
 
-        func processBootstrap() {
+        func processBootstrap() async {
             defer {
-                DispatchQueue.main.async { self.processShutdown(exitFromShell: true) }
+                Task { @MainActor [weak self] in
+                    self?.processShutdown(exitFromShell: true)
+                }
             }
 
             setupShellData()
@@ -411,17 +667,8 @@ extension TerminalManager {
             continueDecision = true
 
             termInterface
-                .setupBellChain {
-                    // Terminal bell
-                }
-                .setupBufferChain { [weak self] buffer in
-                    self?.insertBuffer(buffer)
-                }
-                .setupTitleChain { [weak self] str in
-                    self?.title = str
-                }
-                .setupSizeChain { [weak self] size in
-                    self?.terminalSize = size
+                .setupEventChain { [weak self] event in
+                    self?.handleTerminalEvent(event)
                 }
 
             // For Mosh mode, we still use SSH for bootstrap
@@ -474,7 +721,8 @@ extension TerminalManager {
                 return
             }
 
-            DispatchQueue.main.async {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
                 guard self.remoteType == .machine else {
                     return
                 }
@@ -485,69 +733,35 @@ extension TerminalManager {
                 }
             }
 
+            let configuredSessionName = RayonStore.shared.tmuxSessionName
+            let tmuxSessionName = RayonStore.shared.useTmux
+                ? normalizedTmuxSessionName(configuredSessionName)
+                : nil
+            let shellIntegrationBootstrap = await prepareShellIntegrationCommand(tmuxSessionName: tmuxSessionName)
+
+            if RayonStore.shared.terminalCommandNotificationsEnabled {
+                TerminalCommandNotificationCenter.requestAuthorizationIfNeeded()
+            }
+
             // Mosh bootstrap: start mosh-server via SSH
             putInformation("[*] Connection type: \(machine.connectionType.rawValue.uppercased())")
             if moshModeActive {
                 putInformation("[*] Starting Mosh session")
-                if let moshParams = self.startMoshServer() {
+                if let moshParams = await self.startMoshServer() {
                     putInformation("[i] Mosh server available at \(moshParams.ip):\(moshParams.port)")
                     putInformation("[*] Connecting via UDP...")
 
-                    // Create and connect Mosh session
-                    let session = NMSession()
-                    moshSession = session
-                    let moshConnectionResult = DispatchSemaphore(value: 0)
-                    let moshStateLock = NSLock()
-                    var didEstablishMosh = false
-
-                    session.connect(
-                        host: moshParams.ip,
-                        port: UInt16(moshParams.port) ?? 60001,
-                        key: moshParams.key,
-                        initialRows: UInt16(self.terminalSize.height),
-                        initialCols: UInt16(self.terminalSize.width),
-                        stateHandler: { @MainActor [weak self] state in
-                            switch state {
-                            case .connecting:
-                                self?.putInformation("[i] UDP connecting...")
-                            case .connected:
-                                moshStateLock.lock()
-                                didEstablishMosh = true
-                                moshStateLock.unlock()
-                                self?.moshConnected = true
-                                self?.putInformation("[+] UDP socket ready")
-                                moshConnectionResult.signal()
-                            case .disconnected:
-                                self?.putInformation("[!] UDP disconnected")
-                                moshConnectionResult.signal()
-                            case .failed(let error):
-                                self?.putInformation("[!] UDP connection failed: \(error)")
-                                moshConnectionResult.signal()
-                            }
-                        },
-                        receiveHandler: { @MainActor [weak self] output in
-                            self?.handleMoshOutput(output)
+                    if await connectMoshSession(with: moshParams) {
+                        if let shellIntegrationBootstrap {
+                            insertInternalBuffer(shellIntegrationBootstrap)
                         }
-                    )
-
-                    let waitResult = moshConnectionResult.wait(timeout: .now() + 5)
-                    moshStateLock.lock()
-                    let shouldUseMosh = didEstablishMosh
-                    moshStateLock.unlock()
-
-                    if waitResult == .success, shouldUseMosh {
                         putInformation("[+] Mosh session active (SSH bootstrap detached)")
                         shell.requestDisconnectAndWait()
-                        while continueDecision {
-                            Thread.sleep(forTimeInterval: 0.05)
-                        }
+                        await waitForTerminalClosure()
                         return
                     }
 
                     putInformation("[i] UDP session was not established, falling back to SSH")
-                    session.disconnect()
-                    moshSession = nil
-                    moshConnected = false
                 } else {
                     putInformation("[i] mosh-server not available, using SSH")
                     moshConnected = false
@@ -556,11 +770,10 @@ extension TerminalManager {
 
             // Prepare tmux bootstrap command before entering the terminal loop.
             if RayonStore.shared.useTmux {
-                DispatchQueue.main.async {
-                    self.isInTmuxSession = true
+                Task { @MainActor [weak self] in
+                    self?.isInTmuxSession = true
                 }
-                let configuredSessionName = RayonStore.shared.tmuxSessionName
-                let sessionName = normalizedTmuxSessionName(configuredSessionName)
+                let sessionName = tmuxSessionName ?? "default"
                 let autoCreate = RayonStore.shared.tmuxAutoCreate
 
                 let tmuxCmd = buildTmuxBootstrapCommand(sessionName: sessionName, autoCreate: autoCreate)
@@ -569,7 +782,14 @@ extension TerminalManager {
                     putInformation("[i] Normalized tmux session name to: \(sessionName)")
                 }
                 putInformation("[*] Attaching to tmux session: \(sessionName)")
-                insertBuffer(tmuxCmd + "\n")
+                insertInternalBuffer(tmuxCmd + "\n")
+                if let shellIntegrationBootstrap {
+                    insertInternalBuffer(shellIntegrationBootstrap)
+                }
+            } else {
+                if let shellIntegrationBootstrap {
+                    insertInternalBuffer(shellIntegrationBootstrap)
+                }
             }
 
             shell.begin(withTerminalType: "xterm") {
@@ -610,7 +830,7 @@ extension TerminalManager {
             }
             continueDecision = false
 
-            Context.queue.async {
+            Task.detached(priority: .userInitiated) {
                 self.shell.requestDisconnectAndWait()
             }
         }
@@ -626,8 +846,7 @@ extension TerminalManager {
 
             return try await withCheckedThrowingContinuation { continuation in
                 // Track whether we've already resumed to prevent double-resume
-                var resumed = false
-                let lock = NSLock()
+                let continuationGate = LockedState(false)
 
                 self.shell.beginExecute(
                     withCommand: wrappedCommand,
@@ -637,14 +856,12 @@ extension TerminalManager {
                         output.append(chunk)
                     },
                     withContinuationHandler: { [capturedContinuation = continuation] in
-                        lock.lock()
-                        defer { lock.unlock() }
-
-                        guard !resumed else {
-                            // Already resumed, return true to indicate termination
+                        let shouldResume = continuationGate.withValue { resumed in
+                            guard !resumed else { return false }
+                            resumed = true
                             return true
                         }
-                        resumed = true
+                        guard shouldResume else { return true }
 
                         // Parse exit code from output
                         let (cleanOutput, code) = self.parseExitCode(from: output)
@@ -705,8 +922,8 @@ extension TerminalManager {
         /// Detach from the current tmux session
         func tmuxDetach() {
             sendTmuxCommand("d")
-            DispatchQueue.main.async {
-                self.isInTmuxSession = false
+            Task { @MainActor [weak self] in
+                self?.isInTmuxSession = false
             }
         }
 
@@ -771,7 +988,8 @@ extension TerminalManager {
                 }
                 
                 // Set up timer to end stream
-                DispatchQueue.global().asyncAfter(deadline: .now() + duration) {
+                Task.detached(priority: .utility) {
+                    try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
                     if let id = observerId {
                         self.removeOutputObserver(id)
                     }

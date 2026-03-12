@@ -20,6 +20,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
         public var useTmux: Bool
         public var tmuxSessionName: String
         public var tmuxAutoCreate: Bool
+        public var terminalCommandNotificationsEnabled: Bool
+        public var terminalCommandNotificationsOnlyWhenInactive: Bool
+        public var terminalCommandNotificationMinimumDuration: Int
         public var openInterfaceAutomatically: Bool
         public var fileTransferConflictPolicy: String
         public var fileTransferMaxConcurrent: Int
@@ -41,6 +44,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
             useTmux: Bool,
             tmuxSessionName: String,
             tmuxAutoCreate: Bool,
+            terminalCommandNotificationsEnabled: Bool,
+            terminalCommandNotificationsOnlyWhenInactive: Bool,
+            terminalCommandNotificationMinimumDuration: Int,
             openInterfaceAutomatically: Bool,
             fileTransferConflictPolicy: String,
             fileTransferMaxConcurrent: Int,
@@ -61,6 +67,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
             self.useTmux = useTmux
             self.tmuxSessionName = tmuxSessionName
             self.tmuxAutoCreate = tmuxAutoCreate
+            self.terminalCommandNotificationsEnabled = terminalCommandNotificationsEnabled
+            self.terminalCommandNotificationsOnlyWhenInactive = terminalCommandNotificationsOnlyWhenInactive
+            self.terminalCommandNotificationMinimumDuration = terminalCommandNotificationMinimumDuration
             self.openInterfaceAutomatically = openInterfaceAutomatically
             self.fileTransferConflictPolicy = fileTransferConflictPolicy
             self.fileTransferMaxConcurrent = fileTransferMaxConcurrent
@@ -83,6 +92,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
             case useTmux
             case tmuxSessionName
             case tmuxAutoCreate
+            case terminalCommandNotificationsEnabled
+            case terminalCommandNotificationsOnlyWhenInactive
+            case terminalCommandNotificationMinimumDuration
             case openInterfaceAutomatically
             case fileTransferConflictPolicy
             case fileTransferMaxConcurrent
@@ -106,6 +118,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
             useTmux = try container.decode(Bool.self, forKey: .useTmux)
             tmuxSessionName = try container.decode(String.self, forKey: .tmuxSessionName)
             tmuxAutoCreate = try container.decode(Bool.self, forKey: .tmuxAutoCreate)
+            terminalCommandNotificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .terminalCommandNotificationsEnabled) ?? true
+            terminalCommandNotificationsOnlyWhenInactive = try container.decodeIfPresent(Bool.self, forKey: .terminalCommandNotificationsOnlyWhenInactive) ?? true
+            terminalCommandNotificationMinimumDuration = try container.decodeIfPresent(Int.self, forKey: .terminalCommandNotificationMinimumDuration) ?? 10
             openInterfaceAutomatically = try container.decode(Bool.self, forKey: .openInterfaceAutomatically)
             fileTransferConflictPolicy = try container.decode(String.self, forKey: .fileTransferConflictPolicy)
             fileTransferMaxConcurrent = try container.decode(Int.self, forKey: .fileTransferMaxConcurrent)
@@ -130,6 +145,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
         useTmux: Bool,
         tmuxSessionName: String,
         tmuxAutoCreate: Bool,
+        terminalCommandNotificationsEnabled: Bool,
+        terminalCommandNotificationsOnlyWhenInactive: Bool,
+        terminalCommandNotificationMinimumDuration: Int,
         openInterfaceAutomatically: Bool,
         fileTransferConflictPolicy: String,
         fileTransferMaxConcurrent: Int,
@@ -153,6 +171,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
         self.useTmux = useTmux
         self.tmuxSessionName = tmuxSessionName
         self.tmuxAutoCreate = tmuxAutoCreate
+        self.terminalCommandNotificationsEnabled = terminalCommandNotificationsEnabled
+        self.terminalCommandNotificationsOnlyWhenInactive = terminalCommandNotificationsOnlyWhenInactive
+        self.terminalCommandNotificationMinimumDuration = terminalCommandNotificationMinimumDuration
         self.openInterfaceAutomatically = openInterfaceAutomatically
         self.fileTransferConflictPolicy = fileTransferConflictPolicy
         self.fileTransferMaxConcurrent = fileTransferMaxConcurrent
@@ -177,6 +198,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
     public var useTmux: Bool
     public var tmuxSessionName: String
     public var tmuxAutoCreate: Bool
+    public var terminalCommandNotificationsEnabled: Bool
+    public var terminalCommandNotificationsOnlyWhenInactive: Bool
+    public var terminalCommandNotificationMinimumDuration: Int
     public var openInterfaceAutomatically: Bool
     public var fileTransferConflictPolicy: String
     public var fileTransferMaxConcurrent: Int
@@ -201,6 +225,9 @@ public struct RDAppSettingsSync: Codable, Equatable {
             useTmux: useTmux,
             tmuxSessionName: tmuxSessionName,
             tmuxAutoCreate: tmuxAutoCreate,
+            terminalCommandNotificationsEnabled: terminalCommandNotificationsEnabled,
+            terminalCommandNotificationsOnlyWhenInactive: terminalCommandNotificationsOnlyWhenInactive,
+            terminalCommandNotificationMinimumDuration: terminalCommandNotificationMinimumDuration,
             openInterfaceAutomatically: openInterfaceAutomatically,
             fileTransferConflictPolicy: fileTransferConflictPolicy,
             fileTransferMaxConcurrent: fileTransferMaxConcurrent,
@@ -270,6 +297,9 @@ extension RDAppSettingsSync: iCloudSyncItem {
             useTmux = decoded.useTmux
             tmuxSessionName = decoded.tmuxSessionName
             tmuxAutoCreate = decoded.tmuxAutoCreate
+            terminalCommandNotificationsEnabled = decoded.terminalCommandNotificationsEnabled
+            terminalCommandNotificationsOnlyWhenInactive = decoded.terminalCommandNotificationsOnlyWhenInactive
+            terminalCommandNotificationMinimumDuration = decoded.terminalCommandNotificationMinimumDuration
             openInterfaceAutomatically = decoded.openInterfaceAutomatically
             fileTransferConflictPolicy = decoded.fileTransferConflictPolicy
             fileTransferMaxConcurrent = decoded.fileTransferMaxConcurrent
@@ -291,6 +321,9 @@ extension RDAppSettingsSync: iCloudSyncItem {
             useTmux = record["useTmux"] as? Bool ?? false
             tmuxSessionName = record["tmuxSessionName"] as? String ?? "default"
             tmuxAutoCreate = record["tmuxAutoCreate"] as? Bool ?? true
+            terminalCommandNotificationsEnabled = record["terminalCommandNotificationsEnabled"] as? Bool ?? true
+            terminalCommandNotificationsOnlyWhenInactive = record["terminalCommandNotificationsOnlyWhenInactive"] as? Bool ?? true
+            terminalCommandNotificationMinimumDuration = record["terminalCommandNotificationMinimumDuration"] as? Int ?? 10
             openInterfaceAutomatically = record["openInterfaceAutomatically"] as? Bool ?? true
             fileTransferConflictPolicy = record["fileTransferConflictPolicy"] as? String ?? "rename"
             fileTransferMaxConcurrent = record["fileTransferMaxConcurrent"] as? Int ?? 2
@@ -320,6 +353,9 @@ public extension RayonStore {
             useTmux: useTmux,
             tmuxSessionName: tmuxSessionName,
             tmuxAutoCreate: tmuxAutoCreate,
+            terminalCommandNotificationsEnabled: terminalCommandNotificationsEnabled,
+            terminalCommandNotificationsOnlyWhenInactive: terminalCommandNotificationsOnlyWhenInactive,
+            terminalCommandNotificationMinimumDuration: terminalCommandNotificationMinimumDuration,
             openInterfaceAutomatically: openInterfaceAutomatically,
             fileTransferConflictPolicy: fileTransferConflictPolicy,
             fileTransferMaxConcurrent: fileTransferMaxConcurrent,
@@ -345,6 +381,9 @@ public extension RayonStore {
         useTmux = settings.useTmux
         tmuxSessionName = settings.tmuxSessionName
         tmuxAutoCreate = settings.tmuxAutoCreate
+        terminalCommandNotificationsEnabled = settings.terminalCommandNotificationsEnabled
+        terminalCommandNotificationsOnlyWhenInactive = settings.terminalCommandNotificationsOnlyWhenInactive
+        terminalCommandNotificationMinimumDuration = settings.terminalCommandNotificationMinimumDuration
         openInterfaceAutomatically = settings.openInterfaceAutomatically
         fileTransferConflictPolicy = settings.fileTransferConflictPolicy
         fileTransferMaxConcurrent = settings.fileTransferMaxConcurrent

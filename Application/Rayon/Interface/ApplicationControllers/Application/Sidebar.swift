@@ -138,12 +138,10 @@ struct SidebarView: View {
                 }
             }
             Button {
-                DispatchQueue.global().async {
-                    let machines = RayonUtil.selectMachine(allowMany: true)
-                    mainActor {
-                        for machine in machines {
-                            terminalManager.createSession(withMachineID: machine)
-                        }
+                Task {
+                    let machines = await RayonUtil.selectMachine(allowMany: true)
+                    for machine in machines {
+                        terminalManager.createSession(withMachineID: machine)
                     }
                 }
             } label: {
@@ -220,12 +218,10 @@ struct SidebarView: View {
                 }
             }
             Button {
-                DispatchQueue.global().async {
-                    let machines = RayonUtil.selectMachine(allowMany: true)
-                    mainActor {
-                        for machine in machines {
-                            transferManager.begin(for: machine)
-                        }
+                Task {
+                    let machines = await RayonUtil.selectMachine(allowMany: true)
+                    for machine in machines {
+                        transferManager.begin(for: machine)
                     }
                 }
             } label: {

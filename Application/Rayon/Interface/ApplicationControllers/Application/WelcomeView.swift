@@ -51,20 +51,20 @@ struct WelcomeView: View {
                         .disableAutocorrection(true)
                         .focused($textFieldIsFocused)
                         .font(.system(.headline, design: .rounded))
-                        .onChange(of: quickConnect, perform: { newValue in
+                        .onChange(of: quickConnect) { _, newValue in
                             if newValue.hasPrefix("ssh ssh ") {
                                 // user pasting command
                                 quickConnect.removeFirst("ssh ".count)
                             }
                             buttonDisabled = SSHCommandReader(command: newValue) == nil
                             refreshSuggestion()
-                        })
-                        .onChange(of: textFieldIsFocused, perform: { newValue in
+                        }
+                        .onChange(of: textFieldIsFocused) { _, newValue in
                             // Autofill "ssh " if the text field is empty.
                             if newValue, quickConnect.isEmpty {
                                 quickConnect = "ssh "
                             }
-                        })
+                        }
                         .onSubmit {
                             beginQuickConnect()
                         }
