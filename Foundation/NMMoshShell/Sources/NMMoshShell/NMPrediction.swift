@@ -11,7 +11,7 @@
 import Foundation
 
 /// Mosh local echo prediction engine.
-public final class NMPrediction: Sendable {
+public final class NMPrediction: @unchecked Sendable {
 
     // MARK: - Types
 
@@ -45,7 +45,7 @@ public final class NMPrediction: Sendable {
 
     // MARK: - Terminal State
 
-    private struct TerminalState {
+    private struct TerminalState: Equatable, Sendable {
         var rows: Int
         var cols: Int
         var cursorRow: Int
@@ -128,11 +128,20 @@ public final class NMPrediction: Sendable {
         lock.lock()
         defer { lock.unlock() }
 
+        let predictedState = applyPredictionState(input: input, to: currentState).state
+        let actualTerminalState = makeTerminalState(
+            from: actualState,
+            cursorRow: cursorPosition.0,
+            cursorCol: cursorPosition.1,
+            rows: currentState.rows,
+            cols: currentState.cols
+        )
+
         // Record for adaptive learning
         let record = PredictionRecord(
             input: input,
-            predictedState: currentState.copy(),
-            actualState: currentState.copy(), // TODO: Parse actual state
+            predictedState: predictedState,
+            actualState: actualTerminalState,
             timestamp: Date()
         )
 
@@ -140,9 +149,7 @@ public final class NMPrediction: Sendable {
         if predictionHistory.count > maxHistorySize {
             predictionHistory.removeFirst()
         }
-
-        // Update state with actual
-        // TODO: Parse and apply actual state
+        currentState = actualTerminalState
     }
 
     /// Update current terminal state
@@ -154,9 +161,13 @@ public final class NMPrediction: Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        // TODO: Parse display into buffer
-        currentState.cursorRow = cursorRow
-        currentState.cursorCol = cursorCol
+        currentState = makeTerminalState(
+            from: display,
+            cursorRow: cursorRow,
+            cursorCol: cursorCol,
+            rows: currentState.rows,
+            cols: currentState.cols
+        )
     }
 
     /// Resize terminal
@@ -202,12 +213,8 @@ public final class NMPrediction: Sendable {
         let recent = predictionHistory.suffix(20)
         var correct = 0
 
-        for record in recent {
-            // Compare predicted vs actual
-            if record.actualState != nil {
-                // TODO: Implement proper comparison
-                correct += 1
-            }
+        for record in recent where record.actualState == record.predictedState {
+            correct += 1
         }
 
         return Double(correct) / Double(recent.count)
@@ -217,44 +224,11 @@ public final class NMPrediction: Sendable {
         input: String,
         to state: TerminalState
     ) -> (String, (Int, Int)) {
-        var result = ""
-        var row = state.cursorRow
-        var col = state.cursorCol
-        var buffer = state.buffer
-
-        for char in input {
-            // Handle special characters
-            if char == "\r" || char == "\n" {
-                result += "\r\n"
-                row = min(row + 1, state.rows - 1)
-                col = 0
-            } else if char == "\u{08}" || char == "\u{7F}" {
-                // Backspace
-                if col > 0 {
-                    col -= 1
-                    result += "\u{08} \u{08}" // Backspace, space, backspace
-                }
-            } else if char.isPrintable {
-                // Regular printable character
-                if col < state.cols {
-                    result.append(char)
-                    col += 1
-                }
-
-                // Update buffer
-                if row < state.rows && col < state.cols {
-                    buffer[row][col] = char
-                }
-            }
-
-            // Handle cursor position wrapping
-            if col >= state.cols {
-                col = 0
-                row = min(row + 1, state.rows - 1)
-            }
-        }
-
-        return (result, (row, col))
+        let predicted = applyPredictionState(input: input, to: state)
+        return (
+            predicted.displayString,
+            (predicted.state.cursorRow, predicted.state.cursorCol)
+        )
     }
 
     private func confidenceFor(input: String, mode: Mode) -> Double {
@@ -269,6 +243,103 @@ public final class NMPrediction: Sendable {
             // Base on history
             return min(0.95, calculateRecentAccuracy() + 0.1)
         }
+    }
+}
+
+private extension NMPrediction {
+    private func applyPredictionState(
+        input: String,
+        to state: TerminalState
+    ) -> (displayString: String, state: TerminalState) {
+        var updatedState = state.copy()
+        var rendered = ""
+
+        for char in input {
+            switch char {
+            case "\r":
+                updatedState.cursorCol = 0
+                rendered += "\r"
+            case "\n":
+                updatedState.cursorCol = 0
+                if updatedState.cursorRow < updatedState.rows - 1 {
+                    updatedState.cursorRow += 1
+                }
+                rendered += "\n"
+            case "\u{08}", "\u{7F}":
+                if updatedState.cursorCol > 0 {
+                    updatedState.cursorCol -= 1
+                    updatedState.buffer[updatedState.cursorRow][updatedState.cursorCol] = " "
+                    rendered += "\u{08} \u{08}"
+                }
+            default:
+                guard char.isPrintable else { continue }
+                guard updatedState.cursorRow < updatedState.rows else { continue }
+
+                if updatedState.cursorCol >= updatedState.cols {
+                    updatedState.cursorCol = 0
+                    if updatedState.cursorRow < updatedState.rows - 1 {
+                        updatedState.cursorRow += 1
+                    }
+                }
+
+                guard updatedState.cursorCol < updatedState.cols else { continue }
+
+                updatedState.buffer[updatedState.cursorRow][updatedState.cursorCol] = char
+                updatedState.cursorCol += 1
+                rendered.append(char)
+            }
+        }
+
+        return (rendered, updatedState)
+    }
+
+    private func makeTerminalState(
+        from display: String,
+        cursorRow: Int,
+        cursorCol: Int,
+        rows: Int,
+        cols: Int
+    ) -> TerminalState {
+        var state = TerminalState(
+            rows: rows,
+            cols: cols,
+            cursorRow: 0,
+            cursorCol: 0,
+            buffer: Array(repeating: Array(repeating: Character(" "), count: cols), count: rows)
+        )
+
+        var row = 0
+        var col = 0
+
+        for char in display {
+            switch char {
+            case "\r":
+                col = 0
+            case "\n":
+                col = 0
+                if row < rows - 1 {
+                    row += 1
+                }
+            default:
+                guard char.isPrintable else { continue }
+                guard row < rows else { break }
+
+                if col >= cols {
+                    col = 0
+                    if row < rows - 1 {
+                        row += 1
+                    }
+                }
+
+                guard col < cols else { continue }
+                state.buffer[row][col] = char
+                col += 1
+            }
+        }
+
+        state.cursorRow = max(0, min(cursorRow, rows - 1))
+        state.cursorCol = max(0, min(cursorCol, cols - 1))
+        return state
     }
 }
 

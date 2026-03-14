@@ -49,7 +49,6 @@ public final class NMCrypto: @unchecked Sendable {
         }
         self.keyData = keyData
         self.ocb = try NMOCB(key: keyData)
-        print("[NMCrypto] Initialized with key: \(keyData.map { String(format: "%02x", $0) }.joined(separator: " "))")
     }
 
     // MARK: - Public Methods
@@ -138,18 +137,10 @@ public final class NMCrypto: @unchecked Sendable {
             base64.append("=")
         }
 
-        print("[NMCrypto] Decoding key string: '\(keyString)' (padded: '\(base64)')")
-
         // Decode base64 - this gives us the raw 16-byte AES-128 key
         guard let data = Data(base64Encoded: base64) else {
-            print("[NMCrypto] ERROR: Failed to decode base64 key")
-            // Fallback: use the string bytes directly (for backwards compatibility)
-            return keyString.prefix(16).data(using: .utf8) ?? Data(count: 16)
+            return Data()
         }
-
-        print("[NMCrypto] Decoded key: \(data.count) bytes")
-        print("[NMCrypto] Key hex: \(data.map { String(format: "%02x", $0) }.joined(separator: " "))")
-
         return data
     }
 }

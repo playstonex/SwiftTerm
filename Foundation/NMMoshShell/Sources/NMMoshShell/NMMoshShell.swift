@@ -16,6 +16,21 @@ import Network
 /// - Intelligent display: State synchronization protocol
 public final class NMMoshShell: @unchecked Sendable {
 
+    // MARK: - Types
+
+    public enum PredictionMode: String, Sendable {
+        case adaptive = "adaptive"
+        case always = "always"
+        case never = "never"
+        case experimental = "experimental"
+    }
+
+    private struct ConnectionConfiguration: Sendable {
+        let host: String
+        let port: UInt16
+        let key: String
+    }
+
     // MARK: - Public Properties
 
     /// Whether the client is connected to the remote server
@@ -44,20 +59,13 @@ public final class NMMoshShell: @unchecked Sendable {
 
     // MARK: - Private Properties
 
-    private var udpConnection: NMUDPConnection?
+    private let lock = NSLock()
+    private var session: NMSession?
+    private var sessionLoopTask: Task<Void, Never>?
     private var predictionMode: PredictionMode = .adaptive
-
-    // Store a reference to the underlying SSH shell for bootstrap
-    private var sshShellPointer: UnsafeMutableRawPointer?
-
-    // MARK: - Types
-
-    public enum PredictionMode: String, Sendable {
-        case adaptive = "adaptive"
-        case always = "always"
-        case never = "never"
-        case experimental = "experimental"
-    }
+    private var configuredBootstrapPort: UInt16 = 22
+    private var connectionConfiguration: ConnectionConfiguration?
+    private var outputHandler: ((String) -> Void)?
 
     // MARK: - Initialization
 
@@ -75,7 +83,7 @@ public final class NMMoshShell: @unchecked Sendable {
     /// Set up connection port (for SSH bootstrap)
     @discardableResult
     public func setupConnectionPort(_ port: NSNumber) -> Self {
-        // Store for SSH bootstrap
+        configuredBootstrapPort = UInt16(truncating: port)
         return self
     }
 
@@ -95,51 +103,137 @@ public final class NMMoshShell: @unchecked Sendable {
 
     // MARK: - Connection
 
-    /// Connect to remote server using external SSH bootstrap and establish UDP connection
+    /// Connect to remote server using external SSH bootstrap and establish a Mosh session.
     public func requestConnectAndWait() async throws {
-        // This method should be called after SSH bootstrap
-        // The caller must provide connection parameters via configureMoshConnection
+        guard isAuthenticated else {
+            throw MoshError.authenticationFailed("SSH bootstrap authentication is required before starting Mosh")
+        }
 
-        throw MoshError.notImplemented
+        guard let configuration = lock.withLock({ connectionConfiguration }) else {
+            throw MoshError.missingConnectionParameters
+        }
+
+        if lock.withLock({ isConnected && self.session != nil }) {
+            return
+        }
+
+        let session = NMSession()
+        session.debugLogging = false
+
+        lock.withLock {
+            self.session = session
+            self.lastError = nil
+            self.isConnected = false
+        }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let continuationLock = NSLock()
+            var resumed = false
+            var timeoutTask: Task<Void, Never>?
+
+            func finish(_ result: Result<Void, Error>) {
+                continuationLock.withLock {
+                    guard !resumed else { return }
+                    resumed = true
+                    timeoutTask?.cancel()
+                    continuation.resume(with: result)
+                }
+            }
+
+            timeoutTask = Task {
+                let timeoutNanoseconds = UInt64(max(self.operationTimeout, 1) * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+                finish(.failure(MoshError.connectionTimeout))
+                session.disconnect()
+            }
+
+            session.connect(
+                host: configuration.host,
+                port: configuration.port,
+                key: configuration.key,
+                stateHandler: { [weak self] state in
+                    guard let self else { return }
+                    switch state {
+                    case .connecting:
+                        break
+                    case .connected:
+                        self.lock.withLock {
+                            self.isConnected = true
+                            self.lastError = nil
+                        }
+                        finish(.success(()))
+                    case .disconnected:
+                        self.lock.withLock {
+                            self.isConnected = false
+                        }
+                        finish(.failure(MoshError.udpConnectionFailed("Mosh session disconnected before becoming ready")))
+                    case .failed(let error):
+                        self.lock.withLock {
+                            self.isConnected = false
+                            self.lastError = String(describing: error)
+                            self.session = nil
+                        }
+                        finish(.failure(self.mapConnectionError(error)))
+                    }
+                },
+                receiveHandler: { [weak self] output in
+                    self?.forwardSessionOutput(output)
+                }
+            )
+        }
     }
 
-    /// Configure Mosh connection with parameters from SSH bootstrap
+    /// Configure Mosh connection with parameters from SSH bootstrap.
     public func configureMoshConnection(ip: String, port: String, key: String) async throws {
-        let portNum = UInt16(port) ?? 60001
+        guard let portNum = UInt16(port) else {
+            throw MoshError.invalidEndpoint
+        }
 
-        // Create UDP connection
-        let connection = NMUDPConnection()
+        do {
+            _ = try NMCrypto(keyString: key)
+        } catch {
+            lastError = String(describing: error)
+            throw MoshError.udpConnectionFailed("Invalid Mosh key: \(error)")
+        }
 
-        connectionKey = key
-        remotePort = portNum
-
-        // Start connection
-        try? await connection.connect(host: ip, port: portNum)
-        udpConnection = connection
-        isConnected = true
-        resolvedRemoteIpAddress = ip
+        let configuration = ConnectionConfiguration(host: ip, port: portNum, key: key)
+        lock.withLock {
+            connectionConfiguration = configuration
+            remoteHost = ip
+            remotePort = portNum
+            connectionKey = key
+            resolvedRemoteIpAddress = ip
+            isConnected = false
+            lastError = nil
+        }
     }
 
     /// Disconnect from remote server
     public func requestDisconnectAndWait() async {
-        isConnected = false
-        isAuthenticated = false
+        let sessionToDisconnect = lock.withLock { () -> NMSession? in
+            let activeSession = session
+            sessionLoopTask?.cancel()
+            sessionLoopTask = nil
+            session = nil
+            isConnected = false
+            isAuthenticated = false
+            outputHandler = nil
+            return activeSession
+        }
 
-        // Close UDP connection
-        udpConnection?.disconnect()
-        udpConnection = nil
+        sessionToDisconnect?.disconnect()
     }
 
     // MARK: - Authentication
 
-    /// Authentication should be done via SSH before calling configureMoshConnection
+    /// Authentication should be done via SSH before calling configureMoshConnection.
     public func setAuthenticated() {
         isAuthenticated = true
     }
 
     // MARK: - Shell Session
 
-    /// Begin an interactive shell session with Mosh
+    /// Begin an interactive shell session with Mosh.
     public func begin(
         withTerminalType terminalType: String?,
         withOnCreate onCreate: @escaping () -> Void,
@@ -148,68 +242,50 @@ public final class NMMoshShell: @unchecked Sendable {
         withOutputDataBuffer: @escaping (String) -> Void,
         withContinuationHandler: @escaping () -> Bool
     ) {
-        guard let connection = udpConnection else {
-            lastError = "UDP connection not established"
+        guard let session = lock.withLock({ self.session }), isConnected else {
+            lastError = "Mosh session not connected"
             return
         }
 
-        // Notify creation
+        lock.withLock {
+            outputHandler = withOutputDataBuffer
+            sessionLoopTask?.cancel()
+        }
+
         onCreate()
 
-        // Set up state synchronization
-        let size = withTerminalSize()
-        let rows = Int(size.height)
-        let cols = Int(size.width)
+        let prediction = NMPrediction(
+            rows: max(Int(withTerminalSize().height), 1),
+            cols: max(Int(withTerminalSize().width), 1),
+            mode: NMPrediction.Mode(rawValue: predictionMode.rawValue) ?? .adaptive
+        )
 
-        let stateSync = NMStateSync(rows: rows, cols: cols)
+        let sessionTask = Task { [weak self] in
+            var lastSize = CGSize(width: 0, height: 0)
 
-        // Convert prediction mode
-        let predMode = NMPrediction.Mode(rawValue: predictionMode.rawValue) ?? .adaptive
-        let prediction = NMPrediction(rows: rows, cols: cols, mode: predMode)
+            while withContinuationHandler() {
+                let requestedSize = withTerminalSize()
+                if requestedSize.width != lastSize.width || requestedSize.height != lastSize.height {
+                    lastSize = requestedSize
+                    let rows = UInt16(max(Int(requestedSize.height), 1))
+                    let cols = UInt16(max(Int(requestedSize.width), 1))
+                    prediction.resize(rows: Int(rows), cols: Int(cols))
+                    session.sendResize(rows: rows, cols: cols)
+                }
 
-        // Store for later use
-        // Note: In production, these should be stored as properties
+                if let pendingInput = withWriteDataBuffer(), !pendingInput.isEmpty {
+                    _ = prediction.predict(input: pendingInput)
+                    session.sendString(pendingInput)
+                }
 
-        // Start receive loop
-        Task {
-            await runSession(
-                connection: connection,
-                stateSync: stateSync,
-                prediction: prediction,
-                withTerminalSize: withTerminalSize,
-                withWriteDataBuffer: withWriteDataBuffer,
-                withOutputDataBuffer: withOutputDataBuffer,
-                withContinuationHandler: withContinuationHandler
-            )
+                try? await Task.sleep(nanoseconds: 20_000_000)
+            }
+
+            await self?.requestDisconnectAndWait()
         }
-    }
 
-    // MARK: - Session Loop
-
-    private func runSession(
-        connection: NMUDPConnection,
-        stateSync: NMStateSync,
-        prediction: NMPrediction,
-        withTerminalSize: @escaping () -> CGSize,
-        withWriteDataBuffer: @escaping () -> String?,
-        withOutputDataBuffer: @escaping (String) -> Void,
-        withContinuationHandler: @escaping () -> Bool
-    ) async {
-        // Stream for receiving UDP data
-        let stream = connection.receiveStream()
-
-        // Main session loop
-        for await data in stream {
-            // Check continuation
-            guard withContinuationHandler() else {
-                connection.disconnect()
-                return
-            }
-
-            // Handle received data
-            if let str = String(data: data, encoding: .utf8) {
-                withOutputDataBuffer(str)
-            }
+        lock.withLock {
+            sessionLoopTask = sessionTask
         }
     }
 
@@ -217,21 +293,64 @@ public final class NMMoshShell: @unchecked Sendable {
 
     /// Get the last error message
     public func getLastError() -> String? {
-        return lastError
+        lastError
     }
 
     /// Request status pickup (event loop trigger)
     public func explicitRequestStatusPickup() {
-        // No-op for Mosh (UDP is stateless)
+        // The polling loop in `begin` is responsible for draining input and size updates.
     }
 
     /// Permanently destroy the shell and clean up resources
     public func destroyPermanently() {
-        udpConnection?.disconnect()
-        udpConnection = nil
+        let sessionToDisconnect = lock.withLock { () -> NMSession? in
+            let activeSession = session
+            sessionLoopTask?.cancel()
+            sessionLoopTask = nil
+            session = nil
+            outputHandler = nil
+            isConnected = false
+            isAuthenticated = false
+            return activeSession
+        }
 
-        isConnected = false
-        isAuthenticated = false
+        sessionToDisconnect?.disconnect()
+    }
+
+    private func mapConnectionError(_ error: Error) -> MoshError {
+        if let moshError = error as? MoshError {
+            return moshError
+        }
+
+        switch error {
+        case let udpError as UDPError:
+            switch udpError {
+            case .invalidEndpoint:
+                return .invalidEndpoint
+            case .connectionTimeout:
+                return .connectionTimeout
+            case .notConnected:
+                return .udpConnectionFailed("UDP socket is not connected")
+            }
+        default:
+            return .udpConnectionFailed(String(describing: error))
+        }
+    }
+
+    private func forwardSessionOutput(_ data: Data) {
+        let text = decodeMoshText(data)
+        let handler = lock.withLock { outputHandler }
+        handler?(text)
+    }
+
+    private func decodeMoshText(_ data: Data) -> String {
+        if let utf8 = String(data: data, encoding: .utf8) {
+            return utf8
+        }
+        if let latin1 = String(data: data, encoding: .isoLatin1) {
+            return latin1
+        }
+        return String(decoding: data, as: UTF8.self)
     }
 }
 
@@ -246,5 +365,14 @@ public enum MoshError: Error, Sendable {
     case invalidEndpoint
     case connectionTimeout
     case udpConnectionFailed(String)
+    case missingConnectionParameters
     case notImplemented
+}
+
+private extension NSLock {
+    func withLock<T>(_ operation: () throws -> T) rethrows -> T {
+        lock()
+        defer { unlock() }
+        return try operation()
+    }
 }

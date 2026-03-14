@@ -5,17 +5,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/RevenueCat/purchases-ios-spm.git",
       "state" : {
-        "revision" : "d9303831a73a13178b593f2ec2d2417252542f7c",
-        "version" : "5.61.0"
-      }
-    },
-    {
-      "identity" : "swiftterm",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/playstonex/SwiftTerm.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "b0c2786bf3f050d8fc04d85b01a502271f42a75d"
+        "revision" : "1498a92120602fc7b931cb3408abbc60c032b81b",
+        "version" : "5.62.0"
       }
     },
     {

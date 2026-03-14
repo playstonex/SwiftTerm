@@ -48,7 +48,15 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
         get { _terminalSize }
         set {
             _terminalSize = newValue
+            #if canImport(NMMoshShell)
+            if let moshConnection {
+                moshConnection.explicitRequestStatusPickup()
+            } else {
+                sshConnection.explicitRequestStatusPickup()
+            }
+            #else
             sshConnection.explicitRequestStatusPickup()
+            #endif
         }
     }
 
@@ -59,6 +67,10 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
     private var outputHistory: String = ""
     private let maxHistorySize = 50000
     private let historyLock = NSLock()
+
+    #if canImport(NMMoshShell)
+    private var moshConnection: NMMoshShell?
+    #endif
 
     // MARK: - Terminal Interface
 
@@ -122,14 +134,36 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
             putInformation("[*] Mosh server started on \(moshParams.ip):\(moshParams.port)")
 
             #if canImport(NMMoshShell)
-            // Configure Mosh client with UDP connection
-            // TODO: Implement full Mosh protocol
-            putInformation("[i] Mosh UDP connection - implementing")
+            let mosh = NMMoshShell()
+                .setupConnectionHost(moshParams.ip)
+                .setupConnectionPort(NSNumber(value: Int(machine.remotePort) ?? 22))
+                .setupConnectionTimeout(NSNumber(value: 30))
+                .setupPredictionMode(
+                    NMMoshShell.PredictionMode(rawValue: machine.moshPredictionMode.rawValue) ?? .adaptive
+                )
+            mosh.setAuthenticated()
+
+            do {
+                try await mosh.configureMoshConnection(
+                    ip: moshParams.ip,
+                    port: moshParams.port,
+                    key: moshParams.key
+                )
+                try await mosh.requestConnectAndWait()
+                self.moshConnection = mosh
+
+                putInformation("[+] Mosh session active")
+                sshConnection.requestDisconnectAndWait()
+                beginMoshShell(mosh)
+                return
+            } catch {
+                putInformation("[!] Failed to establish Mosh UDP session: \(error.localizedDescription)")
+                self.moshConnection = nil
+            }
             #endif
         }
 
-        // For now, fall back to SSH shell
-        putInformation("[i] Falling back to SSH shell (Mosh protocol in progress)")
+        putInformation("[i] Falling back to SSH shell")
         beginSSHShell()
     }
 
@@ -355,6 +389,12 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
         bufferLock.unlock()
 
         Task {
+            #if canImport(NMMoshShell)
+            if let moshConnection = self.moshConnection {
+                moshConnection.explicitRequestStatusPickup()
+                return
+            }
+            #endif
             self.sshConnection.explicitRequestStatusPickup()
         }
     }
@@ -381,6 +421,31 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
         termInterface.write(str + "\r\n")
     }
 
+    #if canImport(NMMoshShell)
+    private func beginMoshShell(_ mosh: NMMoshShell) {
+        mosh.begin(
+            withTerminalType: "xterm"
+        ) {
+            // Channel opened
+        } withTerminalSize: { [weak self] in
+            var size = self?.terminalSize ?? CGSize(width: 80, height: 40)
+            if size.width < 8 || size.height < 8 {
+                size = CGSize(width: 80, height: 40)
+            }
+            return size
+        } withWriteDataBuffer: { [weak self] in
+            self?.getBuffer() ?? ""
+        } withOutputDataBuffer: { [weak self] output in
+            Task { @MainActor in
+                self?.termInterface.write(output)
+            }
+            self?.handleShellOutput(output)
+        } withContinuationHandler: { [weak self] in
+            self?.continueDecision ?? false
+        }
+    }
+    #endif
+
     // MARK: - Shutdown
 
     public func processShutdown(exitFromShell: Bool = false) {
@@ -397,6 +462,10 @@ public final class MoshTerminalContext: ObservableObject, Identifiable {
         continueDecision = false
 
         Task {
+            #if canImport(NMMoshShell)
+            await self.moshConnection?.requestDisconnectAndWait()
+            self.moshConnection = nil
+            #endif
             self.sshConnection.requestDisconnectAndWait()
         }
     }

@@ -19,7 +19,7 @@ import zlib
 public final class NMSession: @unchecked Sendable {
 
     /// Enable/disable verbose debug logging
-    public var debugLogging: Bool = true
+    public var debugLogging: Bool = false
 
     // MARK: - Types
 
@@ -121,10 +121,12 @@ public final class NMSession: @unchecked Sendable {
         do {
             self.crypto = try NMCrypto(keyString: key)
             encryptionEnabled = true
-            print("[Mosh] Encryption initialized successfully")
         } catch {
+            self.crypto = nil
             encryptionEnabled = false
-            print("[Mosh] Encryption initialization failed: \(error), continuing without encryption")
+            lock.unlock()
+            updateState(.failed(error))
+            return
         }
 
         // Mosh transport starts from state 0 as initial baseline.

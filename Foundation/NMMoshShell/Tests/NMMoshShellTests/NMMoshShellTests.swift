@@ -145,23 +145,25 @@ final class NMMoshShellTests: XCTestCase {
     // MARK: - Crypto Tests
 
     func testCryptoKeyDerivation() throws {
-        let keyString = "test-key-12345"
+        let keyString = "Hi7X2KHDY9uaYaxPSc0g/Q"
         let crypto = try NMCrypto(keyString: keyString)
 
-        // Key derivation should succeed
         XCTAssertNotNil(crypto)
     }
 
     func testCryptoEncryptDecrypt() throws {
-        let crypto = try NMCrypto(keyString: "test-key")
+        let crypto = try NMCrypto(keyString: "Hi7X2KHDY9uaYaxPSc0g/Q")
         let plaintext = "Hello, Mosh!".data(using: .utf8)!
+        let nonce = MoshNonce(clientToServer: 42).toData()
 
-        // In current implementation, encryption is a no-op
-        let encrypted = try crypto.encrypt(plaintext)
-        let decrypted = try crypto.decrypt(encrypted)
+        let encrypted = try crypto.encrypt(plaintext, nonce: nonce)
+        let decrypted = try crypto.decrypt(encrypted, nonce: nonce)
 
-        // Should be equal (no-op encryption)
         XCTAssertEqual(decrypted, plaintext)
+    }
+
+    func testCryptoRejectsInvalidMoshKey() {
+        XCTAssertThrowsError(try NMCrypto(keyString: "test-key"))
     }
 
     // MARK: - StateSync Tests
@@ -220,6 +222,29 @@ final class NMMoshShellTests: XCTestCase {
         XCTAssertEqual(cell.char, "A")
     }
 
+    func testStateSyncAppliesAttributesAndColors() throws {
+        let sync = NMStateSync(rows: 4, cols: 4)
+
+        let diff = NMStateSync.StateDiff(
+            sequenceNumber: 1,
+            displayChanges: [
+                .setAttribute(bold: true, underline: true, reverse: nil),
+                .setColor(foreground: .index(2), background: .rgb(1, 2, 3)),
+                .write(row: 0, col: 0, string: "Z")
+            ],
+            timestamp: 0
+        )
+
+        sync.applyDiff(diff)
+
+        let cell = sync.terminalState.cell(at: 0, col: 0)
+        XCTAssertEqual(cell.char, "Z")
+        XCTAssertTrue(cell.bold)
+        XCTAssertTrue(cell.underline)
+        XCTAssertEqual(cell.foregroundColor, .index(2))
+        XCTAssertEqual(cell.backgroundColor, .rgb(1, 2, 3))
+    }
+
     // MARK: - Prediction Tests
 
     func testPredictionInitialization() throws {
@@ -249,11 +274,67 @@ final class NMMoshShellTests: XCTestCase {
         XCTAssertGreaterThan(result.confidence, 0.5)
     }
 
+    func testPredictionTracksActualState() throws {
+        let prediction = NMPrediction(rows: 4, cols: 8, mode: .always)
+
+        prediction.updateState(display: "ab", cursorRow: 0, cursorCol: 2)
+        prediction.confirmPrediction(
+            input: "c",
+            actualState: "abc",
+            cursorPosition: (0, 3)
+        )
+
+        let result = prediction.predict(input: "d")
+        XCTAssertEqual(result.displayString, "d")
+        XCTAssertEqual(result.cursorPosition.row, 0)
+        XCTAssertEqual(result.cursorPosition.col, 4)
+    }
+
+    // MARK: - Public API Tests
+
+    func testMoshShellRejectsConnectWithoutBootstrapAuthentication() async {
+        let shell = NMMoshShell()
+
+        await XCTAssertThrowsErrorAsync(try await shell.requestConnectAndWait()) { error in
+            guard case MoshError.authenticationFailed = error else {
+                return XCTFail("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    func testMoshShellStoresBootstrapConnectionParameters() async throws {
+        let shell = NMMoshShell()
+
+        try await shell.configureMoshConnection(
+            ip: "192.0.2.1",
+            port: "60001",
+            key: "Hi7X2KHDY9uaYaxPSc0g/Q"
+        )
+
+        XCTAssertEqual(shell.remoteHost, "192.0.2.1")
+        XCTAssertEqual(shell.remotePort, 60001)
+        XCTAssertEqual(shell.connectionKey, "Hi7X2KHDY9uaYaxPSc0g/Q")
+        XCTAssertEqual(shell.resolvedRemoteIpAddress, "192.0.2.1")
+        XCTAssertFalse(shell.isConnected)
+    }
+
     // MARK: - UDPConnection Tests
 
     func testUDPConnectionInit() throws {
         let connection = NMUDPConnection()
 
         XCTAssertEqual(connection.state, .idle)
+    }
+}
+
+private func XCTAssertThrowsErrorAsync(
+    _ expression: @autoclosure () async throws -> Void,
+    _ handler: (Error) -> Void
+) async {
+    do {
+        try await expression()
+        XCTFail("Expected error to be thrown")
+    } catch {
+        handler(error)
     }
 }

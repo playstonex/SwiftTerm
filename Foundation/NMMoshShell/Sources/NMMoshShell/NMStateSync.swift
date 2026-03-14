@@ -16,7 +16,7 @@ import Foundation
 /// Mosh state synchronization manager.
 ///
 /// Implements the client-side of the SSP protocol.
-public final class NMStateSync: Sendable {
+public final class NMStateSync: @unchecked Sendable {
 
     // MARK: - Types
 
@@ -125,6 +125,11 @@ public final class NMStateSync: Sendable {
     private var expectedSequenceNumber: UInt64 = 0
     private var lastServerSequence: UInt64 = 0
     private var pendingAcknowledgments: Set<UInt64> = []
+    private var currentBold: Bool = false
+    private var currentUnderline: Bool = false
+    private var currentReverse: Bool = false
+    private var currentForegroundColor: TerminalState.Color = .default
+    private var currentBackgroundColor: TerminalState.Color = .default
 
     public var terminalState: TerminalState {
         lock.lock()
@@ -215,9 +220,23 @@ public final class NMStateSync: Sendable {
             applyScroll(lines: lines, direction: .down)
         case .setCursor(let row, let col):
             currentState.setCursor(row: row, col: col)
-        case .setAttribute, .setColor:
-            // TODO: Implement attribute changes
-            break
+        case .setAttribute(let bold, let underline, let reverse):
+            if let bold {
+                currentBold = bold
+            }
+            if let underline {
+                currentUnderline = underline
+            }
+            if let reverse {
+                currentReverse = reverse
+            }
+        case .setColor(let foreground, let background):
+            if let foreground {
+                currentForegroundColor = foreground
+            }
+            if let background {
+                currentBackgroundColor = background
+            }
         }
     }
 
@@ -227,6 +246,11 @@ public final class NMStateSync: Sendable {
             if currentCol < currentState.cols {
                 var cell = currentState.cell(at: row, col: currentCol)
                 cell.char = char
+                cell.bold = currentBold
+                cell.underline = currentUnderline
+                cell.reverse = currentReverse
+                cell.foregroundColor = currentForegroundColor
+                cell.backgroundColor = currentBackgroundColor
                 currentState.setCell(cell, at: row, col: currentCol)
                 currentCol += 1
             }
