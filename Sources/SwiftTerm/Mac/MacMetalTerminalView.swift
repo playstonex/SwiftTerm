@@ -30,10 +30,24 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     /// Whether we're in a key repeat
     private var isKeyRepeating: Bool = false
 
+    /// Track the active IME composition so AppKit can manage marked text correctly.
+    private var markedText: NSAttributedString?
+    private var markedTextSelectionRange = NSRange(location: 0, length: 0)
+
     // MARK: - NSTextInputClient
 
     open func insertText(_ string: Any, replacementRange: NSRange) {
-        guard let text = string as? String else { return }
+        let text: String
+        if let attributedString = string as? NSAttributedString {
+            text = attributedString.string
+        } else if let plainString = string as? String {
+            text = plainString
+        } else {
+            return
+        }
+
+        markedText = nil
+        markedTextSelectionRange = NSRange(location: 0, length: 0)
         send(text: text)
     }
 
@@ -62,35 +76,54 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     }
 
     open func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
-        // Handle IME
+        if let attributedString = string as? NSAttributedString {
+            markedText = attributedString
+        } else if let plainString = string as? String {
+            markedText = NSAttributedString(string: plainString)
+        } else {
+            markedText = nil
+        }
+        markedTextSelectionRange = selectedRange
     }
 
     open func unmarkText() {
-        // Handle IME
+        markedText = nil
+        markedTextSelectionRange = NSRange(location: 0, length: 0)
     }
 
     open func selectedRange() -> NSRange {
-        return NSRange(location: NSNotFound, length: 0)
+        guard hasMarkedText() else {
+            return NSRange(location: NSNotFound, length: 0)
+        }
+        return markedTextSelectionRange
     }
 
     open func markedRange() -> NSRange {
-        return NSRange(location: NSNotFound, length: 0)
+        guard let markedText else {
+            return NSRange(location: NSNotFound, length: 0)
+        }
+        return NSRange(location: 0, length: markedText.length)
     }
 
     open func hasMarkedText() -> Bool {
-        return false
+        (markedText?.length ?? 0) > 0
     }
 
     open func attributedSubstring(forProposedRange range: NSRange, actualRange: NSRangePointer?) -> NSAttributedString? {
-        return nil
+        guard let markedText else { return nil }
+        let safeRange = NSIntersectionRange(range, NSRange(location: 0, length: markedText.length))
+        guard safeRange.length > 0 else { return nil }
+        actualRange?.pointee = safeRange
+        return markedText.attributedSubstring(from: safeRange)
     }
 
     open func validAttributesForMarkedText() -> [NSAttributedString.Key] {
-        return []
+        [.foregroundColor, .backgroundColor, .underlineStyle]
     }
 
     open func firstRect(forCharacterRange range: NSRange, actualRange: NSRangePointer?) -> NSRect {
         guard let terminal = terminal else { return .zero }
+        actualRange?.pointee = hasMarkedText() ? markedRange() : range
         let buffer = terminal.buffer
         let x = buffer.x
         let y = buffer.y
@@ -102,11 +135,12 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             height: cellDimension.height
         )
 
-        return convert(cellRect, to: nil)
+        let windowRect = convert(cellRect, to: nil)
+        return window?.convertToScreen(windowRect) ?? windowRect
     }
 
     open func characterIndex(for point: NSPoint) -> Int {
-        guard let terminal = terminal else { return 0 }
+        guard let terminal = terminal, cellDimension.width > 0, cellDimension.height > 0 else { return NSNotFound }
         let col = Int(point.x / cellDimension.width)
         let row = Int((frame.height - point.y) / cellDimension.height)
 
@@ -116,6 +150,7 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     // MARK: - Keyboard handling
 
     override open func keyDown(with event: NSEvent) {
+        selection?.active = false
         let modifierFlags = event.modifierFlags
 
         // Handle Cmd+C copy
@@ -137,22 +172,33 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             return
         }
 
-        // Handle option as meta
-        if optionAsMetaKey && modifierFlags.contains(.option) {
-            // Send ESC + key
-            let chars = event.charactersIgnoringModifiers ?? ""
-            if let char = chars.first {
-                send(text: "\u{1b}\(char)")
-            }
+        if hasMarkedText() {
+            interpretKeyEvents([event])
             return
         }
 
-        // Handle special keys
-        handleKeyCode(event.keyCode, modifierFlags: modifierFlags, event: event)
+        // Handle option as meta
+        if optionAsMetaKey,
+           modifierFlags.contains(.option),
+           !modifierFlags.contains(.command),
+           let chars = event.charactersIgnoringModifiers,
+           let char = chars.first
+        {
+            // Send ESC + key
+            send(text: "\u{1b}\(char)")
+            return
+        }
+
+        if handleSpecialKey(event.keyCode, modifierFlags: modifierFlags) {
+            return
+        }
+
+        interpretKeyEvents([event])
     }
 
-    private func handleKeyCode(_ keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags, event: NSEvent) {
-        guard terminal != nil else { return }
+    @discardableResult
+    private func handleSpecialKey(_ keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags) -> Bool {
+        guard terminal != nil else { return false }
 
         var sequence: String = ""
 
@@ -206,13 +252,11 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         case kVK_F12:
             sequence = "\u{1b}[24~"
         default:
-            if let chars = event.characters {
-                insertText(chars, replacementRange: NSRange(location: NSNotFound, length: 0))
-            }
-            return
+            return false
         }
 
         send(text: sequence)
+        return true
     }
 
     // MARK: - Copy/Paste
