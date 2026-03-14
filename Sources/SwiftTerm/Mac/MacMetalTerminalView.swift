@@ -308,6 +308,14 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         )
     }
 
+    private var prefersLocalScrollbackForWheel: Bool {
+        guard let terminal = terminal else { return false }
+        let displayBuffer = terminal.displayBuffer
+        return !terminal.isDisplayBufferAlternate
+            && displayBuffer.hasScrollback
+            && displayBuffer.lines.count > displayBuffer.rows
+    }
+
     /// Whether a mouse-reporting drag is in progress
     private var mouseTrackingActive: Bool = false
 
@@ -384,7 +392,7 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     override open func scrollWheel(with event: NSEvent) {
         guard let terminal = terminal else { return }
 
-        if terminal.mouseMode != .off && allowMouseReporting {
+        if terminal.mouseMode != .off && allowMouseReporting && !prefersLocalScrollbackForWheel {
             guard let hit = clampedScreenGridPosition(for: event) else { return }
             let rawDelta = event.hasPreciseScrollingDeltas
                 ? event.scrollingDeltaY / max(cellDimension.height, 1)
@@ -405,11 +413,11 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             : event.scrollingDeltaY
         let delta = Int(rawDelta.rounded(.toNearestOrAwayFromZero))
         if delta != 0 {
-            let buffer = terminal.buffer
-            let newYDisp = max(0, min(buffer.yDisp - delta, buffer.lines.count - terminal.rows))
-            if newYDisp != buffer.yDisp {
-                terminal.buffer.yDisp = newYDisp
-                setTerminalNeedsDisplay()
+            let displayBuffer = terminal.displayBuffer
+            let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+            let newYDisp = max(0, min(displayBuffer.yDisp - delta, maxYDisp))
+            if newYDisp != displayBuffer.yDisp {
+                terminal.setViewYDisp(newYDisp)
             }
         }
     }
