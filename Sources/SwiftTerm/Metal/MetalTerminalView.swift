@@ -559,6 +559,11 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         setTerminalNeedsDisplay()
     }
 
+    /// Set cursor visibility for blinking animation
+    public func setCursorVisible(_ visible: Bool) {
+        renderer?.setCursorVisible(visible)
+    }
+
     public func hostCurrentDocumentUpdated(source: Terminal) {
         // Handled by platform-specific implementations
     }
