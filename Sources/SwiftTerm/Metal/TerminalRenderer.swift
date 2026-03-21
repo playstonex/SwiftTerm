@@ -178,6 +178,9 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     private var needsSelectionRebuild = true
     private var needsCursorRebuild = true
 
+    /// Controls cursor visibility for blinking animation
+    public var cursorVisible: Bool = true
+
     private var frameCount: Int = 0
     private var lastFrameTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     private var frameTimes: [CFTimeInterval] = []
@@ -514,6 +517,12 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         needsCursorRebuild = true
     }
 
+    /// Set cursor visibility for blinking animation
+    public func setCursorVisible(_ visible: Bool) {
+        cursorVisible = visible
+        needsCursorRebuild = true
+    }
+
     private func rebuildCachesIfNeeded(terminal: Terminal, fontSet: FontSet, commandBuffer: MTLCommandBuffer) {
         let rows = terminal.rows
         let cols = terminal.cols
@@ -558,6 +567,10 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
                 terminal: terminal,
                 cellDimension: cellDimension
             )
+            // Apply cursor visibility for blinking animation
+            if !cursorVisible {
+                cachedCursorVertices = []
+            }
             needsCursorRebuild = false
         }
     }
