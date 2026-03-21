@@ -22,6 +22,11 @@ public class SwiftTerminalView: NSView {
     private var lastLaidOutBounds: CGRect = .null
     private var notificationObservers: [NSObjectProtocol] = []
 
+    // Cursor blinking state
+    private var cursorBlinkTimer: Timer?
+    private var cursorVisible = true
+    private var isCursorBlinkingEnabled = true
+
     // MARK: - Initialization
 
     public required init(adapter: SwiftTerminalAdapter) {
@@ -44,6 +49,7 @@ public class SwiftTerminalView: NSView {
     }
 
     deinit {
+        stopCursorBlinkTimer()
         for observer in notificationObservers {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -81,6 +87,10 @@ public class SwiftTerminalView: NSView {
     private func setupDelegates() {
         viewDelegate = MetalViewDelegateHandler(adapter: adapter)
         metalView.terminalDelegate = viewDelegate
+        // Start cursor blinking after terminal is set up
+        Task { @MainActor [weak self] in
+            self?.startCursorBlinkTimerIfNeeded()
+        }
     }
 
     private func setupLifecycleObservers() {
@@ -88,14 +98,75 @@ public class SwiftTerminalView: NSView {
         notificationObservers.append(
             center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
                 self?.scheduleRefreshDisplay()
+                self?.startCursorBlinkTimerIfNeeded()
             }
         )
         notificationObservers.append(
             center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { [weak self] notification in
                 guard let self, notification.object as? NSWindow === self.window else { return }
                 self.scheduleRefreshDisplay()
+                self.startCursorBlinkTimerIfNeeded()
             }
         )
+        notificationObservers.append(
+            center.addObserver(forName: NSApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.stopCursorBlinkTimer()
+            }
+        )
+    }
+
+    // MARK: - Cursor Blinking
+
+    private func startCursorBlinkTimerIfNeeded() {
+        guard isCursorBlinkingEnabled else { return }
+        stopCursorBlinkTimer()
+
+        cursorBlinkTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            self?.toggleCursorBlink()
+        }
+        RunLoop.current.add(cursorBlinkTimer!, forMode: .common)
+    }
+
+    private func stopCursorBlinkTimer() {
+        cursorBlinkTimer?.invalidate()
+        cursorBlinkTimer = nil
+    }
+
+    private func toggleCursorBlink() {
+        guard let terminal = metalView.terminal else { return }
+        // Only blink for blink cursor styles
+        let style = terminal.options.cursorStyle
+        switch style {
+        case .blinkBlock, .blinkUnderline, .blinkBar:
+            cursorVisible.toggle()
+            metalView.renderer?.setCursorVisible(cursorVisible)
+            metalView.setTerminalNeedsDisplay()
+        case .steadyBlock, .steadyUnderline, .steadyBar:
+            // Steady cursor doesn't blink
+            cursorVisible = true
+        }
+    }
+
+    /// Reset cursor visibility (call this when user types or cursor moves)
+    public func resetCursorBlink() {
+        cursorVisible = true
+        metalView.renderer?.setCursorVisible(true)
+        metalView.setTerminalNeedsDisplay()
+        // Restart timer to sync blink cycle
+        startCursorBlinkTimerIfNeeded()
+    }
+
+    /// Enable or disable cursor blinking
+    public func setCursorBlinkingEnabled(_ enabled: Bool) {
+        isCursorBlinkingEnabled = enabled
+        if enabled {
+            startCursorBlinkTimerIfNeeded()
+        } else {
+            stopCursorBlinkTimer()
+            cursorVisible = true
+            metalView.renderer?.setCursorVisible(true)
+            metalView.setTerminalNeedsDisplay()
+        }
     }
 
     // MARK: - First Responder Handling
@@ -258,6 +329,9 @@ public class SwiftTerminalView: NSView {
         super.viewDidMoveToWindow()
         if window != nil, bounds.width > 1, bounds.height > 1 {
             refreshDisplay()
+            startCursorBlinkTimerIfNeeded()
+        } else {
+            stopCursorBlinkTimer()
         }
     }
 
