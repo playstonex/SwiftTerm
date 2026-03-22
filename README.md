@@ -98,6 +98,8 @@ to host a local Unix command, so I have included
 [`LocalProcessTerminalView`](https://migueldeicaza.github.io/SwiftTermDocs/documentation/swiftterm/localprocessterminalview)
  which is an implementation that connects
 the `TerminalView` to a Unix pseudo-terminal and runs a command there.
+For SwiftUI apps on macOS, `SwiftUILocalProcessTerminalView` wraps that view in
+an `NSViewRepresentable`.
 
 ## iOS UIView
 There is an equivalent UIKit UIView implementation for

@@ -67,6 +67,29 @@ class ViewController: NSViewController, LocalProcessTerminalViewDelegate {
 executable and arguments to `startProcess(executable:args:environment:)` to run
 other commands.
 
+## macOS: SwiftUI
+
+If your app is written in SwiftUI, use ``SwiftUILocalProcessTerminalView`` to
+embed a local terminal without writing an `NSViewController`:
+
+```swift
+import SwiftUI
+import SwiftTerm
+
+struct ContentView: View {
+    var body: some View {
+        SwiftUILocalProcessTerminalView(
+            currentDirectory: NSHomeDirectory()
+        )
+    }
+}
+```
+
+By default, ``SwiftUILocalProcessTerminalView`` launches the user's `SHELL` as a
+login shell. You can pass a custom executable, arguments, environment, working
+directory, or a `configure` closure to adjust the underlying
+``LocalProcessTerminalView`` before the process starts.
+
 ## macOS: Custom Data Source
 
 If you need to connect the terminal to a custom data source (SSH, a network

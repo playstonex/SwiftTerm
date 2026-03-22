@@ -58,7 +58,8 @@ public protocol LocalProcessDelegate: AnyObject {
  *
  * The `childfd` property has the Unix file descriptor for the primary side of the created pseudo-terminal.
  *
- * This implementation uses swift-subprocess with openpty/login_tty for pseudo-terminal support.
+ * On macOS, interactive shells use `forkpty` to ensure the child process gets a
+ * controlling terminal. Other platforms can use swift-subprocess when available.
  */
 public class LocalProcess {
     let readSize = 128*1024
@@ -255,8 +256,10 @@ public class LocalProcess {
         if running {
             return
         }
-        
-        #if canImport(Subprocess)
+
+        #if os(macOS)
+        startProcessWithForkpty(executable: executable, args: args, environment: environment, execName: execName, currentDirectory: currentDirectory)
+        #elseif canImport(Subprocess)
         startProcessWithSubprocess(executable: executable, args: args, environment: environment, execName: execName, currentDirectory: currentDirectory)
         #else
         startProcessWithForkpty(executable: executable, args: args, environment: environment, execName: execName, currentDirectory: currentDirectory)

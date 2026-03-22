@@ -24,7 +24,9 @@ project by using the URL for this repository.
 The macOS AppKit ``TerminalView`` is a reusable `NSView` that can be connected to
 any data source by implementing ``TerminalViewDelegate``. For the common case of
 running a local Unix process, ``LocalProcessTerminalView`` connects the terminal
-to a pseudo-terminal.
+to a pseudo-terminal. SwiftUI apps on macOS can use
+``SwiftUILocalProcessTerminalView`` as the higher-level wrapper around that same
+local process terminal.
 
 ### iOS and visionOS
 
@@ -71,6 +73,7 @@ testing, and screen-scraping terminal output.
 - ``LocalProcessDelegate``
 - ``LocalProcessTerminalView``
 - ``LocalProcessTerminalViewDelegate``
+- ``SwiftUILocalProcessTerminalView``
 
 ### Headless Usage
 
