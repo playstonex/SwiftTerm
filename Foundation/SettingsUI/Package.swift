@@ -15,7 +15,8 @@ let package = Package(
         .package(path: "../Premium"),
         .package(path: "../DataSync"),
         .package(path: "../Colorful"),
-        .package(path: "../../External/MachineStatus"),
+        .package(path: "../MachineStatus"),
+        .package(url: "https://github.com/RevenueCat/purchases-ios-spm.git", from: "5.0.0"),
     ],
     targets: [
         .target(
@@ -26,6 +27,7 @@ let package = Package(
                 "DataSync",
                 "Colorful",
                 "MachineStatus",
+                .product(name: "RevenueCat", package: "purchases-ios-spm"),
             ]
         ),
     ]

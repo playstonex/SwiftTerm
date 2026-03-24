@@ -12,6 +12,7 @@ import DataSync
 import MachineStatus
 import Premium
 import RayonModule
+import RevenueCat
 import Speech
 import SwiftUI
 import UniformTypeIdentifiers
@@ -19,6 +20,7 @@ import UniformTypeIdentifiers
 // MARK: - Settings Detail Content
 public struct SettingsDetailContent: View {
     public let item: SettingsItem
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject var store: RayonStore
     @ObservedObject var syncManager = AutoSyncManager.shared
     @ObservedObject var premium = PremiumManager.shared
@@ -38,6 +40,11 @@ public struct SettingsDetailContent: View {
     @State private var diskThreshold: Double = Double(MonitorThresholdProfile.default.diskPercent)
     @State private var showingThanks = false
     @State private var showingLicense = false
+    @State private var availablePackages: [Package] = []
+    @State private var isLoadingPackages = false
+    @State private var isRestoringPurchases = false
+    @State private var purchasingPackageID: String?
+    @State private var restoreMessage: String?
 
     #if os(iOS)
         @State private var exportDocument: ExportDocument?
@@ -71,7 +78,10 @@ public struct SettingsDetailContent: View {
                     selectedMachineForMonitor = machines.first?.id
                     loadThresholdForSelectedMachine()
                 }
-                Task { await premium.refreshSubscriptionStatus() }
+                Task {
+                    await premium.refreshSubscriptionStatus()
+                    await loadPackagesIfNeeded()
+                }
             }
             .onChange(of: selectedMachineForMonitor) { _, _ in
                 loadThresholdForSelectedMachine()
@@ -315,10 +325,257 @@ public struct SettingsDetailContent: View {
     // MARK: - Premium Views
 
     private var subscriptionStatusPlaceholderView: some View {
-        Section("Subscription Status") {
-            Text("Premium subscription management is available in the app.")
-                .frame(maxWidth: .infinity, alignment: .leading)
+        Group {
+            Section {
+                premiumStatusSummaryView
+
+                if premium.isSubscribed {
+                    premiumSubscriptionDetailsView
+                }
+            } header: {
+                Text("Subscription Status")
+            }
+
+            if !premium.isSubscribed {
+                Section {
+                    subscriptionOptionsView
+                } header: {
+                    Text("Subscription Options")
+                } footer: {
+                    Text("Choose a plan to unlock all premium features.")
+                }
+            }
+
+            Section {
+                Button {
+                    Task {
+                        await restorePurchases()
+                    }
+                } label: {
+                    if isRestoringPurchases {
+                        Label {
+                            Text("Restoring Purchases...")
+                        } icon: {
+                            ProgressView()
+                        }
+                    } else {
+                        Label("Restore Purchases", systemImage: "arrow.clockwise")
+                    }
+                }
+                .disabled(isRestoringPurchases)
+
+                if let url = premium.getManageSubscriptionURL() {
+                    Button {
+                        openURL(url)
+                    } label: {
+                        Label("Manage in App Store", systemImage: "link")
+                    }
+                }
+
+                Button {
+                    Task {
+                        restoreMessage = nil
+                        await premium.refreshSubscriptionStatus()
+                    }
+                } label: {
+                    Label("Refresh Subscription Status", systemImage: "arrow.triangle.2.circlepath")
+                }
+
+                if let restoreMessage {
+                    Text(restoreMessage)
+                        .font(.caption)
+                        .foregroundStyle(restoreMessage.contains("Success") ? .green : .red)
+                }
+            } header: {
+                Text("Subscription Actions")
+            }
         }
+    }
+
+    private var premiumStatusSummaryView: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill((premium.isSubscribed ? Color.green : Color.orange).opacity(0.18))
+                    .frame(width: 44, height: 44)
+
+                Image(systemName: premium.isSubscribed ? "crown.fill" : "crown")
+                    .foregroundStyle(premium.isSubscribed ? .green : .orange)
+                    .font(.title3)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(premium.isSubscribed ? "Premium Active" : "Free Plan")
+                    .font(.headline)
+
+                Text(
+                    premium.isSubscribed
+                        ? premium.subscriptionStatusDescription
+                        : "Choose a subscription to unlock all premium features."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 4)
+    }
+
+    @ViewBuilder
+    private var subscriptionOptionsView: some View {
+        if isLoadingPackages && availablePackages.isEmpty {
+            HStack(spacing: 12) {
+                ProgressView()
+                Text("Loading subscription options...")
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 6)
+        } else if availablePackages.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("No subscription options available right now.")
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    Task {
+                        await loadPackages(force: true)
+                    }
+                } label: {
+                    Label("Reload Subscription Options", systemImage: "arrow.clockwise")
+                }
+            }
+            .padding(.vertical, 4)
+        } else {
+            VStack(spacing: 12) {
+                ForEach(sortedPackages, id: \.identifier) { package in
+                    subscriptionPackageCard(package)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    @ViewBuilder
+    private var premiumSubscriptionDetailsView: some View {
+        if premium.willRenew {
+            premiumDetailRow(
+                icon: "arrow.clockwise",
+                tint: .green,
+                title: "Auto-renewal Enabled",
+                value: "Your subscription will automatically renew"
+            )
+        }
+
+        premiumDetailRow(
+            icon: "calendar",
+            tint: .blue,
+            title: "Expires On",
+            value: premium.formattedExpirationDate
+        )
+
+        if !premium.productIdentifier.isEmpty {
+            premiumDetailRow(
+                icon: "tag",
+                tint: .purple,
+                title: "Plan",
+                value: premium.packageType
+            )
+        }
+    }
+
+    private var sortedPackages: [Package] {
+        availablePackages.sorted { lhs, rhs in
+            lhs.packageType.sortOrder < rhs.packageType.sortOrder
+        }
+    }
+
+    private func subscriptionPackageCard(_ package: Package) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(package.packageType.displayName)
+                            .font(.headline)
+
+                        if package.packageType == .annual {
+                            Text("Best Value")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.green.opacity(0.16))
+                                .foregroundStyle(.green)
+                                .clipShape(.capsule)
+                        }
+                    }
+
+                    if !package.storeProduct.localizedDescription.isEmpty {
+                        Text(package.storeProduct.localizedDescription)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(package.storeProduct.localizedPriceString)
+                        .font(.title3.weight(.semibold))
+
+                    Text(package.storeProduct.localizedTitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+
+            Button {
+                Task {
+                    await purchasePackage(package)
+                }
+            } label: {
+                HStack {
+                    Spacer()
+                    if purchasingPackageID == package.identifier {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Processing...")
+                    } else {
+                        Text("Subscribe")
+                    }
+                    Spacer()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(purchasingPackageID != nil)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(package.packageType == .annual ? Color.green.opacity(0.45) : Color.secondary.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private func premiumDetailRow(icon: String, tint: Color, title: String, value: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+
+                Text(value)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 2)
     }
 
     private var premiumFeaturesView: some View {
@@ -1050,6 +1307,105 @@ extension SettingsDetailContent {
         let name = Locale.current.localizedString(forIdentifier: localeIdentifier)
             ?? localeIdentifier
         return "\(name) (\(localeIdentifier))"
+    }
+
+    @MainActor
+    private func restorePurchases() async {
+        isRestoringPurchases = true
+        restoreMessage = nil
+
+        defer {
+            isRestoringPurchases = false
+        }
+
+        do {
+            try await premium.restorePurchases()
+            restoreMessage = premium.isSubscribed
+                ? "Success! Your purchases have been restored."
+                : "No active subscription was found for this Apple account."
+        } catch {
+            restoreMessage = "Failed to restore purchases: \(error.localizedDescription)"
+        }
+    }
+
+    @MainActor
+    private func loadPackagesIfNeeded() async {
+        guard availablePackages.isEmpty else { return }
+        await loadPackages(force: false)
+    }
+
+    @MainActor
+    private func loadPackages(force: Bool) async {
+        guard force || !isLoadingPackages else { return }
+
+        isLoadingPackages = true
+        defer {
+            isLoadingPackages = false
+        }
+
+        availablePackages = await premium.getAvailablePackages()
+    }
+
+    @MainActor
+    private func purchasePackage(_ package: Package) async {
+        purchasingPackageID = package.identifier
+        restoreMessage = nil
+
+        defer {
+            purchasingPackageID = nil
+        }
+
+        do {
+            _ = try await premium.purchase(package: package)
+            await premium.refreshSubscriptionStatus()
+            await loadPackages(force: true)
+        } catch {
+            restoreMessage = "Purchase failed: \(error.localizedDescription)"
+        }
+    }
+}
+
+private extension PackageType {
+    var displayName: String {
+        switch self {
+        case .annual:
+            return "Annual"
+        case .monthly:
+            return "Monthly"
+        case .twoMonth:
+            return "Two Months"
+        case .threeMonth:
+            return "Three Months"
+        case .sixMonth:
+            return "Six Months"
+        case .weekly:
+            return "Weekly"
+        case .lifetime:
+            return "Lifetime"
+        default:
+            return String(describing: self).capitalized
+        }
+    }
+
+    var sortOrder: Int {
+        switch self {
+        case .monthly:
+            return 0
+        case .annual:
+            return 1
+        case .weekly:
+            return 2
+        case .twoMonth:
+            return 3
+        case .threeMonth:
+            return 4
+        case .sixMonth:
+            return 5
+        case .lifetime:
+            return 6
+        default:
+            return 100
+        }
     }
 }
 
