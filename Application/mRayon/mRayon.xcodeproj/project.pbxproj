@@ -754,9 +754,15 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				de,
 				en,
+				es,
+				fr,
+				ja,
+				"pt-BR",
 				Base,
 				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = 501FF77E27CEFADD00380D59;
 			packageReferences = (
