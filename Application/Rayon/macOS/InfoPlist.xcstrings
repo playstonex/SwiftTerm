@@ -1,0 +1,110 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSMicrophoneUsageDescription" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm benötigt Zugriff auf das Mikrofon für die Spracheingabe."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm needs microphone access for voice input."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm necesita acceso al micrófono para la entrada por voz."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm a besoin d'acceder au microphone pour la saisie vocale."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTermは音声入力のためにマイクへのアクセスを必要とします。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm precisa de acesso ao microfone para entrada por voz."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm 需要麦克风权限来进行语音输入。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm 需要麥克風權限來進行語音輸入。"
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm benötigt Spracherkennung, um Ihre Stimme in Terminaleingabetext umzuwandeln."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm needs speech recognition to turn your voice into terminal input text."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm necesita reconocimiento de voz para convertir su voz en texto de entrada del terminal."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm a besoin de la reconnaissance vocale pour convertir votre voix en texte d'entree du terminal."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTermは音声をターミナル入力テキストに変換するために音声認識を必要とします。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm precisa de reconhecimento de fala para converter sua voz em texto de entrada do terminal."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm 需要语音识别权限将语音转换为终端输入文本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GoodTerm 需要語音辨識權限將語音轉換為終端輸入文字。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

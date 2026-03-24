@@ -12,9 +12,9 @@
 		<true/>
 	</dict>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>GoodTerm 需要麦克风权限来进行语音输入。</string>
+	<string>GoodTerm needs microphone access for voice input.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>GoodTerm 需要语音识别权限将语音转换为终端输入文本。</string>
+	<string>GoodTerm needs speech recognition to turn your voice into terminal input text.</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 	<key>NSSupportsSuddenTermination</key>

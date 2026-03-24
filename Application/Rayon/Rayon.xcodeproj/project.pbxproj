@@ -71,6 +71,7 @@
 		50FD878827D9CC3300EE3A5C /* PortForwardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */; };
 		AA00000227D9884300F6EA0D /* SettingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000127D9884300F6EA0D /* SettingWindow.swift */; };
 		AB3BD4302F72A78000140A73 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB3BD42F2F72A78000140A73 /* Localizable.xcstrings */; };
+		C0E0A00136F50A1000A11F01 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = C0E0A00036F50A1000A11F01 /* InfoPlist.xcstrings */; };
 		ABD999D328A09F0700404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D228A09F0700404E61 /* CloudKit.framework */; };
 		ABD999D728A21E0D00404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D628A21E0D00404E61 /* DataSync */; };
 		ABF821022F41E2E2006A8F60 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = ABF821012F41E2E2006A8F60 /* RevenueCat */; };
@@ -152,6 +153,7 @@
 		50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardManager.swift; sourceTree = "<group>"; };
 		AA00000127D9884300F6EA0D /* SettingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingWindow.swift; sourceTree = "<group>"; };
 		AB3BD42F2F72A78000140A73 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		C0E0A00036F50A1000A11F01 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		ABD999D228A09F0700404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		ABF8210A2F41E5CE006A8F60 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		ABF8210E2F41F67E006A8F60 /* PremiumSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumSettingsView.swift; sourceTree = "<group>"; };
@@ -292,6 +294,7 @@
 			children = (
 				509F7F3F27B2AF7F00F28752 /* macOS.entitlements */,
 				5027F24F27B80FDB00F422BB /* Info.plist */,
+				C0E0A00036F50A1000A11F01 /* InfoPlist.xcstrings */,
 				AB3BD42F2F72A78000140A73 /* Localizable.xcstrings */,
 			);
 			path = macOS;
@@ -514,11 +517,12 @@
 		509F7F3A27B2AF7F00F28752 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				5082A1D027D0E0F300C71C0F /* LICENSE in Resources */,
-				AB3BD4302F72A78000140A73 /* Localizable.xcstrings in Resources */,
-				509F7F4727B2AF7F00F28752 /* Assets.xcassets in Resources */,
-				5082A1CF27D0E0F300C71C0F /* EULA in Resources */,
+				files = (
+					5082A1D027D0E0F300C71C0F /* LICENSE in Resources */,
+					C0E0A00136F50A1000A11F01 /* InfoPlist.xcstrings in Resources */,
+					AB3BD4302F72A78000140A73 /* Localizable.xcstrings in Resources */,
+					509F7F4727B2AF7F00F28752 /* Assets.xcassets in Resources */,
+					5082A1CF27D0E0F300C71C0F /* EULA in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

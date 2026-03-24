@@ -105,6 +105,7 @@
 		AB47C31D2F282AF500C7AA60 /* CascadiaCodeNF.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */; };
 		B00C10012F50000100C0D311 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B00C10002F50000100C0D311 /* Localizable.xcstrings */; };
 		B00C10022F50000100C0D311 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B00C10002F50000100C0D311 /* Localizable.xcstrings */; };
+		C0E0A01136F50A2000A11F01 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = C0E0A01036F50A2000A11F01 /* InfoPlist.xcstrings */; };
 		ABB80C6F2B8EC0AD00FDD779 /* RealityKitContent in Frameworks */ = {isa = PBXBuildFile; productRef = ABB80C6E2B8EC0AD00FDD779 /* RealityKitContent */; };
 		ABB80C712B8EC0AD00FDD779 /* vRayonApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB80C702B8EC0AD00FDD779 /* vRayonApp.swift */; };
 		ABB80C752B8EC0AF00FDD779 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ABB80C742B8EC0AF00FDD779 /* Assets.xcassets */; };
@@ -261,6 +262,7 @@
 		8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantDetailView.swift; sourceTree = "<group>"; };
 		AB47C2ED2F282AAC00C7AA60 /* CascadiaCodeNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaCodeNF.ttf; sourceTree = "<group>"; };
 		B00C10002F50000100C0D311 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		C0E0A01036F50A2000A11F01 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		AB47C2EE2F282AAC00C7AA60 /* CascadiaMonoNF.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = CascadiaMonoNF.ttf; sourceTree = "<group>"; };
 		AB47C2EF2F282AAC00C7AA60 /* FiraCodeNerdFontMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "FiraCodeNerdFontMono-Regular.ttf"; sourceTree = "<group>"; };
 		AB47C2F02F282AAC00C7AA60 /* HackNerdFontMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "HackNerdFontMono-Bold.ttf"; sourceTree = "<group>"; };
@@ -398,10 +400,11 @@
 		};
 		501FF78927CEFADD00380D59 /* mRayon */ = {
 			isa = PBXGroup;
-			children = (
-				5082A1E127D1F92D00C71C0F /* Info.plist */,
-				B00C10002F50000100C0D311 /* Localizable.xcstrings */,
-				501FF79827CEFAFA00380D59 /* mRayon.entitlements */,
+				children = (
+					5082A1E127D1F92D00C71C0F /* Info.plist */,
+					C0E0A01036F50A2000A11F01 /* InfoPlist.xcstrings */,
+					B00C10002F50000100C0D311 /* Localizable.xcstrings */,
+					501FF79827CEFAFA00380D59 /* mRayon.entitlements */,
 				50C90AFA27CF12FB00F60B51 /* Application */,
 				50C90AF927CF12F400F60B51 /* Interface */,
 				50C90AF827CF12F000F60B51 /* Extension */,
@@ -782,10 +785,11 @@
 		501FF78527CEFADD00380D59 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				B00C10012F50000100C0D311 /* Localizable.xcstrings in Resources */,
-				AB47C2FE2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf in Resources */,
-				AB47C2FF2F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf in Resources */,
+				files = (
+					C0E0A01136F50A2000A11F01 /* InfoPlist.xcstrings in Resources */,
+					B00C10012F50000100C0D311 /* Localizable.xcstrings in Resources */,
+					AB47C2FE2F282AAC00C7AA60 /* JetBrainsMono-SemiBold.ttf in Resources */,
+					AB47C2FF2F282AAC00C7AA60 /* HackNerdFontMono-Regular.ttf in Resources */,
 				AB47C3002F282AAC00C7AA60 /* CascadiaCodeNF.ttf in Resources */,
 				AB47C3012F282AAC00C7AA60 /* JetBrainsMono-Thin.ttf in Resources */,
 				AB47C3022F282AAC00C7AA60 /* JetBrainsMono-Bold.ttf in Resources */,

@@ -1,0 +1,110 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSMicrophoneUsageDescription" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Mikrofonzugriff wird für die Spracheingabe benötigt, um Ihre Stimme in Terminalbefehle umzuwandeln."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone access is required for voice input and to turn your speech into terminal commands."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se necesita acceso al micrófono para la entrada por voz y para convertir su voz en comandos de terminal."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'acces au microphone est necessaire pour la saisie vocale et pour convertir votre voix en commandes de terminal."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声入力を行い、音声をターミナルコマンドに変換するためにマイクを使用します。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E necessario acesso ao microfone para entrada por voz e para converter sua voz em comandos de terminal."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要使用麦克风进行语音输入，将您的语音转换为终端命令。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要使用麥克風進行語音輸入，將您的語音轉換為終端命令。"
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Spracherkennung wird benötigt, um Ihre Stimme in Text umzuwandeln."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speech recognition is required to turn your voice into text."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se necesita reconocimiento de voz para convertir su voz en texto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La reconnaissance vocale est necessaire pour convertir votre voix en texte."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声をテキストに変換するために音声認識を使用します。"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E necessario reconhecimento de fala para converter sua voz em texto."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要使用语音识别功能将您的语音转换为文本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "需要使用語音辨識功能將您的語音轉換為文字。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
