@@ -23,7 +23,7 @@ struct ThanksView: View {
         VStack(spacing: 0) {
             HStack {
                 Spacer()
-                Button("Close") { dismiss() }
+                Button(L10n.tr("Close")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding()
@@ -50,7 +50,7 @@ struct ThanksView: View {
             .ignoresSafeArea()
         )
         #if os(iOS)
-        .navigationTitle("Acknowledgment")
+        .navigationTitle(L10n.tr("Acknowledgment"))
         .navigationBarTitleDisplayMode(.inline)
         #endif
     }
@@ -65,14 +65,14 @@ struct ThanksView: View {
                 .font(.title)
                 .fontWeight(.bold)
 
-            Text("Made based on the open-source project Rayon")
+            Text(L10n.tr("Made based on the open-source project Rayon"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Thanks to the creators of Rayon:")
+                Text(L10n.tr("Thanks to the creators of Rayon:"))
                     .font(.headline)
 
                 Text("[@Lakr233](https://twitter.com/Lakr233)")
@@ -87,7 +87,7 @@ struct ThanksView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Source Code:")
+                Text(L10n.tr("Source Code:"))
                     .font(.headline)
                 Link("[GitHub](https://github.com/Lakr233/Rayon)", destination: URL(string: "https://github.com/Lakr233/Rayon")!)
             }

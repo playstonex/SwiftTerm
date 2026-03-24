@@ -5,6 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "MachineStatusView",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v17),
         .macOS(.v14),
@@ -22,7 +23,10 @@ let package = Package(
     targets: [
         .target(
             name: "MachineStatusView",
-            dependencies: ["MachineStatus"]
+            dependencies: ["MachineStatus"],
+            resources: [
+                .process("Resources"),
+            ]
         ),
     ]
 )

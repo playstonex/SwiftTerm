@@ -45,6 +45,7 @@ public struct SettingsDetailContent: View {
     @State private var isRestoringPurchases = false
     @State private var purchasingPackageID: String?
     @State private var restoreMessage: String?
+    @State private var restoreMessageIsSuccess = false
 
     #if os(iOS)
         @State private var exportDocument: ExportDocument?
@@ -164,29 +165,29 @@ public struct SettingsDetailContent: View {
     // MARK: - About Views
 
     private var appInfoView: some View {
-        Section("App") {
+        Section(L10n.tr("App")) {
             HStack {
-                Text("Name")
+                Text(L10n.tr("Name"))
                 Spacer()
                 Text("GoodTerm")
             }
 
             HStack {
-                Text("Version")
+                Text(L10n.tr("Version"))
                 Spacer()
-                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? L10n.tr("Unknown"))
             }
 
             HStack {
-                Text("Build")
+                Text(L10n.tr("Build"))
                 Spacer()
-                Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown")
+                Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? L10n.tr("Unknown"))
             }
         }
     }
 
     private var documentsView: some View {
-        Section("Documents") {
+        Section(L10n.tr("Documents")) {
             tappableTextRow("Thanks") { showingThanks = true }
             tappableTextRow("Software License") { showingLicense = true }
         }
@@ -195,14 +196,14 @@ public struct SettingsDetailContent: View {
     // MARK: - Appearance Views
 
     private var appThemeView: some View {
-        Section("Appearance") {
+        Section(L10n.tr("Appearance")) {
             HStack {
-                Text("Appearance")
+                Text(L10n.tr("Appearance"))
                 Spacer()
-                Picker("Appearance", selection: $store.themePreference) {
-                    Text("System").tag("system")
-                    Text("Light").tag("light")
-                    Text("Dark").tag("dark")
+                Picker(L10n.tr("Appearance"), selection: $store.themePreference) {
+                    Text(L10n.tr("System")).tag("system")
+                    Text(L10n.tr("Light")).tag("light")
+                    Text(L10n.tr("Dark")).tag("dark")
                 }
                 .labelsHidden()
             }
@@ -210,11 +211,11 @@ public struct SettingsDetailContent: View {
     }
 
     private var terminalThemeView: some View {
-        Section("Terminal") {
+        Section(L10n.tr("Terminal")) {
             HStack {
-                Text("Terminal Theme")
+                Text(L10n.tr("Terminal Theme"))
                 Spacer()
-                Picker("Terminal Theme", selection: $store.terminalThemeName) {
+                Picker(L10n.tr("Terminal Theme"), selection: $store.terminalThemeName) {
                     ForEach(TerminalTheme.allThemes, id: \.name) { theme in
                         Text(theme.name).tag(theme.name)
                     }
@@ -223,9 +224,9 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Terminal Font")
+                Text(L10n.tr("Terminal Font"))
                 Spacer()
-                Picker("Terminal Font", selection: $store.terminalFontName) {
+                Picker(L10n.tr("Terminal Font"), selection: $store.terminalFontName) {
                     Text("Menlo").tag("Menlo")
                     Text("Monaco").tag("Monaco")
                     Text("SF Mono").tag("SF Mono")
@@ -242,7 +243,7 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Terminal Font Size")
+                Text(L10n.tr("Terminal Font Size"))
                 Spacer()
                 Text("\(store.terminalFontSize)")
                     .foregroundStyle(.secondary)
@@ -251,21 +252,21 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("iOS Return Sends Line Feed")
+                Text(L10n.tr("iOS Return Sends Line Feed"))
                 Spacer()
                 Toggle("", isOn: $store.terminalReturnKeySendsLineFeed)
                     .labelsHidden()
             }
 
             HStack {
-                Text("Command Notifications")
+                Text(L10n.tr("Command Notifications"))
                 Spacer()
                 Toggle("", isOn: $store.terminalCommandNotificationsEnabled)
                     .labelsHidden()
             }
 
             HStack {
-                Text("Only When App Is Inactive")
+                Text(L10n.tr("Only When App Is Inactive"))
                 Spacer()
                 Toggle("", isOn: $store.terminalCommandNotificationsOnlyWhenInactive)
                     .labelsHidden()
@@ -273,7 +274,7 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Notification Threshold")
+                Text(L10n.tr("Notification Threshold"))
                 Spacer()
                 Text("\(store.terminalCommandNotificationMinimumDuration)s")
                     .foregroundStyle(.secondary)
@@ -285,9 +286,9 @@ public struct SettingsDetailContent: View {
     }
 
     private var effectsView: some View {
-        Section("Effects") {
+        Section(L10n.tr("Effects")) {
             HStack {
-                Text("Reduced Effect")
+                Text(L10n.tr("Reduced Effect"))
                 Spacer()
                 Toggle("", isOn: $store.reducedViewEffects)
                     .labelsHidden()
@@ -296,22 +297,22 @@ public struct SettingsDetailContent: View {
     }
 
     private var voiceSettingsView: some View {
-        Section("Voice Input") {
+        Section(L10n.tr("Voice Input")) {
             HStack {
-                Text("Engine")
+                Text(L10n.tr("Engine"))
                 Spacer()
-                Picker("Engine", selection: $store.speechInputEngine) {
-                    Text("Apple (On-device/API)").tag("apple")
-                    Text("Disabled").tag("disabled")
+                Picker(L10n.tr("Engine"), selection: $store.speechInputEngine) {
+                    Text(L10n.tr("Apple (On-device/API)")).tag("apple")
+                    Text(L10n.tr("Disabled")).tag("disabled")
                 }
                 .labelsHidden()
             }
 
             HStack {
-                Text("Language")
+                Text(L10n.tr("Language"))
                 Spacer()
-                Picker("Language", selection: $store.speechInputLocaleIdentifier) {
-                    Text("System Default").tag("system")
+                Picker(L10n.tr("Language"), selection: $store.speechInputLocaleIdentifier) {
+                    Text(L10n.tr("System Default")).tag("system")
                     ForEach(Self.supportedSpeechLocaleIdentifiers, id: \.self) { identifier in
                         Text(Self.displayName(for: identifier)).tag(identifier)
                     }
@@ -333,16 +334,16 @@ public struct SettingsDetailContent: View {
                     premiumSubscriptionDetailsView
                 }
             } header: {
-                Text("Subscription Status")
+                Text(L10n.tr("Subscription Status"))
             }
 
             if !premium.isSubscribed {
                 Section {
                     subscriptionOptionsView
                 } header: {
-                    Text("Subscription Options")
+                    Text(L10n.tr("Subscription Options"))
                 } footer: {
-                    Text("Choose a plan to unlock all premium features.")
+                    Text(L10n.tr("Choose a plan to unlock all premium features."))
                 }
             }
 
@@ -354,12 +355,12 @@ public struct SettingsDetailContent: View {
                 } label: {
                     if isRestoringPurchases {
                         Label {
-                            Text("Restoring Purchases...")
+                            Text(L10n.tr("Restoring Purchases..."))
                         } icon: {
                             ProgressView()
                         }
                     } else {
-                        Label("Restore Purchases", systemImage: "arrow.clockwise")
+                        Label(L10n.tr("Restore Purchases"), systemImage: "arrow.clockwise")
                     }
                 }
                 .disabled(isRestoringPurchases)
@@ -368,26 +369,27 @@ public struct SettingsDetailContent: View {
                     Button {
                         openURL(url)
                     } label: {
-                        Label("Manage in App Store", systemImage: "link")
+                        Label(L10n.tr("Manage in App Store"), systemImage: "link")
                     }
                 }
 
                 Button {
                     Task {
                         restoreMessage = nil
+                        restoreMessageIsSuccess = false
                         await premium.refreshSubscriptionStatus()
                     }
                 } label: {
-                    Label("Refresh Subscription Status", systemImage: "arrow.triangle.2.circlepath")
+                    Label(L10n.tr("Refresh Subscription Status"), systemImage: "arrow.triangle.2.circlepath")
                 }
 
                 if let restoreMessage {
                     Text(restoreMessage)
                         .font(.caption)
-                        .foregroundStyle(restoreMessage.contains("Success") ? .green : .red)
+                        .foregroundStyle(restoreMessageIsSuccess ? .green : .red)
                 }
             } header: {
-                Text("Subscription Actions")
+                Text(L10n.tr("Subscription Actions"))
             }
         }
     }
@@ -405,13 +407,13 @@ public struct SettingsDetailContent: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(premium.isSubscribed ? "Premium Active" : "Free Plan")
+                Text(premium.isSubscribed ? L10n.tr("Premium Active") : L10n.tr("Free Plan"))
                     .font(.headline)
 
                 Text(
                     premium.isSubscribed
                         ? premium.subscriptionStatusDescription
-                        : "Choose a subscription to unlock all premium features."
+                        : L10n.tr("Choose a subscription to unlock all premium features.")
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -427,14 +429,14 @@ public struct SettingsDetailContent: View {
         if isLoadingPackages && availablePackages.isEmpty {
             HStack(spacing: 12) {
                 ProgressView()
-                Text("Loading subscription options...")
+                Text(L10n.tr("Loading subscription options..."))
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 6)
         } else if availablePackages.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("No subscription options available right now.")
+                Text(L10n.tr("No subscription options available right now."))
                     .foregroundStyle(.secondary)
 
                 Button {
@@ -442,7 +444,7 @@ public struct SettingsDetailContent: View {
                         await loadPackages(force: true)
                     }
                 } label: {
-                    Label("Reload Subscription Options", systemImage: "arrow.clockwise")
+                    Label(L10n.tr("Reload Subscription Options"), systemImage: "arrow.clockwise")
                 }
             }
             .padding(.vertical, 4)
@@ -462,15 +464,15 @@ public struct SettingsDetailContent: View {
             premiumDetailRow(
                 icon: "arrow.clockwise",
                 tint: .green,
-                title: "Auto-renewal Enabled",
-                value: "Your subscription will automatically renew"
+                title: L10n.tr("Auto-renewal Enabled"),
+                value: L10n.tr("Your subscription will automatically renew")
             )
         }
 
         premiumDetailRow(
             icon: "calendar",
             tint: .blue,
-            title: "Expires On",
+            title: L10n.tr("Expires On"),
             value: premium.formattedExpirationDate
         )
 
@@ -478,7 +480,7 @@ public struct SettingsDetailContent: View {
             premiumDetailRow(
                 icon: "tag",
                 tint: .purple,
-                title: "Plan",
+                title: L10n.tr("Plan"),
                 value: premium.packageType
             )
         }
@@ -499,7 +501,7 @@ public struct SettingsDetailContent: View {
                             .font(.headline)
 
                         if package.packageType == .annual {
-                            Text("Best Value")
+                            Text(L10n.tr("Best Value"))
                                 .font(.caption.weight(.semibold))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -539,9 +541,9 @@ public struct SettingsDetailContent: View {
                     if purchasingPackageID == package.identifier {
                         ProgressView()
                             .controlSize(.small)
-                        Text("Processing...")
+                        Text(L10n.tr("Processing..."))
                     } else {
-                        Text("Subscribe")
+                        Text(L10n.tr("Subscribe"))
                     }
                     Spacer()
                 }
@@ -599,7 +601,7 @@ public struct SettingsDetailContent: View {
     // MARK: - Sync & Automation Views
 
     private var cloudSyncView: some View {
-        Section("Sync") {
+        Section(L10n.tr("Sync")) {
             HStack(spacing: 12) {
                 Button {
                     Task { await performSync() }
@@ -608,18 +610,18 @@ public struct SettingsDetailContent: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Label("Sync Now", systemImage: "arrow.counterclockwise.icloud")
+                        Label(L10n.tr("Sync Now"), systemImage: "arrow.counterclockwise.icloud")
                     }
                 }
                 .disabled(syncManager.isSyncing)
 
-                Text("Last sync: \(lastSyncDateString)")
+                Text(L10n.tr("Last sync: %@", lastSyncDateString))
                     .foregroundColor(.secondary)
                     .font(.caption)
             }
 
             if let error = syncManager.syncError {
-                Text("Error: \(error.localizedDescription)")
+                Text(L10n.tr("Error: %@", error.localizedDescription))
                     .foregroundColor(.red)
                     .font(.caption)
             }
@@ -627,14 +629,14 @@ public struct SettingsDetailContent: View {
     }
 
     private var snapshotsView: some View {
-        Section("Cloud Backup Snapshots") {
+        Section(L10n.tr("Cloud Backup Snapshots")) {
             HStack {
-                TextField("Snapshot reason", text: $snapshotReason)
+                TextField(L10n.tr("Snapshot reason"), text: $snapshotReason)
                     #if os(macOS)
                     .textFieldStyle(.plain)
                     #endif
                     .textFieldStyle(.roundedBorder)
-                Button("Create Snapshot") {
+                Button(L10n.tr("Create Snapshot")) {
                     guard premium.isSubscribed else { return }
                     let reason = snapshotReason.trimmingCharacters(in: .whitespacesAndNewlines)
                     store.createSyncSnapshot(reason: reason.isEmpty ? "manual" : reason)
@@ -647,7 +649,7 @@ public struct SettingsDetailContent: View {
                     Text(snapshot.reason).lineLimit(1)
                     Spacer()
                     Text(snapshot.createdAt, style: .date).foregroundColor(.secondary).font(.caption)
-                    Button("Rollback") {
+                    Button(L10n.tr("Rollback")) {
                         guard premium.isSubscribed else { return }
                         _ = store.rollbackSyncSnapshot(id: snapshot.id)
                     }
@@ -659,9 +661,9 @@ public struct SettingsDetailContent: View {
 
     private var automationView: some View {
         Group {
-            Section("Create Automation Task") {
+            Section(L10n.tr("Create Automation Task")) {
                 HStack {
-                    Text("Task name")
+                    Text(L10n.tr("Task name"))
                     Spacer()
                     TextField("", text: $taskName)
                         #if os(macOS)
@@ -671,9 +673,9 @@ public struct SettingsDetailContent: View {
                 }
 
                 HStack {
-                    Text("Snippet Template")
+                    Text(L10n.tr("Snippet Template"))
                     Spacer()
-                    Picker("Snippet Template", selection: Binding<UUID>(
+                    Picker(L10n.tr("Snippet Template"), selection: Binding<UUID>(
                         get: { selectedSnippetId ?? snippets.first?.id ?? UUID() },
                         set: { selectedSnippetId = $0 }
                     )) {
@@ -686,7 +688,7 @@ public struct SettingsDetailContent: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Target Machines")
+                    Text(L10n.tr("Target Machines"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     ForEach(machines, id: \.id) { machine in
@@ -707,12 +709,12 @@ public struct SettingsDetailContent: View {
                 .padding(.vertical, 4)
 
                 HStack {
-                    Text("Schedule")
+                    Text(L10n.tr("Schedule"))
                     Spacer()
-                    Picker("Schedule", selection: $scheduleKind) {
-                        Text("Manual").tag(AutomationSchedule.Kind.manual)
-                        Text("Interval").tag(AutomationSchedule.Kind.interval)
-                        Text("Daily").tag(AutomationSchedule.Kind.daily)
+                    Picker(L10n.tr("Schedule"), selection: $scheduleKind) {
+                        Text(L10n.tr("Manual")).tag(AutomationSchedule.Kind.manual)
+                        Text(L10n.tr("Interval")).tag(AutomationSchedule.Kind.interval)
+                        Text(L10n.tr("Daily")).tag(AutomationSchedule.Kind.daily)
                     }
                     #if os(macOS)
                     .pickerStyle(.segmented)
@@ -722,21 +724,21 @@ public struct SettingsDetailContent: View {
 
                 if scheduleKind == .interval {
                     HStack {
-                        Text("Every")
+                        Text(L10n.tr("Every"))
                         Spacer()
                         HStack(spacing: 8) {
                             Text("\(intervalMinutes)")
                                 .foregroundStyle(.secondary)
                             Stepper("", value: $intervalMinutes, in: 5...1440, step: 5)
                                 .labelsHidden()
-                            Text("minutes")
+                            Text(L10n.tr("minutes"))
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
                 if scheduleKind == .daily {
                     HStack {
-                        Text("Hour")
+                        Text(L10n.tr("Hour"))
                         Spacer()
                         Text("\(dailyHour)")
                             .foregroundStyle(.secondary)
@@ -745,7 +747,7 @@ public struct SettingsDetailContent: View {
                     }
 
                     HStack {
-                        Text("Minute")
+                        Text(L10n.tr("Minute"))
                         Spacer()
                         Text("\(dailyMinute)")
                             .foregroundStyle(.secondary)
@@ -771,7 +773,7 @@ public struct SettingsDetailContent: View {
                 }
             }
 
-            Section("Tasks") {
+            Section(L10n.tr("Tasks")) {
                 ForEach(automation.tasks, id: \.id) { task in
                     HStack {
                         Toggle("", isOn: Binding<Bool>(
@@ -785,10 +787,10 @@ public struct SettingsDetailContent: View {
                         .labelsHidden()
                         Text(task.name)
                         Spacer()
-                        Button("Run") { Task { await automation.runNow(taskId: task.id) } }
+                        Button(L10n.tr("Run")) { Task { await automation.runNow(taskId: task.id) } }
                             .disabled(!premium.isSubscribed)
                             .controlSize(.small)
-                        Button("Delete") { automation.removeTask(id: task.id) }
+                        Button(L10n.tr("Delete")) { automation.removeTask(id: task.id) }
                             .disabled(!premium.isSubscribed)
                             .controlSize(.small)
                     }
@@ -798,11 +800,11 @@ public struct SettingsDetailContent: View {
     }
 
     private var monitoringView: some View {
-        Section("Monitoring Thresholds & Export") {
+        Section(L10n.tr("Monitoring Thresholds & Export")) {
             HStack {
-                Text("Machine")
+                Text(L10n.tr("Machine"))
                 Spacer()
-                Picker("Machine", selection: Binding<UUID>(
+                Picker(L10n.tr("Machine"), selection: Binding<UUID>(
                     get: { selectedMachineForMonitor ?? machines.first?.id ?? UUID() },
                     set: { selectedMachineForMonitor = $0 }
                 )) {
@@ -815,9 +817,9 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("CPU")
+                Text(L10n.tr("CPU"))
                 Spacer()
-                Picker("CPU", selection: $cpuThreshold) {
+                Picker(L10n.tr("CPU"), selection: $cpuThreshold) {
                     Text("70%").tag(70.0)
                     Text("75%").tag(75.0)
                     Text("80%").tag(80.0)
@@ -829,9 +831,9 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Memory")
+                Text(L10n.tr("Memory"))
                 Spacer()
-                Picker("Memory", selection: $memoryThreshold) {
+                Picker(L10n.tr("Memory"), selection: $memoryThreshold) {
                     Text("70%").tag(70.0)
                     Text("75%").tag(75.0)
                     Text("80%").tag(80.0)
@@ -843,9 +845,9 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Disk")
+                Text(L10n.tr("Disk"))
                 Spacer()
-                Picker("Disk", selection: $diskThreshold) {
+                Picker(L10n.tr("Disk"), selection: $diskThreshold) {
                     Text("70%").tag(70.0)
                     Text("75%").tag(75.0)
                     Text("80%").tag(80.0)
@@ -857,7 +859,7 @@ public struct SettingsDetailContent: View {
             }
 
             HStack(spacing: 12) {
-                Button("Save Thresholds") {
+                Button(L10n.tr("Save Thresholds")) {
                     guard premium.isSubscribed, let machineId = selectedMachineForMonitor else { return }
                     MonitorTelemetryManager.shared.setThreshold(
                         machineId: machineId,
@@ -867,14 +869,14 @@ public struct SettingsDetailContent: View {
                 .disabled(!premium.isSubscribed || selectedMachineForMonitor == nil)
 
                 #if os(macOS)
-                Button("Export CSV") { exportTrend(format: .csv) }
+                Button(L10n.tr("Export CSV")) { exportTrend(format: .csv) }
                     .disabled(!premium.isSubscribed || selectedMachineForMonitor == nil)
                     .controlSize(.small)
-                Button("Export JSON") { exportTrend(format: .json) }
+                Button(L10n.tr("Export JSON")) { exportTrend(format: .json) }
                     .disabled(!premium.isSubscribed || selectedMachineForMonitor == nil)
                     .controlSize(.small)
                 #else
-                Button("Export CSV Report") {
+                Button(L10n.tr("Export CSV Report")) {
                     guard premium.isSubscribed, let machineId = selectedMachineForMonitor else { return }
                     let csv = MonitorTelemetryManager.shared.csv(for: machineId)
                     exportDocument = ExportDocument(data: Data(csv.utf8))
@@ -884,7 +886,7 @@ public struct SettingsDetailContent: View {
                 }
                 .disabled(!premium.isSubscribed || selectedMachineForMonitor == nil)
 
-                Button("Export JSON Report") {
+                Button(L10n.tr("Export JSON Report")) {
                     guard premium.isSubscribed, let machineId = selectedMachineForMonitor else { return }
                     exportDocument = ExportDocument(data: MonitorTelemetryManager.shared.json(for: machineId))
                     exportName = "monitor-report.json"
@@ -899,7 +901,7 @@ public struct SettingsDetailContent: View {
                 let cpuAvg = trendSamples.map(\.cpuPercent).reduce(0, +) / Float(trendSamples.count)
                 let memAvg = trendSamples.map(\.memoryPercent).reduce(0, +) / Float(trendSamples.count)
                 let diskAvg = trendSamples.map(\.diskPercent).reduce(0, +) / Float(trendSamples.count)
-                Text("24h trends: \(trendSamples.count) points, avg CPU \(Int(cpuAvg))%, avg Memory \(Int(memAvg))%, avg Disk \(Int(diskAvg))%")
+                Text(L10n.tr("24h trends: %d points, avg CPU %d%%, avg Memory %d%%, avg Disk %d%%", trendSamples.count, Int(cpuAvg), Int(memAvg), Int(diskAvg)))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -926,26 +928,26 @@ public struct SettingsDetailContent: View {
         }
 
         private var statusSection: some View {
-            Section("Status") {
-                Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
+            Section(L10n.tr("Status")) {
+                Toggle(L10n.tr("Enable AI Assistant"), isOn: $aiAssistant.isEnabled)
             }
         }
 
         private var configurationSection: some View {
-            Section("Configuration") {
-                Picker("AI Provider", selection: $aiAssistant.provider) {
+            Section(L10n.tr("Configuration")) {
+                Picker(L10n.tr("AI Provider"), selection: $aiAssistant.provider) {
                     ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
                         Text(provider.displayName).tag(provider)
                     }
                 }
                 .pickerStyle(.menu)
 
-                SecureField("API Key", text: $aiAssistant.apiKey)
+                SecureField(L10n.tr("API Key"), text: $aiAssistant.apiKey)
 
-                TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
+                TextField(L10n.tr("Custom Base URL (optional)"), text: $aiAssistant.customBaseURL)
                     .disableAutocorrection(true)
 
-                TextField("Custom Model (optional)", text: $aiAssistant.customModel)
+                TextField(L10n.tr("Custom Model (optional)"), text: $aiAssistant.customModel)
                     .disableAutocorrection(true)
 
                 Button(action: {
@@ -957,10 +959,10 @@ public struct SettingsDetailContent: View {
                         if isTesting {
                             ProgressView()
                                 .controlSize(.small)
-                            Text("Testing...")
+                            Text(L10n.tr("Testing..."))
                         } else {
                             Image(systemName: "checkmark.circle")
-                            Text("Test Connection")
+                            Text(L10n.tr("Test Connection"))
                         }
                     }
                 }
@@ -994,15 +996,15 @@ public struct SettingsDetailContent: View {
                 Divider()
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Leave custom fields empty to use defaults.")
+                    Text(L10n.tr("Leave custom fields empty to use defaults."))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("Your API key is stored locally and never sent to our servers.")
+                    Text(L10n.tr("Your API key is stored locally and never sent to our servers."))
                         .font(.caption)
                         .foregroundColor(.secondary)
 
                     Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
-                        Text("Get OpenAI API Key →")
+                        Text(L10n.tr("Get OpenAI API Key →"))
                             .font(.caption)
                     }
                 }
@@ -1010,13 +1012,13 @@ public struct SettingsDetailContent: View {
         }
 
         private var featuresSection: some View {
-            Section("Features") {
+            Section(L10n.tr("Features")) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label("Command explanation", systemImage: "info.circle")
-                    Label("Smart suggestions", systemImage: "lightbulb")
-                    Label("Error diagnosis", systemImage: "stethoscope")
-                    Label("Natural language to command", systemImage: "wand.and.stars")
-                    Label("Command history analysis", systemImage: "chart.bar")
+                    Label(L10n.tr("Command explanation"), systemImage: "info.circle")
+                    Label(L10n.tr("Smart suggestions"), systemImage: "lightbulb")
+                    Label(L10n.tr("Error diagnosis"), systemImage: "stethoscope")
+                    Label(L10n.tr("Natural language to command"), systemImage: "wand.and.stars")
+                    Label(L10n.tr("Command history analysis"), systemImage: "chart.bar")
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -1039,16 +1041,16 @@ public struct SettingsDetailContent: View {
     // MARK: - Advanced Views
 
     private var applicationSettingsView: some View {
-        Section("Application") {
+        Section(L10n.tr("Application")) {
             HStack {
-                Text("Disable Confirmation")
+                Text(L10n.tr("Disable Confirmation"))
                 Spacer()
                 Toggle("", isOn: $store.disableConformation)
                     .labelsHidden()
             }
 
             HStack {
-                Text("Record Recent")
+                Text(L10n.tr("Record Recent"))
                 Spacer()
                 Toggle("", isOn: $store.storeRecent)
                     .labelsHidden()
@@ -1056,7 +1058,7 @@ public struct SettingsDetailContent: View {
 
             #if os(iOS)
             HStack {
-                Text("Open at Connect")
+                Text(L10n.tr("Open at Connect"))
                 Spacer()
                 Toggle("", isOn: $store.openInterfaceAutomatically)
                     .labelsHidden()
@@ -1066,11 +1068,11 @@ public struct SettingsDetailContent: View {
     }
 
     private var connectionSettingsView: some View {
-        Section("Connection") {
+        Section(L10n.tr("Connection")) {
             HStack {
-                Text("Timeout")
+                Text(L10n.tr("Timeout"))
                 Spacer()
-                Picker("Timeout", selection: $store.timeout) {
+                Picker(L10n.tr("Timeout"), selection: $store.timeout) {
                     Text("2s").tag(2)
                     Text("5s").tag(5)
                     Text("10s").tag(10)
@@ -1082,9 +1084,9 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Monitor interval")
+                Text(L10n.tr("Monitor interval"))
                 Spacer()
-                Picker("Monitor interval", selection: $store.monitorInterval) {
+                Picker(L10n.tr("Monitor interval"), selection: $store.monitorInterval) {
                     Text("5s").tag(5)
                     Text("10s").tag(10)
                     Text("15s").tag(15)
@@ -1098,20 +1100,20 @@ public struct SettingsDetailContent: View {
     }
 
     private var fileTransferSettingsView: some View {
-        Section("File Transfer") {
+        Section(L10n.tr("File Transfer")) {
             HStack {
-                Text("Conflict Policy")
+                Text(L10n.tr("Conflict Policy"))
                 Spacer()
-                Picker("Conflict Policy", selection: $store.fileTransferConflictPolicy) {
-                    Text("Rename").tag("rename")
-                    Text("Overwrite").tag("overwrite")
-                    Text("Skip").tag("skip")
+                Picker(L10n.tr("Conflict Policy"), selection: $store.fileTransferConflictPolicy) {
+                    Text(L10n.tr("Rename")).tag("rename")
+                    Text(L10n.tr("Overwrite")).tag("overwrite")
+                    Text(L10n.tr("Skip")).tag("skip")
                 }
                 .labelsHidden()
             }
 
             HStack {
-                Text("Max Concurrent Transfers")
+                Text(L10n.tr("Max Concurrent Transfers"))
                 Spacer()
                 Text("\(store.fileTransferMaxConcurrent)")
                     .foregroundStyle(.secondary)
@@ -1120,7 +1122,7 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Rate Limit (KB/s)")
+                Text(L10n.tr("Rate Limit (KB/s)"))
                 Spacer()
                 Text("\(store.fileTransferRateLimitKBps)")
                     .foregroundStyle(.secondary)
@@ -1129,7 +1131,7 @@ public struct SettingsDetailContent: View {
             }
 
             HStack {
-                Text("Enable Resume for Failed Transfers")
+                Text(L10n.tr("Enable Resume for Failed Transfers"))
                 Spacer()
                 Toggle("", isOn: $store.fileTransferResumeEnabled)
                     .labelsHidden()
@@ -1138,9 +1140,9 @@ public struct SettingsDetailContent: View {
     }
 
     private var tmuxSettingsView: some View {
-        Section("Tmux") {
+        Section(L10n.tr("Tmux")) {
             HStack {
-                Text("Use Tmux Session")
+                Text(L10n.tr("Use Tmux Session"))
                 Spacer()
                 Toggle("", isOn: $store.useTmux)
                     .labelsHidden()
@@ -1148,7 +1150,7 @@ public struct SettingsDetailContent: View {
 
             if store.useTmux {
                 HStack {
-                    Text("Tmux Session Name")
+                    Text(L10n.tr("Tmux Session Name"))
                     Spacer()
                     TextField("", text: $store.tmuxSessionName)
                         #if os(macOS)
@@ -1158,7 +1160,7 @@ public struct SettingsDetailContent: View {
                 }
 
                 HStack {
-                    Text("Auto-create Session")
+                    Text(L10n.tr("Auto-create Session"))
                     Spacer()
                     Toggle("", isOn: $store.tmuxAutoCreate)
                         .labelsHidden()
@@ -1170,7 +1172,7 @@ public struct SettingsDetailContent: View {
     // MARK: - Helper Methods
 
     private var lastSyncDateString: String {
-        guard let date = syncManager.lastSyncDate else { return "Never" }
+        guard let date = syncManager.lastSyncDate else { return L10n.tr("Never") }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         return formatter.localizedString(for: date, relativeTo: Date())
@@ -1179,7 +1181,7 @@ public struct SettingsDetailContent: View {
     @ViewBuilder
     private func tappableTextRow(_ title: String, isDisabled: Bool = false, action: @escaping () -> Void) -> some View {
         HStack {
-            Text(title)
+            Text(L10n.tr(title))
                 .foregroundStyle(isDisabled ? .secondary : .primary)
             Spacer()
         }
@@ -1246,10 +1248,10 @@ struct FeatureRow: View {
                 .frame(width: 32)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(L10n.tr(title))
                     .font(.headline)
 
-                Text(description)
+                Text(L10n.tr(description))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -1306,13 +1308,14 @@ extension SettingsDetailContent {
     private static func displayName(for localeIdentifier: String) -> String {
         let name = Locale.current.localizedString(forIdentifier: localeIdentifier)
             ?? localeIdentifier
-        return "\(name) (\(localeIdentifier))"
+        return L10n.tr("%@ (%@)", name, localeIdentifier)
     }
 
     @MainActor
     private func restorePurchases() async {
         isRestoringPurchases = true
         restoreMessage = nil
+        restoreMessageIsSuccess = false
 
         defer {
             isRestoringPurchases = false
@@ -1320,11 +1323,13 @@ extension SettingsDetailContent {
 
         do {
             try await premium.restorePurchases()
+            restoreMessageIsSuccess = premium.isSubscribed
             restoreMessage = premium.isSubscribed
-                ? "Success! Your purchases have been restored."
-                : "No active subscription was found for this Apple account."
+                ? L10n.tr("Success! Your purchases have been restored.")
+                : L10n.tr("No active subscription was found for this Apple account.")
         } catch {
-            restoreMessage = "Failed to restore purchases: \(error.localizedDescription)"
+            restoreMessageIsSuccess = false
+            restoreMessage = L10n.tr("Failed to restore purchases: %@", error.localizedDescription)
         }
     }
 
@@ -1350,6 +1355,7 @@ extension SettingsDetailContent {
     private func purchasePackage(_ package: Package) async {
         purchasingPackageID = package.identifier
         restoreMessage = nil
+        restoreMessageIsSuccess = false
 
         defer {
             purchasingPackageID = nil
@@ -1360,7 +1366,8 @@ extension SettingsDetailContent {
             await premium.refreshSubscriptionStatus()
             await loadPackages(force: true)
         } catch {
-            restoreMessage = "Purchase failed: \(error.localizedDescription)"
+            restoreMessageIsSuccess = false
+            restoreMessage = L10n.tr("Purchase failed: %@", error.localizedDescription)
         }
     }
 }
@@ -1369,19 +1376,19 @@ private extension PackageType {
     var displayName: String {
         switch self {
         case .annual:
-            return "Annual"
+            return L10n.tr("Annual")
         case .monthly:
-            return "Monthly"
+            return L10n.tr("Monthly")
         case .twoMonth:
-            return "Two Months"
+            return L10n.tr("Two Months")
         case .threeMonth:
-            return "Three Months"
+            return L10n.tr("Three Months")
         case .sixMonth:
-            return "Six Months"
+            return L10n.tr("Six Months")
         case .weekly:
-            return "Weekly"
+            return L10n.tr("Weekly")
         case .lifetime:
-            return "Lifetime"
+            return L10n.tr("Lifetime")
         default:
             return String(describing: self).capitalized
         }

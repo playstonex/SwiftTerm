@@ -30,13 +30,13 @@ struct AISettingsView: View {
         VStack(spacing: 0) {
             // Custom Title Bar
             HStack {
-                Text("AI Settings")
+                Text(L10n.tr("AI Settings"))
                     .font(.headline)
                     .foregroundColor(.primary)
 
                 Spacer()
 
-                Button("Done") {
+                Button(L10n.tr("Done")) {
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
@@ -73,27 +73,27 @@ struct AISettingsView: View {
     private var iOSBody: some View {
         Form {
             Section {
-                Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
+                Toggle(L10n.tr("Enable AI Assistant"), isOn: $aiAssistant.isEnabled)
             } header: {
-                Text("Status")
+                Text(L10n.tr("Status"))
             }
 
             Section {
-                Picker("AI Provider", selection: $aiAssistant.provider) {
+                Picker(L10n.tr("AI Provider"), selection: $aiAssistant.provider) {
                     ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
                         Text(provider.displayName).tag(provider)
                     }
                 }
 
-                SecureField("API Key", text: $aiAssistant.apiKey)
+                SecureField(L10n.tr("API Key"), text: $aiAssistant.apiKey)
 
-                TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
+                TextField(L10n.tr("Custom Base URL (optional)"), text: $aiAssistant.customBaseURL)
                     #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     #endif
 
-                TextField("Custom Model (optional)", text: $aiAssistant.customModel)
+                TextField(L10n.tr("Custom Model (optional)"), text: $aiAssistant.customModel)
                     #if os(iOS)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -108,10 +108,10 @@ struct AISettingsView: View {
                         if isTesting {
                             ProgressView()
                                 .scaleEffect(0.7)
-                            Text("Testing...")
+                            Text(L10n.tr("Testing..."))
                         } else {
                             Image(systemName: "checkmark.circle")
-                            Text("Test Connection")
+                            Text(L10n.tr("Test Connection"))
                         }
                     }
                 }
@@ -141,44 +141,44 @@ struct AISettingsView: View {
                     .cornerRadius(8)
                 }
             } header: {
-                Text("Configuration")
+                Text(L10n.tr("Configuration"))
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Leave custom fields empty to use defaults.")
+                    Text(L10n.tr("Leave custom fields empty to use defaults."))
                         .font(.caption)
-                    Text("Your API key is stored locally and never sent to our servers.")
+                    Text(L10n.tr("Your API key is stored locally and never sent to our servers."))
                         .font(.caption)
-                    Link("Get OpenAI API Key →", destination: URL(string: "https://platform.openai.com/api-keys")!)
+                    Link(L10n.tr("Get OpenAI API Key →"), destination: URL(string: "https://platform.openai.com/api-keys")!)
                         .font(.caption)
                 }
             }
 
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Label("Command explanation", systemImage: "info.circle")
-                    Label("Smart suggestions", systemImage: "lightbulb")
-                    Label("Error diagnosis", systemImage: "stethoscope")
-                    Label("Natural language to command", systemImage: "wand.and.stars")
-                    Label("Command history analysis", systemImage: "chart.bar")
+                    Label(L10n.tr("Command explanation"), systemImage: "info.circle")
+                    Label(L10n.tr("Smart suggestions"), systemImage: "lightbulb")
+                    Label(L10n.tr("Error diagnosis"), systemImage: "stethoscope")
+                    Label(L10n.tr("Natural language to command"), systemImage: "wand.and.stars")
+                    Label(L10n.tr("Command history analysis"), systemImage: "chart.bar")
                 }
                 .font(.caption)
                 .foregroundColor(.secondary)
             } header: {
-                Text("Features")
+                Text(L10n.tr("Features"))
             }
         }
-        .navigationTitle("AI Settings")
+        .navigationTitle(L10n.tr("AI Settings"))
     }
 
     // MARK: - macOS Sections
 
     private var statusSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Status")
+            Text(L10n.tr("Status"))
                 .font(.headline)
                 .foregroundColor(.secondary)
 
-            Toggle("Enable AI Assistant", isOn: $aiAssistant.isEnabled)
+            Toggle(L10n.tr("Enable AI Assistant"), isOn: $aiAssistant.isEnabled)
         }
         .padding()
         #if os(macOS)
@@ -191,25 +191,25 @@ struct AISettingsView: View {
 
     private var configurationSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Configuration")
+            Text(L10n.tr("Configuration"))
                 .font(.headline)
                 .foregroundColor(.secondary)
 
-            Picker("AI Provider", selection: $aiAssistant.provider) {
+            Picker(L10n.tr("AI Provider"), selection: $aiAssistant.provider) {
                 ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
                     Text(provider.displayName).tag(provider)
                 }
             }
             .pickerStyle(.menu)
 
-            SecureField("API Key", text: $aiAssistant.apiKey)
+            SecureField(L10n.tr("API Key"), text: $aiAssistant.apiKey)
                 .textFieldStyle(.roundedBorder)
 
-            TextField("Custom Base URL (optional)", text: $aiAssistant.customBaseURL)
+            TextField(L10n.tr("Custom Base URL (optional)"), text: $aiAssistant.customBaseURL)
                 .disableAutocorrection(true)
                 .textFieldStyle(.roundedBorder)
 
-            TextField("Custom Model (optional)", text: $aiAssistant.customModel)
+            TextField(L10n.tr("Custom Model (optional)"), text: $aiAssistant.customModel)
                 .disableAutocorrection(true)
                 .textFieldStyle(.roundedBorder)
 
@@ -223,10 +223,10 @@ struct AISettingsView: View {
                     if isTesting {
                         ProgressView()
                             .scaleEffect(0.7)
-                        Text("Testing...")
+                        Text(L10n.tr("Testing..."))
                     } else {
                         Image(systemName: "checkmark.circle")
-                        Text("Test Connection")
+                        Text(L10n.tr("Test Connection"))
                     }
                 }
             }
@@ -261,15 +261,15 @@ struct AISettingsView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Leave custom fields empty to use defaults.")
+                Text(L10n.tr("Leave custom fields empty to use defaults."))
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Text("Your API key is stored locally and never sent to our servers.")
+                Text(L10n.tr("Your API key is stored locally and never sent to our servers."))
                     .font(.caption)
                     .foregroundColor(.secondary)
 
                 Link(destination: URL(string: "https://platform.openai.com/api-keys")!) {
-                    Text("Get OpenAI API Key →")
+                    Text(L10n.tr("Get OpenAI API Key →"))
                         .font(.caption)
                 }
             }
@@ -285,16 +285,16 @@ struct AISettingsView: View {
 
     private var featuresSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Features")
+            Text(L10n.tr("Features"))
                 .font(.headline)
                 .foregroundColor(.secondary)
 
             VStack(alignment: .leading, spacing: 6) {
-                Label("Command explanation", systemImage: "info.circle")
-                Label("Smart suggestions", systemImage: "lightbulb")
-                Label("Error diagnosis", systemImage: "stethoscope")
-                Label("Natural language to command", systemImage: "wand.and.stars")
-                Label("Command history analysis", systemImage: "chart.bar")
+                Label(L10n.tr("Command explanation"), systemImage: "info.circle")
+                Label(L10n.tr("Smart suggestions"), systemImage: "lightbulb")
+                Label(L10n.tr("Error diagnosis"), systemImage: "stethoscope")
+                Label(L10n.tr("Natural language to command"), systemImage: "wand.and.stars")
+                Label(L10n.tr("Command history analysis"), systemImage: "chart.bar")
             }
             .font(.caption)
             .foregroundColor(.secondary)

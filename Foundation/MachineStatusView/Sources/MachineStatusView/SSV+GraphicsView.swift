@@ -26,13 +26,13 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "n.circle.fill")
-                    Text("GPU")
+                    Text(L10n.tr("GPU"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
                 }
                 Divider()
                 if from.units.isEmpty {
-                    Text("No GPU Available")
+                    Text(L10n.tr("No GPU Available"))
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
                 } else {
                     VStack(spacing: 12) {
@@ -43,7 +43,7 @@ public extension ServerStatusViews {
                 }
                 Divider()
                 HStack {
-                    Text("Driver Version: " + from.version)
+                    Text(L10n.tr("Driver Version: %@", from.version))
                         .font(.system(size: 8, weight: .regular, design: .monospaced))
                     Spacer()
                 }
@@ -61,7 +61,7 @@ public extension ServerStatusViews {
                 }
                 HStack {
                     HStack(spacing: 0) {
-                        Text("GPU: " + gpuPercentDescription(for: element))
+                        Text(L10n.tr("GPU: %@", gpuPercentDescription(for: element)))
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .foregroundColor(element.utilization.gpu_util > 75 ? .red : .blue)
                             .multilineTextAlignment(.leading)
@@ -77,7 +77,7 @@ public extension ServerStatusViews {
                 }
                 HStack {
                     HStack(spacing: 0) {
-                        Text("RAM: " + ramPercentDescription(for: element))
+                        Text(L10n.tr("RAM: %@", ramPercentDescription(for: element)))
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                             .foregroundColor((element.memory.used / element.memory.total) * 100 > 75 ? .red : .blue)
                             .multilineTextAlignment(.leading)
@@ -92,8 +92,8 @@ public extension ServerStatusViews {
                     )
                 }
                 HStack {
-                    Text("vbios: " + element.vbios_version)
-                    Text("fan: " + element.fan_speed)
+                    Text(L10n.tr("vbios: %@", element.vbios_version))
+                    Text(L10n.tr("fan: %@", element.fan_speed))
                     Spacer()
                 }
                 .font(.system(size: 10, weight: .regular, design: .monospaced))

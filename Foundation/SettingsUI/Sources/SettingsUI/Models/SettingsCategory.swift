@@ -19,6 +19,17 @@ public enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
 
     public var id: String { rawValue }
 
+    public var title: String {
+        switch self {
+        case .about: return L10n.tr("About")
+        case .appearance: return L10n.tr("Appearance")
+        case .premium: return L10n.tr("Premium")
+        case .sync: return L10n.tr("Sync & Automation")
+        case .ai: return L10n.tr("AI Assistant")
+        case .advanced: return L10n.tr("Advanced")
+        }
+    }
+
     public var icon: String {
         switch self {
         case .about: return "info.circle"
@@ -82,6 +93,28 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
 
     public var id: String { rawValue }
 
+    public var title: String {
+        switch self {
+        case .appInfo: return L10n.tr("App Info")
+        case .documents: return L10n.tr("Documents")
+        case .appTheme: return L10n.tr("App Theme")
+        case .terminalTheme: return L10n.tr("Terminal Theme")
+        case .voiceSettings: return L10n.tr("Voice Input")
+        case .effects: return L10n.tr("Effects")
+        case .subscriptionStatus: return L10n.tr("Subscription Status")
+        case .premiumFeatures: return L10n.tr("Premium Features")
+        case .cloudSync: return L10n.tr("Cloud Sync")
+        case .snapshots: return L10n.tr("Cloud Snapshots")
+        case .automation: return L10n.tr("Automation Tasks")
+        case .monitoring: return L10n.tr("Monitoring & Export")
+        case .aiConfiguration: return L10n.tr("AI Configuration")
+        case .applicationSettings: return L10n.tr("Application Settings")
+        case .connectionSettings: return L10n.tr("Connection Settings")
+        case .fileTransferSettings: return L10n.tr("File Transfer Settings")
+        case .tmuxSettings: return L10n.tr("Tmux Settings")
+        }
+    }
+
     public var icon: String {
         switch self {
         case .appInfo: return "info.circle"
@@ -106,23 +139,23 @@ public enum SettingsItem: String, CaseIterable, Identifiable, Hashable, Codable 
 
     public var description: String? {
         switch self {
-        case .appInfo: return "Version and build information"
-        case .documents: return "Thanks and license"
-        case .appTheme: return "Appearance preferences"
-        case .terminalTheme: return "Terminal appearance and font"
-        case .voiceSettings: return "Speech input engine and language"
-        case .effects: return "Visual effects settings"
-        case .subscriptionStatus: return "Manage your subscription"
-        case .premiumFeatures: return "View premium features"
-        case .cloudSync: return "Sync with iCloud"
-        case .snapshots: return "Backup snapshots"
-        case .automation: return "Automated tasks"
-        case .monitoring: return "Server monitoring thresholds"
-        case .aiConfiguration: return "AI assistant settings"
-        case .applicationSettings: return "General app settings"
-        case .connectionSettings: return "Connection preferences"
-        case .fileTransferSettings: return "File transfer options"
-        case .tmuxSettings: return "Tmux session settings"
+        case .appInfo: return L10n.tr("Version and build information")
+        case .documents: return L10n.tr("Thanks and license")
+        case .appTheme: return L10n.tr("Appearance preferences")
+        case .terminalTheme: return L10n.tr("Terminal appearance and font")
+        case .voiceSettings: return L10n.tr("Speech input engine and language")
+        case .effects: return L10n.tr("Visual effects settings")
+        case .subscriptionStatus: return L10n.tr("Manage your subscription")
+        case .premiumFeatures: return L10n.tr("View premium features")
+        case .cloudSync: return L10n.tr("Sync with iCloud")
+        case .snapshots: return L10n.tr("Backup snapshots")
+        case .automation: return L10n.tr("Automated tasks")
+        case .monitoring: return L10n.tr("Server monitoring thresholds")
+        case .aiConfiguration: return L10n.tr("AI assistant settings")
+        case .applicationSettings: return L10n.tr("General app settings")
+        case .connectionSettings: return L10n.tr("Connection preferences")
+        case .fileTransferSettings: return L10n.tr("File transfer options")
+        case .tmuxSettings: return L10n.tr("Tmux session settings")
         }
     }
 }

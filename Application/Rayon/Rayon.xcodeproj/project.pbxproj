@@ -70,6 +70,7 @@
 		50F64E5F27B3D922008D52FB /* MachineCreateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F64E5D27B3D922008D52FB /* MachineCreateView.swift */; };
 		50FD878827D9CC3300EE3A5C /* PortForwardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */; };
 		AA00000227D9884300F6EA0D /* SettingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000127D9884300F6EA0D /* SettingWindow.swift */; };
+		AB3BD4302F72A78000140A73 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = AB3BD42F2F72A78000140A73 /* Localizable.xcstrings */; };
 		ABD999D328A09F0700404E61 /* CloudKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ABD999D228A09F0700404E61 /* CloudKit.framework */; };
 		ABD999D728A21E0D00404E61 /* DataSync in Frameworks */ = {isa = PBXBuildFile; productRef = ABD999D628A21E0D00404E61 /* DataSync */; };
 		ABF821022F41E2E2006A8F60 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = ABF821012F41E2E2006A8F60 /* RevenueCat */; };
@@ -150,6 +151,7 @@
 		50F64E5D27B3D922008D52FB /* MachineCreateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineCreateView.swift; sourceTree = "<group>"; };
 		50FD878727D9CC3300EE3A5C /* PortForwardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortForwardManager.swift; sourceTree = "<group>"; };
 		AA00000127D9884300F6EA0D /* SettingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingWindow.swift; sourceTree = "<group>"; };
+		AB3BD42F2F72A78000140A73 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		ABD999D228A09F0700404E61 /* CloudKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CloudKit.framework; path = System/Library/Frameworks/CloudKit.framework; sourceTree = SDKROOT; };
 		ABF8210A2F41E5CE006A8F60 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		ABF8210E2F41F67E006A8F60 /* PremiumSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PremiumSettingsView.swift; sourceTree = "<group>"; };
@@ -290,6 +292,7 @@
 			children = (
 				509F7F3F27B2AF7F00F28752 /* macOS.entitlements */,
 				5027F24F27B80FDB00F422BB /* Info.plist */,
+				AB3BD42F2F72A78000140A73 /* Localizable.xcstrings */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -486,6 +489,7 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 509F7F2627B2AF7E00F28752;
 			packageReferences = (
@@ -506,6 +510,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5082A1D027D0E0F300C71C0F /* LICENSE in Resources */,
+				AB3BD4302F72A78000140A73 /* Localizable.xcstrings in Resources */,
 				509F7F4727B2AF7F00F28752 /* Assets.xcassets in Resources */,
 				5082A1CF27D0E0F300C71C0F /* EULA in Resources */,
 			);
@@ -639,6 +644,7 @@
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = NO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -698,6 +704,7 @@
 				PRESERVE_DEAD_CODE_INITS_AND_TERMS = NO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Release;

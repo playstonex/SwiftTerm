@@ -22,20 +22,20 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "square.stack.3d.up.fill")
-                    Text("DISK")
+                    Text(L10n.tr("DISK"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
                 }
                 Divider()
                 if elements.count == 0 {
-                    Text("No Data Available")
+                    Text(L10n.tr("No Data Available"))
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
                 } else {
                     elementsStack
                 }
                 Divider()
                 HStack {
-                    Text("Mount point may be inaccurate due to system limit")
+                    Text(L10n.tr("Mount point may be inaccurate due to system limit"))
                         .font(.system(size: 8, weight: .regular, design: .monospaced))
                     Spacer()
                 }
@@ -55,9 +55,7 @@ public extension ServerStatusViews {
                                 Text(element.percent.string(fractionDigits: 2) + " %")
                                     .font(.system(size: 10, weight: .regular, design: .monospaced))
                                     .foregroundColor(element.percent > 75 ? .red : .blue)
-                                Text(
-                                    "USED: \(element.used) FREE \(element.free)"
-                                )
+                                Text(L10n.tr("USED: %@ FREE %@", element.used, element.free))
                             }
                             .font(.system(size: 8, weight: .regular, design: .monospaced))
                         }

@@ -37,8 +37,8 @@ public final class TerminalSearchSession: ObservableObject {
     }
 
     public var selectionSummary: String {
-        guard !results.isEmpty else { return "No matches" }
-        return "\(selectedIndex + 1) of \(results.count)"
+        guard !results.isEmpty else { return L10n.tr("No matches") }
+        return L10n.tr("%d of %d", selectedIndex + 1, results.count)
     }
 
     public func updateTranscript(_ transcript: String) {
@@ -106,7 +106,7 @@ public struct TerminalSearchPanel: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Label {
-                    TextField("Search transcript", text: $session.query)
+                    TextField(L10n.tr("Search transcript"), text: $session.query)
                         .textFieldStyle(.roundedBorder)
                 } icon: {
                     Image(systemName: "magnifyingglass")
@@ -144,11 +144,11 @@ public struct TerminalSearchPanel: View {
             }
 
             if session.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text("Search the captured terminal transcript.")
+                Text(L10n.tr("Search the captured terminal transcript."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else if session.results.isEmpty {
-                Text("No transcript lines matched.")
+                Text(L10n.tr("No transcript lines matched."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -160,7 +160,7 @@ public struct TerminalSearchPanel: View {
                                     session.selectResult(id: result.id)
                                 } label: {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("Line \(result.lineNumber)")
+                                        Text(L10n.tr("Line %d", result.lineNumber))
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
                                         Text(result.line.isEmpty ? " " : result.line)

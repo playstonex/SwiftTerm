@@ -18,21 +18,25 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "cpu")
-                    Text("CPU")
+                    Text(L10n.tr("CPU"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
-                    Text(info.processor.cores.count > 1 ? "\(info.processor.cores.count) CORES" : "\(info.processor.cores.count) CORE")
+                    Text(
+                        info.processor.cores.count > 1
+                            ? L10n.tr("%d CORES", info.processor.cores.count)
+                            : L10n.tr("%d CORE", info.processor.cores.count)
+                    )
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
                 }
                 Divider()
-                ProcessorInfoView(title: "All Core", info: info.processor.summary)
+                ProcessorInfoView(title: L10n.tr("All Core"), info: info.processor.summary)
                 Divider()
                 if info.processor.cores.count > 0 {
                     ForEach(info.processor.cores) { core in
                         ProcessorInfoView(title: core.name, info: core)
                     }
                 } else {
-                    Text("No Data Available")
+                    Text(L10n.tr("No Data Available"))
                         .font(.system(size: 10, weight: .regular, design: .monospaced))
                 }
                 Divider()
@@ -47,7 +51,7 @@ public extension ServerStatusViews {
                             Circle()
                                 .foregroundColor(.yellow)
                                 .frame(width: 10, height: 10)
-                            Text("USER")
+                            Text(L10n.tr("USER"))
                                 .font(.system(size: 10, weight: .semibold, design: .default))
                             Spacer()
                         }
@@ -55,7 +59,7 @@ public extension ServerStatusViews {
                             Circle()
                                 .foregroundColor(.red)
                                 .frame(width: 10, height: 10)
-                            Text("SYS")
+                            Text(L10n.tr("SYS"))
                                 .font(.system(size: 10, weight: .semibold, design: .default))
                             Spacer()
                         }
@@ -63,7 +67,7 @@ public extension ServerStatusViews {
                             Circle()
                                 .foregroundColor(.orange)
                                 .frame(width: 10, height: 10)
-                            Text("IO")
+                            Text(L10n.tr("IO"))
                                 .font(.system(size: 10, weight: .semibold, design: .default))
                             Spacer()
                         }
@@ -71,7 +75,7 @@ public extension ServerStatusViews {
                             Circle()
                                 .foregroundColor(.blue)
                                 .frame(width: 10, height: 10)
-                            Text("NICE")
+                            Text(L10n.tr("NICE"))
                                 .font(.system(size: 10, weight: .semibold, design: .default))
                             Spacer()
                         }

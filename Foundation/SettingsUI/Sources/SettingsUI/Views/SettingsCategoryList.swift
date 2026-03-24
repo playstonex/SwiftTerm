@@ -23,6 +23,6 @@ public struct SettingsCategoryList: View {
         #else
         .listStyle(.plain)
         #endif
-        .navigationTitle("Settings")
+        .navigationTitle(L10n.tr("Settings"))
     }
 }

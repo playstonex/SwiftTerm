@@ -42,7 +42,13 @@ public extension ServerStatusViews {
         }
 
         func getDescription() -> String {
-            "USER \(info.sumUser.string(fractionDigits: 2)) SYSTEM \(info.sumSystem.string(fractionDigits: 2)) IO \(info.sumIOWait.string(fractionDigits: 2)) NICE \(info.sumNice.string(fractionDigits: 2))"
+            L10n.tr(
+                "USER %@ SYSTEM %@ IO %@ NICE %@",
+                info.sumUser.string(fractionDigits: 2),
+                info.sumSystem.string(fractionDigits: 2),
+                info.sumIOWait.string(fractionDigits: 2),
+                info.sumNice.string(fractionDigits: 2)
+            )
         }
     }
 }

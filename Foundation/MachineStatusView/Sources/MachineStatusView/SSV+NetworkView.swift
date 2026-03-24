@@ -38,7 +38,7 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "network")
-                    Text("NET")
+                    Text(L10n.tr("NET"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
                 }
@@ -64,7 +64,7 @@ public extension ServerStatusViews {
                                         Image(systemName: "arrow.down")
                                             .font(.system(size: 14, weight: .heavy, design: .rounded))
                                             .foregroundColor(.purple)
-                                        Text("RX")
+                                        Text(L10n.tr("RX"))
                                             .foregroundColor(.purple)
                                         Spacer()
                                         Text(bytesFmt(bytes: network.rxBytesPerSec))
@@ -74,7 +74,7 @@ public extension ServerStatusViews {
                                         Spacer().frame(width: 5)
                                         Image(systemName: "arrow.up").font(.system(size: 14, weight: .heavy, design: .rounded))
                                             .foregroundColor(.blue)
-                                        Text("TX")
+                                        Text(L10n.tr("TX"))
                                             .foregroundColor(.blue)
                                         Spacer()
                                         Text(bytesFmt(bytes: network.txBytesPerSec))
@@ -84,24 +84,24 @@ public extension ServerStatusViews {
                             }
                         }
                     } else {
-                        Text("No Data Available")
+                        Text(L10n.tr("No Data Available"))
                             .font(.system(size: 10, weight: .regular, design: .monospaced))
                     }
                 }
                 HStack {
-                    Text("Displaying network speed, measured each second")
+                    Text(L10n.tr("Displaying network speed, measured each second"))
                         .font(.system(size: 8, weight: .regular, design: .monospaced))
                     Spacer()
                 }
                 .opacity(0.5)
                 Divider()
                 HStack {
-                    Text("RX")
+                    Text(L10n.tr("RX"))
                     Text(bytesFmt(bytes: totalRxByte))
-                    Text("TX")
+                    Text(L10n.tr("TX"))
                     Text(bytesFmt(bytes: totalTxByte))
                     Spacer()
-                    Text("BYTES")
+                    Text(L10n.tr("BYTES"))
                 }
                 .font(.system(size: 8, weight: .semibold, design: .monospaced))
             }

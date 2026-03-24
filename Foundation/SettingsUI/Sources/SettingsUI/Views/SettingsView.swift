@@ -50,7 +50,7 @@ private struct iOSSettingsNavigationView: View {
                 }
             }
             .listStyle(.plain)
-            .navigationTitle("Settings")
+            .navigationTitle(L10n.tr("Settings"))
         }
     }
 }
@@ -65,7 +65,7 @@ private struct iOSMergedCategoryDetailView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(category.rawValue)
+        .navigationTitle(category.title)
     }
 }
 #endif
@@ -81,7 +81,7 @@ public struct CategoryContentView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle(category.rawValue)
+        .navigationTitle(category.title)
         .frame(maxWidth: 700)
         #if os(macOS)
         .scrollContentBackground(.hidden)
@@ -99,7 +99,7 @@ public struct CategoryRow: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.accentColor)
                 .frame(width: 24)
-            Text(category.rawValue)
+            Text(category.title)
                 .font(.body)
             Spacer()
         }

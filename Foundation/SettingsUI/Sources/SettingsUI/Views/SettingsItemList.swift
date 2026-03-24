@@ -24,7 +24,7 @@ public struct SettingsItemList: View {
         #else
         .listStyle(.insetGrouped)
         #endif
-        .navigationTitle(category.rawValue)
+        .navigationTitle(category.title)
     }
 }
 
@@ -33,7 +33,7 @@ public struct ItemRow: View {
     let item: SettingsItem
 
     public var body: some View {
-        Text(item.rawValue)
+        Text(item.title)
             .font(.body)
             .lineLimit(1)
             .padding(.vertical, 2)

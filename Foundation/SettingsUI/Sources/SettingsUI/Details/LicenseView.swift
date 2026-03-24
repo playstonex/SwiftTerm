@@ -22,7 +22,7 @@ struct LicenseView: View {
         VStack(spacing: 0) {
             HStack {
                 Spacer()
-                Button("Close") { dismiss() }
+                Button(L10n.tr("Close")) { dismiss() }
                     .keyboardShortcut(.cancelAction)
             }
             .padding()
@@ -49,7 +49,7 @@ struct LicenseView: View {
                 .padding()
         }
         #if os(iOS)
-        .navigationTitle("License")
+        .navigationTitle(L10n.tr("License"))
         .navigationBarTitleDisplayMode(.inline)
         #endif
     }
@@ -58,7 +58,7 @@ struct LicenseView: View {
         guard let bundle = Bundle.main.url(forResource: "LICENSE", withExtension: nil),
               let str = try? String(contentsOfFile: bundle.path, encoding: .utf8)
         else {
-            return "Failed to load license info."
+            return L10n.tr("Failed to load license info.")
         }
         return str
     }

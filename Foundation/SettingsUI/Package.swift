@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "SettingsUI",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v17),
         .macOS(.v14),
@@ -28,6 +29,9 @@ let package = Package(
                 "Colorful",
                 "MachineStatus",
                 .product(name: "RevenueCat", package: "purchases-ios-spm"),
+            ],
+            resources: [
+                .process("Resources"),
             ]
         ),
     ]

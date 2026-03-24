@@ -5,6 +5,7 @@ import PackageDescription
 
 let package = Package(
     name: "RayonModule",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v14),
         .iOS(.v17),
@@ -43,6 +44,9 @@ let package = Package(
                 "Premium",
                 "NMMoshShell",
                 "SwiftTerminal"
+            ],
+            resources: [
+                .process("Resources"),
             ]
         ),
     ]

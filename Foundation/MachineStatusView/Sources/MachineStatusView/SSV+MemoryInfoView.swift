@@ -18,7 +18,7 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "memorychip")
-                    Text("RAM")
+                    Text(L10n.tr("RAM"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
                     Text(memoryFmt(kBytes: info.memory.memTotal))
@@ -51,7 +51,7 @@ public extension ServerStatusViews {
                             Circle()
                                 .foregroundColor(.yellow)
                                 .frame(width: 10, height: 10)
-                            Text("USED")
+                            Text(L10n.tr("USED"))
                                 .font(.system(size: 10, weight: .semibold, design: .default))
                             Spacer()
                         }
@@ -59,7 +59,7 @@ public extension ServerStatusViews {
                             Circle()
                                 .foregroundColor(.orange)
                                 .frame(width: 10, height: 10)
-                            Text("CACHE")
+                            Text(L10n.tr("CACHE"))
                                 .font(.system(size: 10, weight: .semibold, design: .default))
                             Spacer()
                         }
@@ -67,14 +67,14 @@ public extension ServerStatusViews {
                             Circle()
                                 .foregroundColor(.green)
                                 .frame(width: 10, height: 10)
-                            Text("FREE")
+                            Text(L10n.tr("FREE"))
                                 .font(.system(size: 10, weight: .semibold, design: .default))
                             Spacer()
                         }
                     })
                 Divider()
                 HStack {
-                    Text("Active & Inactive is not counted as free memory")
+                    Text(L10n.tr("Active & Inactive is not counted as free memory"))
                         .font(.system(size: 8, weight: .regular, design: .monospaced))
                     Spacer()
                 }
@@ -83,7 +83,13 @@ public extension ServerStatusViews {
         }
 
         func shortDescription() -> String {
-            "USED: \(memoryFmt(kBytes: info.memory.memTotal - info.memory.memFree)) CACHE \(memoryFmt(kBytes: info.memory.memCached)) FREE \(memoryFmt(kBytes: info.memory.memFree)) SWAP \(memoryFmt(kBytes: info.memory.swapTotal))"
+            L10n.tr(
+                "USED: %@ CACHE %@ FREE %@ SWAP %@",
+                memoryFmt(kBytes: info.memory.memTotal - info.memory.memFree),
+                memoryFmt(kBytes: info.memory.memCached),
+                memoryFmt(kBytes: info.memory.memFree),
+                memoryFmt(kBytes: info.memory.swapTotal)
+            )
         }
 
         func percentDescription() -> String {
