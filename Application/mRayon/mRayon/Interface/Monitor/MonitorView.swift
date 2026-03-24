@@ -18,7 +18,7 @@ struct MonitorView: View {
     var body: some View {
         Group {
             if context.closed {
-                PlaceholderView("Connection Closed", img: .connectionBroken)
+                PlaceholderView(String(localized: "Connection Closed"), img: .connectionBroken)
                     .expended()
             } else {
                 ScrollView {
@@ -34,13 +34,19 @@ struct MonitorView: View {
                             MonitorManager.shared.end(for: context.id)
                             presentationMode.wrappedValue.dismiss()
                         } label: {
-                            Label("Close Monitor", systemImage: "xmark")
+                            Label(String(localized: "Close Monitor"), systemImage: "xmark")
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Monitor - \(context.machine.name)")
+        .navigationTitle(
+            String(
+                format: String(localized: "Monitor - %@"),
+                locale: Locale.current,
+                context.machine.name
+            )
+        )
         .navigationBarTitleDisplayMode(.inline)
     }
 }

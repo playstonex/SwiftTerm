@@ -36,7 +36,7 @@ struct WebBrowserView: View {
                     context.disconnect()
                     presentationMode.wrappedValue.dismiss()
                 } label: {
-                    Label("Disconnect", systemImage: "xmark.circle")
+                    Label(String(localized: "Disconnect"), systemImage: "xmark.circle")
                 }
             }
         }
@@ -49,11 +49,13 @@ struct WebBrowserView: View {
     }
 
     private var navigationTitle: String {
-        let portInfo = context.localPort > 0 ? "localhost:\(context.localPort)" : "connecting..."
+        let portInfo = context.localPort > 0
+            ? String(format: String(localized: "localhost:%lld"), locale: Locale.current, Int64(context.localPort))
+            : String(localized: "connecting...")
         if context.session.name.isEmpty {
             return portInfo
         }
-        return "\(context.session.name) - \(portInfo)"
+        return String(format: String(localized: "%@ - %@"), locale: Locale.current, context.session.name, portInfo)
     }
 
     var statusBar: some View {
@@ -62,7 +64,7 @@ struct WebBrowserView: View {
             case .disconnected:
                 HStack {
                     Image(systemName: "circle.dashed")
-                    Text("Disconnected")
+                    Text(String(localized: "Disconnected"))
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -72,7 +74,13 @@ struct WebBrowserView: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
-                    Text("Connecting to \(context.machine.remoteAddress)...")
+                    Text(
+                        String(
+                            format: String(localized: "Connecting to %@..."),
+                            locale: Locale.current,
+                            context.machine.remoteAddress
+                        )
+                    )
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -82,7 +90,7 @@ struct WebBrowserView: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
-                    Text("Authenticating...")
+                    Text(String(localized: "Authenticating..."))
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -92,7 +100,14 @@ struct WebBrowserView: View {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
-                    Text("Creating tunnel to \(context.session.remoteHost):\(context.session.remotePort)...")
+                    Text(
+                        String(
+                            format: String(localized: "Creating tunnel to %@:%lld..."),
+                            locale: Locale.current,
+                            context.session.remoteHost,
+                            Int64(context.session.remotePort)
+                        )
+                    )
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -102,7 +117,15 @@ struct WebBrowserView: View {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundColor(.green)
-                    Text("Connected: localhost:\(context.localPort) → \(context.session.remoteHost):\(context.session.remotePort)")
+                    Text(
+                        String(
+                            format: String(localized: "Connected: localhost:%lld → %@:%lld"),
+                            locale: Locale.current,
+                            Int64(context.localPort),
+                            context.session.remoteHost,
+                            Int64(context.session.remotePort)
+                        )
+                    )
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -152,7 +175,7 @@ struct WebBrowserView: View {
             }
 
             // URL field
-            TextField("URL", text: $urlText)
+            TextField(String(localized: "URL"), text: $urlText)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
@@ -197,20 +220,20 @@ struct WebBrowserView: View {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.system(size: 60))
                             .foregroundColor(.red)
-                        Text("Connection Failed")
+                        Text(String(localized: "Connection Failed"))
                             .font(.headline)
                         Text(message)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
-                        Button("Retry") {
+                        Button(String(localized: "Retry")) {
                             context.connectAndForward()
                         }
                         .buttonStyle(.bordered)
                     } else {
                         ProgressView()
                             .scaleEffect(1.5)
-                        Text("Connecting...")
+                        Text(String(localized: "Connecting..."))
                             .font(.headline)
                     }
                 }
@@ -239,7 +262,7 @@ struct WebBrowserView: View {
         guard let url = URL(string: urlString),
               let host = url.host,
               (host == "127.0.0.1" || host == "localhost") else {
-            UIBridge.presentError(with: "Only localhost URLs are allowed")
+            UIBridge.presentError(with: String(localized: "Only localhost URLs are allowed"))
             return
         }
 

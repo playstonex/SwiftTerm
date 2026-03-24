@@ -52,7 +52,13 @@ struct FileTransferView: View {
         .animation(.interactiveSpring(), value: context.currentProcessingFile)
 //        .animation(.interactiveSpring(), value: context.currentProgressCancelable)
         .animation(.interactiveSpring(), value: context.processConnection)
-        .navigationTitle("SFTP - " + context.navigationTitle)
+        .navigationTitle(
+            String(
+                format: String(localized: "SFTP - %@"),
+                locale: Locale.current,
+                context.navigationTitle
+            )
+        )
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -61,7 +67,7 @@ struct FileTransferView: View {
             if context.isProgressRunning || context.processConnection {
                 progressView
             } else if !context.connected {
-                PlaceholderView("Connection Closed", img: .connectionBroken)
+                PlaceholderView(String(localized: "Connection Closed"), img: .connectionBroken)
             } else {
                 fileListView
             }

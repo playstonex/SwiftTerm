@@ -47,13 +47,31 @@ struct BatchExecMainView: View {
                         .frame(maxWidth: .infinity)
                         .padding()
                     ProgressView(value: currentProgress, total: totalProgress) {
-                        Text("Operation is in progress: \(Int(exactly: totalProgress - currentProgress) ?? 1) remain")
+                        Text(
+                            String(
+                                format: String(localized: "Operation is in progress: %lld remain"),
+                                locale: Locale.current,
+                                Int64(exactly: totalProgress - currentProgress) ?? 1
+                            )
+                        )
                     }
                     if inProgressName.count > 0 {
-                        Text("Executing: " + inProgressName.joined(separator: ", "))
+                        Text(
+                            String(
+                                format: String(localized: "Executing: %@"),
+                                locale: Locale.current,
+                                inProgressName.joined(separator: ", ")
+                            )
+                        )
                     }
                     if completedName.count > 0 {
-                        Text("Completed: " + completedName.joined(separator: ", "))
+                        Text(
+                            String(
+                                format: String(localized: "Completed: %@"),
+                                locale: Locale.current,
+                                completedName.joined(separator: ", ")
+                            )
+                        )
                     }
                 }
             } else if currentProgress == totalProgress {
@@ -62,10 +80,10 @@ struct BatchExecMainView: View {
                         .font(.system(size: 50, weight: .semibold, design: .rounded))
                         .foregroundColor(.green)
                         .padding()
-                    Text("Execution Completed")
+                    Text(String(localized: "Execution Completed"))
                 }
             } else {
-                Text("Unknown Error Occurred")
+                Text(String(localized: "Unknown Error Occurred"))
                     .onAppear {
                         #if DEBUG
                             fatalError()

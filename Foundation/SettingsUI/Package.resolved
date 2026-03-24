@@ -8,6 +8,24 @@
         "revision" : "4d75c384d9169316d6aa5b74b541c02dd0e345ec",
         "version" : "5.60.0"
       }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser",
+      "state" : {
+        "revision" : "626b5b7b2f45e1b0b1c6f4a309296d1d21d7311b",
+        "version" : "1.7.1"
+      }
+    },
+    {
+      "identity" : "swiftterm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/playstonex/SwiftTerm.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "c959d5a6b406bac19d76a29e5c77e3cda35f1398"
+      }
     }
   ],
   "version" : 2
