@@ -414,6 +414,8 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
         if [ -z "$TMUX_BIN" ]; then \
           echo '[!] tmux not found in PATH or common install paths'; \
         else \
+          "$TMUX_BIN" start-server >/dev/null 2>&1 || true; \
+          "$TMUX_BIN" set-option -g mouse on >/dev/null 2>&1 || true; \
           \(tmuxStatusSetup); \
           \(tmuxAction); \
         fi
