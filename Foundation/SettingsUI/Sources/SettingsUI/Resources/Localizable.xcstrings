@@ -4871,6 +4871,58 @@
         }
       }
     },
+    "Legal": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechtliches"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Legal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Información legal"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informations légales"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "法的情報"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informações legais"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "法律信息"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "法律資訊"
+          }
+        }
+      }
+    },
     "License": {
       "localizations": {
         "de": {
@@ -6371,6 +6423,58 @@
         }
       }
     },
+    "Privacy Policy": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datenschutzrichtlinie"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy Policy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Política de privacidad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Politique de confidentialité"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プライバシーポリシー"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Política de Privacidade"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐私政策"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隱私政策"
+          }
+        }
+      }
+    },
     "Processing...": {
       "localizations": {
         "de": {
@@ -6505,6 +6609,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "速率限制 (KB/s)"
+          }
+        }
+      }
+    },
+    "Read the Terms of Use and Privacy Policy before purchasing.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesen Sie vor dem Kauf die Nutzungsbedingungen und die Datenschutzrichtlinie."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read the Terms of Use and Privacy Policy before purchasing."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lea los Términos de uso y la Política de privacidad antes de comprar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lisez les Conditions d'utilisation et la Politique de confidentialité avant l'achat."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購入前に利用規約とプライバシーポリシーをお読みください。"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leia os Termos de Uso e a Política de Privacidade antes de comprar."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "购买前请阅读使用条款和隐私政策。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "購買前請閱讀使用條款和隱私政策。"
           }
         }
       }
@@ -7831,6 +7987,58 @@
         }
       }
     },
+    "Subscription Reminders": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonnementhinweise"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscription Reminders"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avisos de suscripción"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informations sur l'abonnement"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "サブスクリプションに関する注意事項"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avisos da assinatura"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "订阅提醒"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "訂閱提醒"
+          }
+        }
+      }
+    },
     "Subscription Status": {
       "localizations": {
         "de": {
@@ -8563,6 +8771,58 @@
           "stringUnit": {
             "state": "translated",
             "value": "終端外觀與字體"
+          }
+        }
+      }
+    },
+    "Terms of Use": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutzungsbedingungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terms of Use"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Términos de uso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conditions d'utilisation"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "利用規約"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termos de Uso"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用条款"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用條款"
           }
         }
       }
@@ -9947,6 +10207,214 @@
           "stringUnit": {
             "state": "translated",
             "value": "iOS 回車發送換行"
+          }
+        }
+      }
+    },
+    "kSubscriptionTip1": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Die Zahlung wird Ihrem iTunes-Account bei Bestätigung des Kaufs belastet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Payment will be charged to iTunes Account at confirmation of purchase"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. El pago se cargará a la cuenta de iTunes al confirmar la compra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Le paiement sera facturé à votre compte iTunes à la confirmation de l'achat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. 購入が確定すると、料金はiTunesアカウントに請求されます"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. O pagamento será cobrado da conta do iTunes no momento da confirmação da compra"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. 购买确认后，费用将从 iTunes 账户中扣除"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. 購買確認後，費用將從 iTunes 帳戶中扣除"
+          }
+        }
+      }
+    },
+    "kSubscriptionTip2": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. Das Abonnement verlängert sich automatisch, sofern die automatische Verlängerung nicht mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums deaktiviert wird"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. Subscription automatically renews unless auto-renew is turned off at least 24-hours before the end of the cost of the renewal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. La suscripción se renueva automáticamente a menos que la renovación automática se desactive al menos 24 horas antes de que finalice el período actual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. L'abonnement se renouvelle automatiquement sauf si le renouvellement automatique est désactivé au moins 24 heures avant la fin de la période en cours"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. 現在の利用期間が終了する24時間以上前に自動更新をオフにしない限り、サブスクリプションは自動的に更新されます"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. A assinatura é renovada automaticamente, a menos que a renovação automática seja desativada pelo menos 24 horas antes do fim do período atual"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. 除非您在当前订阅周期结束前至少 24 小时关闭自动续订，否则订阅将自动续订"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. 除非您在目前訂閱週期結束前至少 24 小時關閉自動續訂，否則訂閱將自動續訂"
+          }
+        }
+      }
+    },
+    "kSubscriptionTip3": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. Die Verlängerung wird innerhalb von 24 Stunden vor Ablauf des aktuellen Zeitraums berechnet, und die Kosten der Verlängerung werden angegeben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. Account will be charged for renewal within 24-hours prior to the end of the current period, and identify the cost of the renewal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. La renovación se cobrará dentro de las 24 horas previas al final del período actual y se indicará el costo de la renovación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. Le renouvellement sera facturé dans les 24 heures précédant la fin de la période en cours, et le coût du renouvellement sera indiqué"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. 現在の利用期間が終了する前の24時間以内に更新料金が請求され、更新費用が表示されます"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. A cobrança da renovação será feita nas 24 horas anteriores ao fim do período atual, e o custo da renovação será informado"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. 当前订阅周期结束前 24 小时内将收取续订费用，并显示续订价格"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. 目前訂閱週期結束前 24 小時內將收取續訂費用，並顯示續訂價格"
+          }
+        }
+      }
+    },
+    "kSubscriptionTip4": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. Das Abonnement kann vom Benutzer verwaltet werden, und die automatische Verlängerung kann nach dem Kauf in den Kontoeinstellungen deaktiviert werden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. Subscription may be managed by the user and auto- renewal may be turned off by going to the user's Account Settings after purchase"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. El usuario puede administrar la suscripción y desactivar la renovación automática en la configuración de su cuenta después de la compra"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. L'abonnement peut être géré par l'utilisateur et le renouvellement automatique peut être désactivé dans les réglages du compte après l'achat"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. サブスクリプションはユーザーが管理でき、購入後にアカウント設定から自動更新をオフにできます"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. A assinatura pode ser gerenciada pelo usuário, e a renovação automática pode ser desativada nas configurações da conta após a compra"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. 用户可在购买后前往账户设置管理订阅，并关闭自动续订"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "4. 使用者可在購買後前往帳戶設定管理訂閱，並關閉自動續訂"
           }
         }
       }

@@ -348,6 +348,28 @@ public struct SettingsDetailContent: View {
             }
 
             Section {
+                Link(destination: SubscriptionLegalLinks.termsOfUseURL) {
+                    Label(L10n.tr("Terms of Use"), systemImage: "arrow.up.right.square")
+                }
+
+                Link(destination: SubscriptionLegalLinks.privacyPolicyURL) {
+                    Label(L10n.tr("Privacy Policy"), systemImage: "arrow.up.right.square")
+                }
+            } header: {
+                Text(L10n.tr("Legal"))
+            } footer: {
+                Text(L10n.tr("Read the Terms of Use and Privacy Policy before purchasing."))
+            }
+
+            if !premium.isSubscribed {
+                Section {
+                    subscriptionRemindersView
+                } header: {
+                    Text(L10n.tr("Subscription Reminders"))
+                }
+            }
+
+            Section {
                 Button {
                     Task {
                         await restorePurchases()
@@ -596,6 +618,23 @@ public struct SettingsDetailContent: View {
                 .padding(.leading, 40)
             FeatureRow(icon: "moon.fill", title: "Dark Mode Themes", description: "Premium terminal color schemes")
         }
+    }
+
+    private var subscriptionRemindersView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            subscriptionReminderText("kSubscriptionTip1")
+            subscriptionReminderText("kSubscriptionTip2")
+            subscriptionReminderText("kSubscriptionTip3")
+            subscriptionReminderText("kSubscriptionTip4")
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func subscriptionReminderText(_ key: String) -> some View {
+        Text(L10n.tr(key))
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Sync & Automation Views
@@ -1233,6 +1272,11 @@ public struct SettingsDetailContent: View {
             }
         }
     #endif
+}
+
+private enum SubscriptionLegalLinks {
+    static let termsOfUseURL = URL(string: "https://goodterm.playstone.top/terms")!
+    static let privacyPolicyURL = URL(string: "https://goodterm.playstone.top/privacy")!
 }
 
 // MARK: - Feature Row Component
