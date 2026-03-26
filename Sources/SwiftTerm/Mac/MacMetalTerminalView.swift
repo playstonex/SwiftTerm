@@ -308,16 +308,16 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         )
     }
 
-    private var prefersLocalScrollbackForWheel: Bool {
-        guard let terminal = terminal else { return false }
-        let displayBuffer = terminal.displayBuffer
-        return !terminal.isDisplayBufferAlternate
-            && displayBuffer.hasScrollback
-            && displayBuffer.lines.count > displayBuffer.rows
-    }
-
     /// Whether a mouse-reporting drag is in progress
     private var mouseTrackingActive: Bool = false
+    private var scrollWheelAccumulator: CGFloat = 0
+
+    private func clampedPixelPosition(for event: NSEvent) -> Position {
+        let point = convert(event.locationInWindow, from: nil)
+        let x = min(max(point.x, 0), bounds.width)
+        let y = min(max(point.y, 0), bounds.height)
+        return Position(col: Int(x), row: Int(bounds.height - y))
+    }
 
     override open func mouseDown(with event: NSEvent) {
         // Make this view the first responder when clicked
@@ -325,13 +325,10 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
         guard let terminal = terminal else { return }
 
-        let point = convert(event.locationInWindow, from: nil)
-        let col = Int(point.x / cellDimension.width)
-        let row = Int((frame.height - point.y) / cellDimension.height)
-
         // Forward to terminal if mouse reporting is active
         if terminal.mouseMode != .off && allowMouseReporting {
-            sendMouseEvent(button: event.buttonNumber, col: col, row: row, pressed: true, modifierFlags: event.modifierFlags)
+            guard let hit = clampedScreenGridPosition(for: event) else { return }
+            sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: true, event: event)
             mouseTrackingActive = true
         } else {
             // Text selection
@@ -358,12 +355,9 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     override open func mouseDragged(with event: NSEvent) {
         guard let terminal = terminal else { return }
 
-        let point = convert(event.locationInWindow, from: nil)
-        let col = Int(point.x / cellDimension.width)
-        let row = Int((frame.height - point.y) / cellDimension.height)
-
         if terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive {
-            sendMouseEvent(button: event.buttonNumber, col: col, row: row, pressed: true, modifierFlags: event.modifierFlags, motion: true)
+            guard let hit = clampedScreenGridPosition(for: event) else { return }
+            sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: true, event: event, motion: true)
         } else {
             guard let hit = clampedGridPosition(for: event) else { return }
             if selection?.active == true {
@@ -379,10 +373,8 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
     override open func mouseUp(with event: NSEvent) {
         if let terminal = terminal, terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive {
-            let point = convert(event.locationInWindow, from: nil)
-            let col = Int(point.x / cellDimension.width)
-            let row = Int((frame.height - point.y) / cellDimension.height)
-            sendMouseEvent(button: event.buttonNumber, col: col, row: row, pressed: false, modifierFlags: event.modifierFlags)
+            guard let hit = clampedScreenGridPosition(for: event) else { return }
+            sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: false, event: event)
             mouseTrackingActive = false
         }
 
@@ -391,68 +383,59 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
     override open func scrollWheel(with event: NSEvent) {
         guard let terminal = terminal else { return }
+        let steps = scrollingSteps(for: event)
+        guard steps != 0 else { return }
 
-        if terminal.mouseMode != .off && allowMouseReporting && !prefersLocalScrollbackForWheel {
+        if terminal.mouseMode != .off && allowMouseReporting {
             guard let hit = clampedScreenGridPosition(for: event) else { return }
-            let rawDelta = event.hasPreciseScrollingDeltas
-                ? event.scrollingDeltaY / max(cellDimension.height, 1)
-                : event.scrollingDeltaY
-            let steps = scrollingSteps(for: rawDelta)
-            guard steps != 0 else { return }
-
             let button = steps > 0 ? 4 : 5
             for _ in 0..<abs(steps) {
-                sendMouseEvent(button: button, col: hit.col, row: hit.row, pressed: true, modifierFlags: event.modifierFlags)
-                sendMouseEvent(button: button, col: hit.col, row: hit.row, pressed: false, modifierFlags: event.modifierFlags)
+                sendMouseEvent(button: button, col: hit.col, row: hit.row, pressed: true, event: event)
             }
             return
         }
 
+        let displayBuffer = terminal.displayBuffer
+        let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+        let newYDisp = max(0, min(displayBuffer.yDisp - steps, maxYDisp))
+        if newYDisp != displayBuffer.yDisp {
+            terminal.userScrolling = newYDisp != maxYDisp
+            terminal.setViewYDisp(newYDisp)
+            renderer?.markAllDirty(reason: "wheelScroll")
+            terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, maxYDisp)))
+            setTerminalNeedsDisplay()
+        }
+    }
+
+    private func scrollingSteps(for event: NSEvent) -> Int {
         let rawDelta = event.hasPreciseScrollingDeltas
             ? event.scrollingDeltaY / max(cellDimension.height, 1)
-            : event.scrollingDeltaY
-        let delta = Int(rawDelta.rounded(.toNearestOrAwayFromZero))
-        if delta != 0 {
-            let displayBuffer = terminal.displayBuffer
-            let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
-            let newYDisp = max(0, min(displayBuffer.yDisp - delta, maxYDisp))
-            if newYDisp != displayBuffer.yDisp {
-                terminal.setViewYDisp(newYDisp)
-            }
+            : event.deltaY
+        scrollWheelAccumulator += rawDelta
+        let steps = Int(scrollWheelAccumulator.rounded(.towardZero))
+        if steps != 0 {
+            scrollWheelAccumulator -= CGFloat(steps)
         }
+        return steps
     }
 
-    private func scrollingSteps(for rawDelta: CGFloat) -> Int {
-        let magnitude = abs(rawDelta)
-        if magnitude >= 10 {
-            return Int(rawDelta.rounded(.towardZero))
-        }
-        if magnitude >= 3 {
-            return Int(rawDelta.rounded(.toNearestOrAwayFromZero))
-        }
-        if magnitude >= 0.5 {
-            return rawDelta > 0 ? 1 : -1
-        }
-        return 0
-    }
+    private func sendMouseEvent(button: Int, col: Int, row: Int, pressed: Bool, event: NSEvent, motion: Bool = false) {
+        guard let terminal else { return }
 
-    private func sendMouseEvent(button: Int, col: Int, row: Int, pressed: Bool, modifierFlags: NSEvent.ModifierFlags, motion: Bool = false) {
-        guard terminal != nil else { return }
+        let flags = terminal.encodeButton(
+            button: button,
+            release: !pressed,
+            shift: event.modifierFlags.contains(.shift),
+            meta: event.modifierFlags.contains(.option),
+            control: event.modifierFlags.contains(.control)
+        )
+        let pixels = clampedPixelPosition(for: event)
 
-        var buttonCode: UInt8 = 0
-        if pressed {
-            buttonCode = UInt8(button)
-        }
         if motion {
-            buttonCode += 32
+            terminal.sendMotion(buttonFlags: flags, x: col, y: row, pixelX: pixels.col, pixelY: pixels.row)
+        } else {
+            terminal.sendEvent(buttonFlags: flags, x: col, y: row, pixelX: pixels.col, pixelY: pixels.row)
         }
-
-        var modifierCode: UInt8 = 0
-        if modifierFlags.contains(.shift) { modifierCode += 1 }
-        if modifierFlags.contains(.option) || modifierFlags.contains(.control) { modifierCode += 4 }
-
-        let sequence = "\u{1b}[<\(buttonCode);\(col + 1);\(row + 1)\(pressed ? "M" : "m")"
-        send(text: sequence)
     }
 
     // MARK: - View lifecycle
