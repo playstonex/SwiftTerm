@@ -894,12 +894,18 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let eventType: KittyKeyboardEventType
     }
 
-    private var prefersLocalScrollbackForPan: Bool {
-        guard let terminal = terminal else { return false }
-        let displayBuffer = terminal.displayBuffer
-        return !terminal.isDisplayBufferAlternate
-            && displayBuffer.hasScrollback
-            && displayBuffer.lines.count > displayBuffer.rows
+    private func clampedTouchPosition(at location: CGPoint) -> (grid: Position, pixels: Position)? {
+        guard let terminal = terminal else { return nil }
+
+        let clampedX = min(max(location.x, 0), bounds.width)
+        let clampedY = min(max(location.y, 0), bounds.height)
+        let col = max(0, min(Int(clampedX / cellDimension.width), terminal.cols - 1))
+        let row = max(0, min(Int(clampedY / cellDimension.height), terminal.rows - 1))
+
+        return (
+            grid: Position(col: col, row: row),
+            pixels: Position(col: Int(clampedX), row: Int(clampedY))
+        )
     }
 
     // MARK: - Gesture handling
@@ -915,17 +921,15 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             return
         }
 
-        let location = gesture.location(in: self)
-        let col = Int(location.x / cellDimension.width)
-        let row = Int(location.y / cellDimension.height)
-
         guard let terminal = terminal else { return }
 
         // Handle mouse reporting
         if terminal.mouseMode != .off && allowMouseReporting {
-            sendTouchToTerminal(button: 0, col: col, row: row, pressed: true, motion: false)
+            let location = gesture.location(in: self)
+            guard let hit = clampedTouchPosition(at: location) else { return }
+            sendTouchToTerminal(button: 0, col: hit.grid.col, row: hit.grid.row, pressed: true, motion: false, pixels: hit.pixels)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                self.sendTouchToTerminal(button: 0, col: col, row: row, pressed: false, motion: false)
+                self.sendTouchToTerminal(button: 0, col: hit.grid.col, row: hit.grid.row, pressed: false, motion: false, pixels: hit.pixels)
             }
         } else {
             // Handle selection - clear selection on tap
@@ -994,15 +998,15 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             return
         }
 
-        if terminal.mouseMode != .off && allowMouseReporting && !prefersLocalScrollbackForPan {
+        if terminal.mouseMode != .off && allowMouseReporting {
             let location = gesture.location(in: self)
-            let col = max(0, min(Int(location.x / cellDimension.width), terminal.cols - 1))
-            let row = max(0, min(Int(location.y / cellDimension.height), terminal.rows - 1))
-            let button = scrollDelta > 0 ? 4 : 5
+            guard let hit = clampedTouchPosition(at: location) else { return }
+            // UIPanGestureRecognizer reports finger movement, not wheel delta.
+            // Finger-up should move terminal content up, which corresponds to wheel-down for tmux.
+            let button = scrollDelta > 0 ? 5 : 4
 
             for _ in 0..<abs(scrollDelta) {
-                sendTouchToTerminal(button: button, col: col, row: row, pressed: true, motion: false)
-                sendTouchToTerminal(button: button, col: col, row: row, pressed: false, motion: false)
+                sendTouchToTerminal(button: button, col: hit.grid.col, row: hit.grid.row, pressed: true, motion: false, pixels: hit.pixels)
             }
 
             gesture.setTranslation(.zero, in: self)
@@ -1028,16 +1032,22 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         }
     }
 
-    private func sendTouchToTerminal(button: Int, col: Int, row: Int, pressed: Bool, motion: Bool) {
-        guard terminal != nil else { return }
+    private func sendTouchToTerminal(button: Int, col: Int, row: Int, pressed: Bool, motion: Bool, pixels: Position) {
+        guard let terminal else { return }
 
-        var buttonCode: UInt8 = pressed ? UInt8(button) : UInt8(button + 3)
+        let flags = terminal.encodeButton(
+            button: button,
+            release: !pressed,
+            shift: false,
+            meta: false,
+            control: false
+        )
+
         if motion {
-            buttonCode = UInt8(button + 32)
+            terminal.sendMotion(buttonFlags: flags, x: col, y: row, pixelX: pixels.col, pixelY: pixels.row)
+        } else {
+            terminal.sendEvent(buttonFlags: flags, x: col, y: row, pixelX: pixels.col, pixelY: pixels.row)
         }
-
-        let sequence = "\u{1b}[<\(buttonCode);\(col + 1);\(row + 1)\(pressed ? "M" : "m")"
-        send(text: sequence)
     }
 
     // MARK: - Scrolling
@@ -1056,7 +1066,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let delta = currentLocation.y - previousLocation.y
 
         guard let terminal = terminal else { return }
-        if terminal.mouseMode != .off && allowMouseReporting && !prefersLocalScrollbackForPan {
+        if terminal.mouseMode != .off && allowMouseReporting {
             return
         }
         let displayBuffer = terminal.displayBuffer
