@@ -62,6 +62,8 @@ struct TerminalView: View {
     @State private var isKeyboardVisible = false
     @State private var isShowingSearch = false
     @StateObject private var searchSession = TerminalSearchSession()
+    @State private var refreshSearchTask: Task<Void, Never>?
+    @State private var resizeTask: Task<Void, Never>?
     private let terminalContentPadding = EdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
 
     var body: some View {
@@ -79,7 +81,13 @@ struct TerminalView: View {
                             .padding(terminalContentPadding)
                             .onChange(of: r.size) { _, _ in
                                 guard context.interfaceToken == interfaceToken else { return }
-                                Task { await updateTerminalSize() }
+                                resizeTask?.cancel()
+                                resizeTask = Task {
+                                    try? await Task.sleep(nanoseconds: 250_000_000)
+                                    guard !Task.isCancelled else { return }
+                                    guard context.interfaceToken == interfaceToken else { return }
+                                    await updateTerminalSize()
+                                }
                             }
                             .onAppear {
                                 context.termInterface.setTerminalFontSize(with: store.terminalFontSize)
@@ -106,7 +114,12 @@ struct TerminalView: View {
                                 context.termInterface.setReturnKeySendsLineFeed(newValue)
                             }
                             .onChange(of: context.historyRevision) { _, _ in
-                                refreshSearchTranscript()
+                                refreshSearchTask?.cancel()
+                                refreshSearchTask = Task {
+                                    try? await Task.sleep(nanoseconds: 500_000_000)
+                                    guard !Task.isCancelled else { return }
+                                    refreshSearchTranscript()
+                                }
                             }
                             .onChange(of: isShowingSearch) { _, isPresented in
                                 if isPresented {
@@ -400,7 +413,7 @@ struct TerminalView: View {
     func updateTerminalSize() async {
         let newSize = context.termInterface.requestTerminalSize()
 
-        guard newSize.width > 5, newSize.height > 5,
+        guard newSize.width >= 8, newSize.height >= 8,
               newSize != terminalSize else { return }
 
         guard context.interfaceToken == interfaceToken else { return }

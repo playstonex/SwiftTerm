@@ -362,7 +362,6 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     private func handleTerminalEvent(_ event: TerminalEvent) {
         switch event {
         case .input(let buffer):
-            debugPrint("[TerminalContext] setupEventChain received: \(buffer.prefix(50).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))")
             insertBuffer(buffer)
         case .title(let str):
             title = str
