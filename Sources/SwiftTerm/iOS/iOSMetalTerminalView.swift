@@ -87,6 +87,9 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     private var pendingKittyKeyEvent: PendingKittyKeyEvent?
 
+    /// Selection auto-scroll task for dragging beyond screen edges
+    private var selectionScrollTask: Task<(), Never>?
+
     // MARK: - Initialization
 
     override public init(frame frameRect: CGRect, device: MTLDevice?) {
@@ -933,6 +936,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             }
         } else {
             // Handle selection - clear selection on tap
+            stopSelectionScrollTimer()
             selection?.active = false
             setTerminalNeedsDisplay()
         }
@@ -964,11 +968,9 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         switch gesture.state {
         case .began:
-            let bufferRow = row + terminal.displayBuffer.yDisp
-            selection.startSelection(row: bufferRow, col: col)
+            selection.startSelection(row: row, col: col)
         case .changed:
-            let bufferRow = row + terminal.displayBuffer.yDisp
-            selection.dragExtend(row: bufferRow, col: col)
+            selection.dragExtend(row: row, col: col)
         case .ended:
             // Show edit menu for copy
             showEditMenu(at: location)
@@ -981,6 +983,12 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let terminal = terminal, cellDimension.height > 0 else { return }
+
+        // If selection is active, extend selection instead of scrolling
+        if selection?.active == true {
+            handleSelectionPan(gesture: gesture)
+            return
+        }
 
         if gesture.state == .began {
             if isFirstResponder {
@@ -1030,6 +1038,77 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
             terminal.userScrolling = false
         }
+    }
+
+    /// Handle pan gesture when selection is active — extend selection and auto-scroll at edges
+    private func handleSelectionPan(gesture: UIPanGestureRecognizer) {
+        guard let terminal = terminal, let selection = selection else { return }
+
+        switch gesture.state {
+        case .began, .changed:
+            let location = gesture.location(in: self)
+            let col = Int(location.x / cellDimension.width)
+            let row = Int(location.y / cellDimension.height)
+
+            // Extend selection at the current touch position (screen-relative row)
+            selection.dragExtend(row: row, col: col)
+            gesture.setTranslation(.zero, in: self)
+
+            // Auto-scroll when finger goes beyond screen edges
+            let absoluteY = location.y
+            if absoluteY < 0 || absoluteY > bounds.height {
+                startSelectionScrollTimer(direction: absoluteY < 0 ? -1 : 1)
+            } else {
+                stopSelectionScrollTimer()
+            }
+
+            setTerminalNeedsDisplay()
+
+        case .ended, .cancelled, .failed:
+            stopSelectionScrollTimer()
+            // Show edit menu after selection drag
+            let location = gesture.location(in: self)
+            showEditMenu(at: location)
+
+        default:
+            break
+        }
+    }
+
+    private func startSelectionScrollTimer(direction: Int) {
+        guard selectionScrollTask == nil else { return }
+        selectionScrollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, let terminal = self.terminal else { return }
+                let displayBuffer = terminal.displayBuffer
+                let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+                let scrollAmount = direction < 0 ? -1 : 1
+                let newYDisp = max(0, min(displayBuffer.yDisp + scrollAmount, maxYDisp))
+
+                if newYDisp != displayBuffer.yDisp {
+                    terminal.userScrolling = newYDisp != maxYDisp
+                    terminal.setViewYDisp(newYDisp)
+                    self.renderer?.markAllDirty(reason: "selectionScroll")
+                    self.terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, maxYDisp)))
+                    self.setTerminalNeedsDisplay()
+
+                    // Extend selection to the new edge row
+                    if let selection = self.selection, selection.active {
+                        let edgeRow = direction > 0
+                            ? newYDisp + displayBuffer.rows - 1
+                            : newYDisp
+                        selection.dragExtend(row: edgeRow - newYDisp, col: terminal.cols - 1)
+                    }
+                }
+
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+        }
+    }
+
+    private func stopSelectionScrollTimer() {
+        selectionScrollTask?.cancel()
+        selectionScrollTask = nil
     }
 
     private func sendTouchToTerminal(button: Int, col: Int, row: Int, pressed: Bool, motion: Bool, pixels: Position) {
