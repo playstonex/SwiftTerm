@@ -312,6 +312,80 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     private var mouseTrackingActive: Bool = false
     private var scrollWheelAccumulator: CGFloat = 0
 
+    /// Auto-scroll state for drag selection beyond visible area
+    private var autoScrollDelta = 0
+    private var autoScrollTimer: Timer?
+
+    /// Converts mouse event to buffer position without clamping to visible rows.
+    /// Used during selection drag so selection can extend beyond the visible area.
+    private func unclampedGridPosition(for event: NSEvent) -> Position? {
+        guard let terminal = terminal else { return nil }
+
+        let point = convert(event.locationInWindow, from: nil)
+        let col = Int(point.x / cellDimension.width)
+        let row = Int((frame.height - point.y) / cellDimension.height)
+
+        let clampedCol = max(0, min(col, terminal.cols - 1))
+        let screenRow = row  // unclamped — can be negative or beyond rows
+        let bufferRow = min(
+            max(0, screenRow + terminal.displayBuffer.yDisp),
+            max(0, terminal.displayBuffer.lines.count - 1)
+        )
+
+        return Position(col: clampedCol, row: bufferRow)
+    }
+
+    private func calcScrollingVelocity(delta: Int) -> Int {
+        if delta > 9 {
+            return max(terminal.rows, 20)
+        }
+        if delta > 5 {
+            return 10
+        }
+        if delta > 1 {
+            return 3
+        }
+        return 1
+    }
+
+    private func scrollingTimerElapsed(_ source: Timer) {
+        guard let terminal = terminal else { return }
+        if autoScrollDelta == 0 { return }
+
+        let displayBuffer = terminal.displayBuffer
+        let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+        let newYDisp = max(0, min(displayBuffer.yDisp + autoScrollDelta, maxYDisp))
+
+        if newYDisp != displayBuffer.yDisp {
+            terminal.userScrolling = newYDisp != maxYDisp
+            terminal.setViewYDisp(newYDisp)
+            renderer?.markAllDirty(reason: "autoScroll")
+            terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, maxYDisp)))
+            setTerminalNeedsDisplay()
+
+            // Extend selection to the new edge row
+            if let selection = selection, selection.active {
+                let edgeRow = autoScrollDelta > 0
+                    ? newYDisp + displayBuffer.rows - 1
+                    : newYDisp
+                selection.dragExtend(bufferPosition: Position(col: terminal.cols - 1, row: min(edgeRow, max(0, displayBuffer.lines.count - 1))))
+            }
+        }
+    }
+
+    private func startAutoScrollTimer() {
+        guard autoScrollTimer == nil else { return }
+        autoScrollTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
+            self?.scrollingTimerElapsed(timer)
+        }
+    }
+
+    private func stopAutoScrollTimer() {
+        autoScrollTimer?.invalidate()
+        autoScrollTimer = nil
+        autoScrollDelta = 0
+    }
+
     private func clampedPixelPosition(for event: NSEvent) -> Position {
         let point = convert(event.locationInWindow, from: nil)
         let x = min(max(point.x, 0), bounds.width)
@@ -354,17 +428,37 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
     override open func mouseDragged(with event: NSEvent) {
         guard let terminal = terminal else { return }
+        let displayBuffer = terminal.displayBuffer
 
         if terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive {
             guard let hit = clampedScreenGridPosition(for: event) else { return }
             sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: true, event: event, motion: true)
         } else {
-            guard let hit = clampedGridPosition(for: event) else { return }
+            // Use unclamped position so selection can extend beyond visible area
+            guard let hit = unclampedGridPosition(for: event) else { return }
             if selection?.active == true {
                 selection?.dragExtend(bufferPosition: hit)
             } else {
                 selection?.setSoftStart(bufferPosition: hit)
                 selection?.startSelection()
+            }
+
+            // Auto-scroll when mouse is beyond visible area
+            let point = convert(event.locationInWindow, from: nil)
+            let screenRow = Int((frame.height - point.y) / cellDimension.height)
+            autoScrollDelta = 0
+            if selection?.active == true {
+                if screenRow < 0 {
+                    autoScrollDelta = calcScrollingVelocity(delta: screenRow * -1) * -1
+                } else if screenRow >= displayBuffer.rows {
+                    autoScrollDelta = calcScrollingVelocity(delta: screenRow - displayBuffer.rows)
+                }
+            }
+
+            if autoScrollDelta != 0 {
+                startAutoScrollTimer()
+            } else {
+                stopAutoScrollTimer()
             }
         }
 
@@ -372,6 +466,7 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     }
 
     override open func mouseUp(with event: NSEvent) {
+        stopAutoScrollTimer()
         if let terminal = terminal, terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive {
             guard let hit = clampedScreenGridPosition(for: event) else { return }
             sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: false, event: event)
