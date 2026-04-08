@@ -87,7 +87,7 @@ class MonitorContext: ObservableObject, Identifiable, Equatable {
             // don't hurt cpu lol
             sleep(5)
         }
-        closed = true
+        mainActor { self.closed = true }
     }
 
     func connectAndAuthenticate() {

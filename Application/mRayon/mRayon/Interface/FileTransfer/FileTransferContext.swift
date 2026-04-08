@@ -274,9 +274,11 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
                     forFileAndWait: url.path,
                     toDirectory: base.path
                 ) { file, progress, speed in
-                    self.currentProcessingFile = file
-                    self.currentProgress = progress
-                    self.currentSpeed = speed
+                    mainActor {
+                        self.currentProcessingFile = file
+                        self.currentProgress = progress
+                        self.currentSpeed = speed
+                    }
                 } withContinuationHandler: {
                     self.continueCurrentProgress
                 }
@@ -322,7 +324,9 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
             let done = shell.requestDelete(
                 forFileAndWait: item.path
             ) { file in
-                self.currentProcessingFile = file
+                mainActor {
+                    self.currentProcessingFile = file
+                }
             } withContinuationHandler: {
                 self.continueCurrentProgress
             }
@@ -363,9 +367,11 @@ class FileTransferContext: ObservableObject, Identifiable, Equatable {
                 fromFileAndWait: fromPath,
                 toLocalPath: to
             ) { file, progress, speed in
-                self.currentProcessingFile = file
-                self.currentProgress = progress
-                self.currentSpeed = speed
+                mainActor {
+                    self.currentProcessingFile = file
+                    self.currentProgress = progress
+                    self.currentSpeed = speed
+                }
             } withContinuationHandler: {
                 self.continueCurrentProgress
             }

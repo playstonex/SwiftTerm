@@ -31,6 +31,8 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     private struct HistoryState {
         var outputHistory: String = ""
         var rawOutputHistory: String = ""
+        var totalOutputLength: Int = 0
+        var totalRawLength: Int = 0
         var pendingHistoryControlSequence: String = ""
     }
 
@@ -90,7 +92,9 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     @Published var interfaceToken: UUID = .init()
     @Published var interfaceDisabled: Bool = false
-    @Published private(set) var historyRevision: Int = 0
+    private(set) var historyRevision: Int = 0
+
+    static let historyRevisionNotification = Notification.Name("terminal.historyRevision")
 
     static let defaultTerminalSize = CGSize(width: 80, height: 40)
 
@@ -136,7 +140,7 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     private func routeInput(_ str: String, trackAsUserInput: Bool, addToHistory: Bool) {
         if trackAsUserInput {
-            Task {
+            Task { [commandMonitor] in
                 await commandMonitor.registerUserInput(str)
             }
         }
@@ -197,9 +201,12 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
 
     private func appendToHistoryLocked(_ str: String, history: inout HistoryState) {
         history.rawOutputHistory += str
-        if history.rawOutputHistory.count > maxHistorySize {
-            let removeCount = history.rawOutputHistory.count - maxHistorySize
+        history.totalRawLength += str.count
+        let trimThreshold = maxHistorySize + 5000
+        if history.totalRawLength > trimThreshold {
+            let removeCount = history.totalRawLength - maxHistorySize
             history.rawOutputHistory = String(history.rawOutputHistory.dropFirst(removeCount))
+            history.totalRawLength = history.rawOutputHistory.count
         }
 
         let combined = history.pendingHistoryControlSequence + str
@@ -212,9 +219,11 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
         guard !visibleText.isEmpty else { return }
 
         history.outputHistory += visibleText
-        if history.outputHistory.count > maxHistorySize {
-            let removeCount = history.outputHistory.count - maxHistorySize
+        history.totalOutputLength += visibleText.count
+        if history.totalOutputLength > trimThreshold {
+            let removeCount = history.totalOutputLength - maxHistorySize
             history.outputHistory = String(history.outputHistory.dropFirst(removeCount))
+            history.totalOutputLength = history.outputHistory.count
         }
     }
 
@@ -320,10 +329,11 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     private func publishHistoryRevision() {
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.historyRevision = self.historyRevision &+ 1
-        }
+        historyRevision = historyRevision &+ 1
+        NotificationCenter.default.post(
+            name: Self.historyRevisionNotification,
+            object: id
+        )
     }
 
     private func consumeCommandMonitorOutput(_ output: String) {

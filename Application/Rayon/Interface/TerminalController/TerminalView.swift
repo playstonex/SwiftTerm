@@ -117,7 +117,8 @@ struct TerminalView: View {
                     refreshSearchTranscript()
                     Task { await updateTerminalSize() }
                 }
-                .onChange(of: context.historyRevision) { _, _ in
+                .onReceive(NotificationCenter.default.publisher(for: TerminalManager.Context.historyRevisionNotification)) { notification in
+                    guard notification.object as? UUID == context.id else { return }
                     refreshSearchTranscript()
                 }
                 .onChange(of: isShowingSearch) { _, isPresented in
@@ -420,7 +421,13 @@ struct TerminalView: View {
     }
 
     func refreshSearchTranscript() {
-        searchSession.updateTranscript(context.getOutputHistoryStrippedANSI())
+        let context = context
+        Task.detached(priority: .utility) {
+            let stripped = context.getOutputHistoryStrippedANSI()
+            await MainActor.run {
+                searchSession.updateTranscript(stripped)
+            }
+        }
     }
 
     @MainActor

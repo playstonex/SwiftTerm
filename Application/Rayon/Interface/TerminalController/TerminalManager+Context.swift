@@ -77,7 +77,9 @@ extension TerminalManager {
         @Published var interfaceToken: UUID = .init()
         @Published var interfaceDisabled: Bool = false
         @Published var isInTmuxSession: Bool = false
-        @Published private(set) var historyRevision: Int = 0
+        private(set) var historyRevision: Int = 0
+
+        static let historyRevisionNotification = Notification.Name("terminal.historyRevision")
 
         static let defaultTerminalSize = CGSize(width: 80, height: 40)
 
@@ -198,7 +200,7 @@ extension TerminalManager {
 
         private func routeInput(_ str: String, trackAsUserInput: Bool) {
             if trackAsUserInput {
-                Task {
+                Task { [commandMonitor] in
                     await commandMonitor.registerUserInput(str)
                 }
             }
@@ -216,9 +218,7 @@ extension TerminalManager {
             if shouldRouteToMosh, let mosh = moshSession {
                 mosh.sendString(str)
             } else {
-                Task.detached(priority: .userInitiated) { [weak self] in
-                    self?.shell.explicitRequestStatusPickup()
-                }
+                shell.explicitRequestStatusPickup()
             }
         }
 
@@ -239,10 +239,11 @@ extension TerminalManager {
         }
 
         private func publishHistoryRevision() {
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.historyRevision = self.historyRevision &+ 1
-            }
+            historyRevision = historyRevision &+ 1
+            NotificationCenter.default.post(
+                name: Self.historyRevisionNotification,
+                object: id
+            )
         }
 
         private func consumeCommandMonitorOutput(_ output: String) {

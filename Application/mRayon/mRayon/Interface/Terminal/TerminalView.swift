@@ -113,7 +113,8 @@ struct TerminalView: View {
                             .onChange(of: store.terminalReturnKeySendsLineFeed) { _, newValue in
                                 context.termInterface.setReturnKeySendsLineFeed(newValue)
                             }
-                            .onChange(of: context.historyRevision) { _, _ in
+                            .onReceive(NotificationCenter.default.publisher(for: TerminalContext.historyRevisionNotification)) { notification in
+                                guard notification.object as? UUID == context.id else { return }
                                 refreshSearchTask?.cancel()
                                 refreshSearchTask = Task {
                                     try? await Task.sleep(nanoseconds: 500_000_000)
@@ -452,7 +453,13 @@ struct TerminalView: View {
     }
 
     func refreshSearchTranscript() {
-        searchSession.updateTranscript(context.getOutputHistoryStrippedANSI())
+        let context = context
+        Task.detached(priority: .utility) {
+            let stripped = context.getOutputHistoryStrippedANSI()
+            await MainActor.run {
+                searchSession.updateTranscript(stripped)
+            }
+        }
     }
 
     private func handleKeyboardTransition(notification: Notification) {
