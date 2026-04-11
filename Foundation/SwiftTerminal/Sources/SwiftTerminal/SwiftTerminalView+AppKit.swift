@@ -235,6 +235,13 @@ public class SwiftTerminalView: NSView {
         layer?.backgroundColor = NSColor(hex: theme.background).cgColor
         metalView.clearColor = MTLClearColor(theme.background)
 
+        // Compute a theme-aware selection color: bright on dark, muted on light
+        metalView.selectionColor = SwiftTerminalView.contrastingSelectionColor(
+            bgRed: colors.background.red,
+            bgGreen: colors.background.green,
+            bgBlue: colors.background.blue
+        )
+
         // MTKView is paused and renders on demand, so force an immediate redraw here.
         metalView.setTerminalNeedsDisplay()
         metalView.draw()
@@ -284,7 +291,11 @@ public class SwiftTerminalView: NSView {
     }
 
     public func requestTerminalSize() -> CGSize {
-        metalView.fittingTerminalSize()
+        // Ensure the terminal buffer matches the view bounds before reporting size.
+        // This is critical for alternate buffer mode (e.g., vim) where the buffer
+        // may not have been resized since the last layout pass.
+        metalView.syncTerminalSizeToView()
+        return metalView.fittingTerminalSize()
     }
 
     /// Get the currently selected text
@@ -346,6 +357,22 @@ public class SwiftTerminalView: NSView {
     public func makeTerminalFirstResponder() {
         if let window = window {
             _ = window.makeFirstResponder(metalView)
+        }
+    }
+
+    /// Compute a selection highlight color that contrasts with the terminal background.
+    /// Uses sourceAlpha blending (src * srcAlpha + dst * (1 - srcAlpha)),
+    /// so we provide premultiplied RGBA values.
+    private static func contrastingSelectionColor(bgRed: Double, bgGreen: Double, bgBlue: Double) -> SIMD4<Float> {
+        // Perceived luminance (ITU-R BT.709)
+        let luminance = 0.2126 * bgRed + 0.7152 * bgGreen + 0.0722 * bgBlue
+
+        if luminance < 0.5 {
+            // Dark background: use a bright blue-cyan selection with 0.45 alpha
+            return SIMD4<Float>(0.26, 0.53, 0.96, 0.45)
+        } else {
+            // Light background: use a darker blue selection with 0.35 alpha
+            return SIMD4<Float>(0.15, 0.30, 0.75, 0.35)
         }
     }
 }

@@ -28,6 +28,7 @@ struct TerminalView: View {
     @State private var webBrowserPort: String = ""
     @State private var isShowingSearch = false
     @StateObject private var searchSession = TerminalSearchSession()
+    @State private var resizeTask: Task<Void, Never>?
     private let terminalContentPadding = EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
     
     private var tmuxLogoImage: Image {
@@ -59,7 +60,15 @@ struct TerminalView: View {
                             .focusable()
                             .onChange(of: proxy.size) { _, _ in
                                 guard context.interfaceToken == interfaceToken else { return }
-                                Task { await updateTerminalSize() }
+                                // Debounce resize to avoid rapid buffer resizes during
+                                // window dragging that corrupt terminal display.
+                                resizeTask?.cancel()
+                                resizeTask = Task {
+                                    try? await Task.sleep(nanoseconds: 150_000_000)
+                                    guard !Task.isCancelled else { return }
+                                    guard context.interfaceToken == interfaceToken else { return }
+                                    await updateTerminalSize()
+                                }
                             }
                     }
                 }

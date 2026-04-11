@@ -8,15 +8,6 @@
         "revision" : "626b5b7b2f45e1b0b1c6f4a309296d1d21d7311b",
         "version" : "1.7.1"
       }
-    },
-    {
-      "identity" : "swiftterm",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/playstonex/SwiftTerm.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "839e21aedc56099daab8b54c4590464fad45698c"
-      }
     }
   ],
   "version" : 2

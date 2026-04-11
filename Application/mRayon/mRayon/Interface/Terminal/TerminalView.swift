@@ -470,8 +470,14 @@ struct TerminalView: View {
         // unobscured terminal area. The terminal view preserves its current viewport on resize.
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64((duration + 0.05) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
             context.termInterface.refreshDisplay()
             Task { await updateTerminalSize() }
+            // Re-assert first responder after keyboard transitions to ensure
+            // hardware keyboard events (Ctrl+C, ESC, etc.) reach the terminal.
+            // Keyboard show/hide can cause the responder chain to change, breaking
+            // key delivery until the user taps the terminal view again.
+            context.termInterface.activateKeyboard()
         }
         #endif
     }

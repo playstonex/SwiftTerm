@@ -30,6 +30,9 @@ public class SwiftTerminalView: UIView {
     private var cursorVisible = true
     private var isCursorBlinkingEnabled = true
 
+    // Debounced resize
+    private var resizeTask: Task<Void, Never>?
+
     // MARK: - Initialization
 
     public required init(adapter: SwiftTerminalAdapter) {
@@ -212,6 +215,13 @@ public class SwiftTerminalView: UIView {
         metalView.backgroundColor = UIColor(hex: theme.background)
         metalView.clearColor = MTLClearColor(theme.background)
 
+        // Compute a theme-aware selection color: bright on dark, muted on light
+        metalView.selectionColor = Self.contrastingSelectionColor(
+            bgRed: colors.background.red,
+            bgGreen: colors.background.green,
+            bgBlue: colors.background.blue
+        )
+
         // MTKView is paused and renders on demand, so force an immediate redraw here.
         metalView.setTerminalNeedsDisplay()
         metalView.draw()
@@ -289,7 +299,9 @@ public class SwiftTerminalView: UIView {
     }
 
     public func requestTerminalSize() -> CGSize {
-        metalView.fittingTerminalSize()
+        // Ensure the terminal buffer matches the view bounds before reporting size.
+        metalView.syncTerminalSizeToView()
+        return metalView.fittingTerminalSize()
     }
 
     /// Get the currently selected text
@@ -317,14 +329,14 @@ public class SwiftTerminalView: UIView {
     private func scheduleRefreshDisplay() {
         // Reattachment and foregrounding can race with Auto Layout and MTKView drawable updates.
         // A second refresh on the next short tick avoids leaving the terminal with stale content.
+        // Note: Do NOT call syncAndNotifyTerminalSizeIfNeeded() here — triggering resizes
+        // during app reactivation/foregrounding can race with incoming data and corrupt display.
         Task { @MainActor [weak self] in
             self?.refreshDisplay()
-            self?.syncAndNotifyTerminalSizeIfNeeded()
         }
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 50_000_000)
             self?.refreshDisplay()
-            self?.syncAndNotifyTerminalSizeIfNeeded()
         }
     }
 
@@ -334,8 +346,16 @@ public class SwiftTerminalView: UIView {
         lastLaidOutBounds = bounds
         metalView.frame = bounds
         applyFont()
-        syncAndNotifyTerminalSizeIfNeeded()
         metalView.setTerminalNeedsDisplay()
+        // Debounce the actual terminal buffer resize to avoid racing with active rendering.
+        // 150 ms delay absorbs intermediate layout passes during keyboard transitions and
+        // orientation changes, while still keeping the buffer size in sync with the view.
+        resizeTask?.cancel()
+        resizeTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+            self?.syncAndNotifyTerminalSizeIfNeeded()
+        }
     }
 
     public override func didMoveToWindow() {
@@ -378,6 +398,23 @@ public class SwiftTerminalView: UIView {
     @discardableResult
     public func resignTerminalFirstResponder() -> Bool {
         return metalView.resignFirstResponder()
+    }
+
+    /// Compute a selection highlight color that contrasts with the terminal background.
+    /// Uses sourceAlpha blending (src * srcAlpha + dst * (1 - srcAlpha)),
+    /// so we provide premultiplied RGBA values.
+    private static func contrastingSelectionColor(bgRed: Double, bgGreen: Double, bgBlue: Double) -> SIMD4<Float> {
+        // Perceived luminance (ITU-R BT.709)
+        let luminance = 0.2126 * bgRed + 0.7152 * bgGreen + 0.0722 * bgBlue
+
+        if luminance < 0.5 {
+            // Dark background: use a bright blue-cyan selection with 0.45 alpha
+            // Blended result on dark bg: visible light overlay
+            return SIMD4<Float>(0.26, 0.53, 0.96, 0.45)
+        } else {
+            // Light background: use a darker blue selection with 0.35 alpha
+            return SIMD4<Float>(0.15, 0.30, 0.75, 0.35)
+        }
     }
 
 }

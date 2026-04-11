@@ -16,8 +16,8 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/playstonex/SwiftTerm.git", branch: "main"),
-//        .package(path: "../../External/SwiftTerm"),
+//        .package(url: "https://github.com/playstonex/SwiftTerm.git", branch: "main"),
+        .package(path: "../../External/SwiftTerm"),
     ],
     targets: [
         .target(
