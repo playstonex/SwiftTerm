@@ -367,15 +367,6 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         rebuildCachesIfNeeded(terminal: terminal, fontSet: fontSet, commandBuffer: commandBuffer)
         let builder = composeCachedFrame()
 
-        // Debug: log render state for diagnosing invisible pasted text
-        #if DEBUG
-        let debugFgColor = terminal.foregroundColor
-        let debugBgColor = terminal.backgroundColor
-        NSLog("[SwiftTerm] draw(in:) glyphs=%d bgVerts=%d fg(r=%d,g=%d,b=%d) bg(r=%d,g=%d,b=%d)",
-              builder.glyphVertices.count, builder.backgroundVertices.count,
-              debugFgColor.red, debugFgColor.green, debugFgColor.blue,
-              debugBgColor.red, debugBgColor.green, debugBgColor.blue)
-        #endif
 
         guard let descriptor = view.currentRenderPassDescriptor,
               let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {

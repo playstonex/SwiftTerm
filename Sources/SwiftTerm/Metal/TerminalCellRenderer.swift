@@ -403,25 +403,6 @@ class TerminalCellRenderer {
 
             var fgColor = resolveColor(charData.attribute.fg, terminal: terminal, isFg: true, isBold: charData.attribute.style.contains(.bold))
 
-            // Debug: log first non-empty cell in bottom row to diagnose invisible text
-            #if DEBUG
-            if row == terminal.rows - 1 && col == 0 {
-                let bgResolved = resolveColor(charData.attribute.bg, terminal: terminal, isFg: false, isBold: false)
-                let charStr: String
-                if let scalar = UnicodeScalar(Int(charData.code)) {
-                    charStr = String(scalar)
-                } else {
-                    charStr = "?"
-                }
-                NSLog("[SwiftTerm] row=%d col=%d char='%@' code=%d fgAttr=%@ bgAttr=%@ fgResolved=%.2f,%.2f,%.2f bgResolved=%.2f,%.2f,%.2f style=%@ invisible=%@",
-                      row, col, charStr, charData.code,
-                      String(describing: charData.attribute.fg), String(describing: charData.attribute.bg),
-                      fgColor.x, fgColor.y, fgColor.z,
-                      bgResolved.x, bgResolved.y, bgResolved.z,
-                      String(describing: charData.attribute.style),
-                      charData.attribute.style.contains(.invisible) ? "true" : "false")
-            }
-            #endif
             if charData.attribute.style.contains(.dim) {
                 fgColor = colorTable?.dimmed(fgColor) ?? fgColor
             }
