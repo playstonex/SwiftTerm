@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(defaults *)",
+      "Bash(find *)",
+      "Bash(xcodebuild *)",
+      "Bash(rm *)",
+      "Bash(cat *)"
+    ]
+  },
+  "$version": 3
+}
