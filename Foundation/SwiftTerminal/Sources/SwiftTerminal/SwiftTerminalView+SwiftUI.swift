@@ -81,15 +81,22 @@ public struct STerminalView: NativeTerminalProtocol {
     }
 
     public func write(_ str: String) {
-        // Must be called on main thread for UI updates
-        Task { @MainActor in
+        if Thread.isMainThread {
             self.terminalView.feed(text: str)
+        } else {
+            Task { @MainActor in
+                self.terminalView.feed(text: str)
+            }
         }
     }
 
     public func write(data: Data) {
-        Task { @MainActor in
+        if Thread.isMainThread {
             self.terminalView.feed(data: data)
+        } else {
+            Task { @MainActor in
+                self.terminalView.feed(data: data)
+            }
         }
     }
 
@@ -181,6 +188,11 @@ public struct STerminalView: NativeTerminalProtocol {
             _ = self.terminalView.resignTerminalFirstResponder()
         }
         #endif
+    }
+
+    /// Set a callback that fires when text is selected and auto-copied to clipboard.
+    public func onTextSelected(_ handler: @escaping (String) -> Void) {
+        terminalView.setOnTextSelected(handler)
     }
 
     public func setReturnKeySendsLineFeed(_ enabled: Bool) {

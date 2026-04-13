@@ -270,14 +270,22 @@ public class SwiftTerminalView: NSView {
         return adapter
     }
 
+    public func setOnTextSelected(_ handler: @escaping (String) -> Void) {
+        metalView.onTextSelected = handler
+    }
+
     public func feed(data: Data) {
         let bytes = Array(data)
-        Task { @MainActor [weak self] in
-            guard let self else { return }
+        func process() {
             let snapshot = self.metalView.captureVisibleBufferSnapshot()
             self.metalView.terminal?.feed(buffer: bytes[...])
             self.metalView.normalizeViewportAfterExternalFeed()
             self.metalView.applyExternalFeedDiff(from: snapshot)
+        }
+        if Thread.isMainThread {
+            process()
+        } else {
+            Task { @MainActor in process() }
         }
     }
 

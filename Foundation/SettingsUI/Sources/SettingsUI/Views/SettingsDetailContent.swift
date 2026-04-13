@@ -46,6 +46,8 @@ public struct SettingsDetailContent: View {
     @State private var purchasingPackageID: String?
     @State private var restoreMessage: String?
     @State private var restoreMessageIsSuccess = false
+    @State private var showingItermImporter = false
+    @State private var customThemeVersion = 0
 
     #if os(iOS)
         @State private var exportDocument: ExportDocument?
@@ -109,6 +111,41 @@ public struct SettingsDetailContent: View {
                 exportDocument = nil
             }
             #endif
+            .fileImporter(
+                isPresented: $showingItermImporter,
+                allowedContentTypes: [.xml],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    do {
+                        var theme = try TerminalTheme.fromItermColor(url: url)
+                        // Avoid name collision with built-in themes
+                        if TerminalTheme.builtInThemes.contains(where: { $0.name == theme.name }) {
+                            theme = TerminalTheme(
+                                name: "\(theme.name) (Custom)",
+                                foreground: theme.foreground, background: theme.background,
+                                cursor: theme.cursor,
+                                black: theme.black, red: theme.red, green: theme.green,
+                                yellow: theme.yellow, blue: theme.blue, magenta: theme.magenta,
+                                cyan: theme.cyan, white: theme.white,
+                                brightBlack: theme.brightBlack, brightRed: theme.brightRed,
+                                brightGreen: theme.brightGreen, brightYellow: theme.brightYellow,
+                                brightBlue: theme.brightBlue, brightMagenta: theme.brightMagenta,
+                                brightCyan: theme.brightCyan, brightWhite: theme.brightWhite
+                            )
+                        }
+                        TerminalTheme.addCustomTheme(theme)
+                        store.terminalThemeName = theme.name
+                        customThemeVersion += 1
+                    } catch {
+                        // Silently fail — the file was not a valid .itermcolors file
+                    }
+                case .failure:
+                    break
+                }
+            }
     }
 
     @ViewBuilder
@@ -220,7 +257,38 @@ public struct SettingsDetailContent: View {
                         Text(theme.name).tag(theme.name)
                     }
                 }
+                .id(customThemeVersion)
                 .labelsHidden()
+            }
+
+            Button {
+                showingItermImporter = true
+            } label: {
+                HStack {
+                    Text("Import iTerm2 Theme")
+                    Spacer()
+                    Image(systemName: "square.and.arrow.down")
+                }
+            }
+
+            if !TerminalTheme.customThemes.isEmpty {
+                ForEach(TerminalTheme.customThemes, id: \.name) { theme in
+                    HStack {
+                        Text(theme.name)
+                        Spacer()
+                        Button {
+                            TerminalTheme.removeCustomTheme(named: theme.name)
+                            customThemeVersion += 1
+                            if store.terminalThemeName == theme.name {
+                                store.terminalThemeName = TerminalTheme.default.name
+                            }
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
 
             HStack {

@@ -211,6 +211,29 @@ public struct TerminalTheme: Codable, Equatable {
         brightWhite: "#c0caf5"
     )
 
+    public static let tokyoNightDay = TerminalTheme(
+        name: "Tokyo Night Day",
+        foreground: "#3760bf",
+        background: "#e1e2e7",
+        cursor: "#3760bf",
+        black: "#b4b5b9",
+        red: "#f52a65",
+        green: "#587539",
+        yellow: "#8c6c3e",
+        blue: "#2e7de9",
+        magenta: "#9854f1",
+        cyan: "#007197",
+        white: "#6172b0",
+        brightBlack: "#a1a6c5",
+        brightRed: "#f52a65",
+        brightGreen: "#587539",
+        brightYellow: "#8c6c3e",
+        brightBlue: "#2e7de9",
+        brightMagenta: "#9854f1",
+        brightCyan: "#007197",
+        brightWhite: "#3760bf"
+    )
+
     public static let monokai = TerminalTheme(
         name: "Monokai",
         foreground: "#f8f8f2",
@@ -234,7 +257,107 @@ public struct TerminalTheme: Codable, Equatable {
         brightWhite: "#f9f8f5"
     )
 
-    public static let allThemes: [TerminalTheme] = [
-        .default, .solarizedDark, .solarizedLight, .dracula, .nord, .tokyoNight, .monokai
+    // MARK: - Custom Themes
+
+    private static let customThemesKey = "wiki.qaq.rayon.customTerminalThemes"
+
+    public static var customThemes: [TerminalTheme] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: customThemesKey) else { return [] }
+            return (try? JSONDecoder().decode([TerminalTheme].self, from: data)) ?? []
+        }
+        set {
+            let data = try? JSONEncoder().encode(newValue)
+            UserDefaults.standard.set(data, forKey: customThemesKey)
+        }
+    }
+
+    public static func addCustomTheme(_ theme: TerminalTheme) {
+        var themes = customThemes
+        // Replace if a theme with the same name exists
+        if let index = themes.firstIndex(where: { $0.name == theme.name }) {
+            themes[index] = theme
+        } else {
+            themes.append(theme)
+        }
+        customThemes = themes
+    }
+
+    public static func removeCustomTheme(named name: String) {
+        customThemes = customThemes.filter { $0.name != name }
+    }
+
+    // MARK: - All Themes
+
+    public static let builtInThemes: [TerminalTheme] = [
+        .default, .solarizedDark, .solarizedLight, .dracula, .nord, .tokyoNight, .tokyoNightDay, .monokai
     ]
+
+    public static var allThemes: [TerminalTheme] {
+        builtInThemes + customThemes
+    }
+
+    // MARK: - iTerm2 Import
+
+    public enum ImportError: Error, LocalizedError {
+        case invalidFormat
+        case fileAccessError
+
+        public var errorDescription: String? {
+            switch self {
+            case .invalidFormat:
+                return "Invalid iTerm2 color scheme format"
+            case .fileAccessError:
+                return "Unable to access the color scheme file"
+            }
+        }
+    }
+
+    /// Import a terminal theme from an iTerm2 `.itermcolors` file.
+    public static func fromItermColor(url: URL, name: String? = nil) throws -> TerminalTheme {
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed { url.stopAccessingSecurityScopedResource() }
+        }
+
+        let data = try Data(contentsOf: url)
+        guard let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: nil) as? [String: [String: Any]] else {
+            throw ImportError.invalidFormat
+        }
+
+        func hexColor(key: String) -> String {
+            guard let dict = plist[key],
+                  let r = dict["Red Component"] as? Double,
+                  let g = dict["Green Component"] as? Double,
+                  let b = dict["Blue Component"] as? Double else {
+                return "#000000"
+            }
+            return String(format: "#%02x%02x%02x", Int(r * 255), Int(g * 255), Int(b * 255))
+        }
+
+        let themeName = name ?? url.deletingPathExtension().lastPathComponent
+
+        return TerminalTheme(
+            name: themeName,
+            foreground: hexColor(key: "Foreground Color"),
+            background: hexColor(key: "Background Color"),
+            cursor: hexColor(key: "Cursor Color"),
+            black: hexColor(key: "Ansi 0 Color"),
+            red: hexColor(key: "Ansi 1 Color"),
+            green: hexColor(key: "Ansi 2 Color"),
+            yellow: hexColor(key: "Ansi 3 Color"),
+            blue: hexColor(key: "Ansi 4 Color"),
+            magenta: hexColor(key: "Ansi 5 Color"),
+            cyan: hexColor(key: "Ansi 6 Color"),
+            white: hexColor(key: "Ansi 7 Color"),
+            brightBlack: hexColor(key: "Ansi 8 Color"),
+            brightRed: hexColor(key: "Ansi 9 Color"),
+            brightGreen: hexColor(key: "Ansi 10 Color"),
+            brightYellow: hexColor(key: "Ansi 11 Color"),
+            brightBlue: hexColor(key: "Ansi 12 Color"),
+            brightMagenta: hexColor(key: "Ansi 13 Color"),
+            brightCyan: hexColor(key: "Ansi 14 Color"),
+            brightWhite: hexColor(key: "Ansi 15 Color")
+        )
+    }
 }

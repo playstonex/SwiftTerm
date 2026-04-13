@@ -29,6 +29,7 @@ struct TerminalView: View {
     @State private var isShowingSearch = false
     @StateObject private var searchSession = TerminalSearchSession()
     @State private var resizeTask: Task<Void, Never>?
+    @State private var showCopyToast = false
     private let terminalContentPadding = EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
     
     private var tmuxLogoImage: Image {
@@ -70,6 +71,28 @@ struct TerminalView: View {
                                     await updateTerminalSize()
                                 }
                             }
+
+                        // Copy toast bubble
+                        if showCopyToast {
+                            VStack {
+                                HStack {
+                                    Spacer()
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 11))
+                                        Text("Copied")
+                                            .font(.system(size: 11, weight: .medium))
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 6))
+                                    .padding(.trailing, 12)
+                                    .padding(.top, 4)
+                                }
+                                Spacer()
+                            }
+                            .transition(.opacity)
+                        }
                     }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -125,6 +148,19 @@ struct TerminalView: View {
                     context.termInterface.refreshDisplay()
                     refreshSearchTranscript()
                     Task { await updateTerminalSize() }
+
+                    // Auto-copy selected text and show toast
+                    context.termInterface.onTextSelected { _ in
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            showCopyToast = true
+                        }
+                        Task {
+                            try? await Task.sleep(nanoseconds: 1_200_000_000)
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                showCopyToast = false
+                            }
+                        }
+                    }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: TerminalManager.Context.historyRevisionNotification)) { notification in
                     guard notification.object as? UUID == context.id else { return }
