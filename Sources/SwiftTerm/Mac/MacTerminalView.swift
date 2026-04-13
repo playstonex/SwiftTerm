@@ -1712,7 +1712,31 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
     {
         let clipboard = NSPasteboard.general
         let text = clipboard.string(forType: .string)
+        
+        // Capture cursor position before paste
+        let startCursorPos = terminal.map { ($0.buffer.x, $0.buffer.y) }
+        
         insertText(text ?? "", replacementRange: NSRange(location: 0, length: 0), isPaste: true)
+        
+        // Schedule selection creation after text is processed
+        if let text = text, !text.isEmpty {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self,
+                      let terminal = self.terminal,
+                      let (startX, startY) = startCursorPos else { return }
+                
+                let endX = terminal.buffer.x
+                let endY = terminal.buffer.y
+                
+                // Create selection for the pasted text region
+                self.selection?.setSelection(
+                    start: Position(col: startX, row: startY),
+                    end: Position(col: endX, row: endY)
+                )
+                self.selection?.active = true
+                self.setNeedsDisplay(self.bounds)
+            }
+        }
     }
     
     @objc

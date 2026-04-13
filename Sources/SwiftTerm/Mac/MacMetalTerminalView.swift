@@ -158,13 +158,13 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             copySelection()
             return
         }
-        
+
         // Handle Cmd+V paste
         if modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "v" {
             pasteFromClipboard()
             return
         }
-        
+
         // Handle Cmd+A select all
         if modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "a" {
             selection?.selectAll()
@@ -189,11 +189,42 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             return
         }
 
+        // Handle Control key combinations explicitly.
+        // interpretKeyEvents is unreliable for control characters — it may
+        // swallow Ctrl+C, Ctrl+\\, etc. or route them to the wrong NSTextInputClient
+        // method.  Send the raw control byte directly instead.
+        if modifierFlags.contains(.control),
+           !modifierFlags.contains(.command),
+           !modifierFlags.contains(.option),
+           let chars = event.charactersIgnoringModifiers,
+           let char = chars.first,
+           let byte = applyControlToCharacter(char)
+        {
+            send([byte])
+            return
+        }
+
         if handleSpecialKey(event.keyCode, modifierFlags: modifierFlags) {
             return
         }
 
         interpretKeyEvents([event])
+    }
+
+    /// Map a printable character to its control-code byte (Ctrl+key).
+    private func applyControlToCharacter(_ ch: Character) -> UInt8? {
+        guard let scalar = ch.asciiValue else { return nil }
+        switch ch {
+        case "A"..."Z": return scalar &- 0x40   // Ctrl-A = 1 ... Ctrl-Z = 26
+        case "a"..."z": return scalar &- 0x60
+        case "[":      return 0x1b               // Ctrl-[ = ESC
+        case "\\":      return 0x1c
+        case "]":      return 0x1d
+        case "^", "6": return 0x1e
+        case "_":      return 0x1f
+        case " ":      return 0
+        default:       return nil
+        }
     }
 
     @discardableResult
@@ -207,6 +238,8 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             sequence = "\r"
         case kVK_Tab:
             sequence = "\t"
+        case kVK_Escape:
+            sequence = "\u{1b}"
         case kVK_Delete:
             sequence = "\u{7f}"
         case kVK_ForwardDelete:
@@ -399,8 +432,12 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
         guard let terminal = terminal else { return }
 
+        // Holding Option overrides mouse reporting so the user can select/copy text
+        // in applications like tmux or vim that capture the mouse.
+        let forceSelection = event.modifierFlags.contains(.option)
+
         // Forward to terminal if mouse reporting is active
-        if terminal.mouseMode != .off && allowMouseReporting {
+        if terminal.mouseMode != .off && allowMouseReporting && !forceSelection {
             guard let hit = clampedScreenGridPosition(for: event) else { return }
             sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: true, event: event)
             mouseTrackingActive = true
@@ -430,7 +467,10 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         guard let terminal = terminal else { return }
         let displayBuffer = terminal.displayBuffer
 
-        if terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive {
+        // Holding Option overrides mouse reporting for text selection
+        let forceSelection = event.modifierFlags.contains(.option)
+
+        if terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive && !forceSelection {
             guard let hit = clampedScreenGridPosition(for: event) else { return }
             sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: true, event: event, motion: true)
         } else {
@@ -467,10 +507,24 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
     override open func mouseUp(with event: NSEvent) {
         stopAutoScrollTimer()
-        if let terminal = terminal, terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive {
+
+        // Holding Option overrides mouse reporting for text selection
+        let forceSelection = event.modifierFlags.contains(.option)
+
+        if let terminal = terminal, terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive && !forceSelection {
             guard let hit = clampedScreenGridPosition(for: event) else { return }
             sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: false, event: event)
             mouseTrackingActive = false
+        }
+
+        // Auto-copy selected text to clipboard
+        if let selection = selection, selection.active {
+            let text = selection.getSelectedText()
+            if !text.isEmpty {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(text, forType: .string)
+                onTextSelected?(text)
+            }
         }
 
         setTerminalNeedsDisplay()
@@ -590,12 +644,34 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     /// Internal paste implementation (avoids name collision with `paste(_ sender:)`)
     private func pasteFromClipboard() {
         guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else { return }
+        
+        // Capture cursor position before paste
+        let startCursorPos = terminal.map { ($0.buffer.x, $0.buffer.y) }
+        
         if let terminal = terminal, terminal.bracketedPasteMode {
             send(data: EscapeSequences.bracketedPasteStart[0...])
         }
         send(text: text)
         if let terminal = terminal, terminal.bracketedPasteMode {
             send(data: EscapeSequences.bracketedPasteEnd[0...])
+        }
+        
+        // Schedule selection creation after text is processed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self,
+                  let terminal = self.terminal,
+                  let (startX, startY) = startCursorPos else { return }
+            
+            let endX = terminal.buffer.x
+            let endY = terminal.buffer.y
+            
+            // Create selection for the pasted text region
+            self.selection?.setSelection(
+                start: Position(col: startX, row: startY),
+                end: Position(col: endX, row: endY)
+            )
+            self.selection?.active = true
+            self.setTerminalNeedsDisplay()
         }
     }
 }

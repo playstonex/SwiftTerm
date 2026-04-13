@@ -151,10 +151,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     override open func becomeFirstResponder() -> Bool {
         let result = super.becomeFirstResponder()
-        if result {
-            // Show keyboard
-            NotificationCenter.default.post(name: UIResponder.keyboardWillShowNotification, object: nil)
-        }
+        // UIKit handles keyboard notifications automatically for UITextInput views.
+        // Do NOT post keyboardWillShowNotification manually — it triggers a feedback
+        // loop with the SwiftUI parent's handleKeyboardTransition, causing delayed
+        // resizes that can steal first responder and break key delivery.
         return result
     }
 
@@ -972,7 +972,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         case .changed:
             selection.dragExtend(row: row, col: col)
         case .ended:
-            // Show edit menu for copy
+            // Auto-copy selected text and show edit menu
+            autoCopySelection()
             showEditMenu(at: location)
         default:
             break
@@ -1066,7 +1067,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         case .ended, .cancelled, .failed:
             stopSelectionScrollTimer()
-            // Show edit menu after selection drag
+            // Auto-copy selected text and show edit menu after selection drag
+            autoCopySelection()
             let location = gesture.location(in: self)
             showEditMenu(at: location)
 
@@ -1422,6 +1424,16 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         setTerminalNeedsDisplay()
     }
 
+    /// Auto-copy selected text to clipboard and notify via onTextSelected callback.
+    /// Called when a selection gesture completes. Does NOT clear the selection.
+    private func autoCopySelection() {
+        guard let selection = selection, selection.active else { return }
+        let text = selection.getSelectedText()
+        guard !text.isEmpty else { return }
+        UIPasteboard.general.string = text
+        onTextSelected?(text)
+    }
+
     /// Legacy method kept for programmatic use
     public func copySelection() {
         copy(nil)
@@ -1429,16 +1441,37 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     /// Standard UIResponder paste action — called by the system edit menu
     @objc open override func paste(_ sender: Any?) {
-        // Clear any active selection so pasted text renders with normal theme colors
+        // Clear any active selection before paste
         selection?.active = false
 
         if let text = UIPasteboard.general.string {
+            // Capture cursor position before paste
+            let startCursorPos = terminal.map { ($0.buffer.x, $0.buffer.y) }
+            
             if let terminal = terminal, terminal.bracketedPasteMode {
                 send(data: EscapeSequences.bracketedPasteStart[0...])
             }
             send(text: text)
             if let terminal = terminal, terminal.bracketedPasteMode {
                 send(data: EscapeSequences.bracketedPasteEnd[0...])
+            }
+            
+            // Schedule selection creation after text is processed
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self,
+                      let terminal = self.terminal,
+                      let (startX, startY) = startCursorPos else { return }
+                
+                let endX = terminal.buffer.x
+                let endY = terminal.buffer.y
+                
+                // Create selection for the pasted text region
+                self.selection?.setSelection(
+                    start: Position(col: startX, row: startY),
+                    end: Position(col: endX, row: endY)
+                )
+                self.selection?.active = true
+                self.setTerminalNeedsDisplay()
             }
         }
         setTerminalNeedsDisplay()
