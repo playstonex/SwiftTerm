@@ -113,7 +113,7 @@ struct TerminalView: View {
                             .onChange(of: store.terminalReturnKeySendsLineFeed) { _, newValue in
                                 context.termInterface.setReturnKeySendsLineFeed(newValue)
                             }
-                            .onReceive(NotificationCenter.default.publisher(for: TerminalContext.historyRevisionNotification)) { notification in
+                            .onReceive(NotificationCenter.default.publisher(for: TerminalContext.historyRevisionNotification).receive(on: RunLoop.main)) { notification in
                                 guard notification.object as? UUID == context.id else { return }
                                 refreshSearchTask?.cancel()
                                 refreshSearchTask = Task {

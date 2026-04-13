@@ -281,6 +281,11 @@ public class SwiftTerminalView: NSView {
             self.metalView.terminal?.feed(buffer: bytes[...])
             self.metalView.normalizeViewportAfterExternalFeed()
             self.metalView.applyExternalFeedDiff(from: snapshot)
+            // Ensure the Metal view re-renders with updated content.
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.metalView.refreshDisplay(immediately: true)
+            }
         }
         if Thread.isMainThread {
             process()

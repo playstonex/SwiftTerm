@@ -329,24 +329,27 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     private func publishHistoryRevision() {
-        historyRevision = historyRevision &+ 1
-        NotificationCenter.default.post(
-            name: Self.historyRevisionNotification,
-            object: id
-        )
+        let newValue = historyRevision &+ 1
+        let notificationName = Self.historyRevisionNotification
+        let objectId = id
+        Task { @MainActor [weak self] in
+            self?.historyRevision = newValue
+            NotificationCenter.default.post(
+                name: notificationName,
+                object: objectId
+            )
+        }
     }
 
     private func consumeCommandMonitorOutput(_ output: String) {
-        Task { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
             let update = await self.commandMonitor.consumeOutput(output)
-            await MainActor.run {
-                if let workingDirectory = update.workingDirectory {
-                    self.currentWorkingDirectory = workingDirectory
-                }
-                if !update.commandCompletions.isEmpty {
-                    self.handleCommandCompletions(update.commandCompletions)
-                }
+            if let workingDirectory = update.workingDirectory {
+                self.currentWorkingDirectory = workingDirectory
+            }
+            if !update.commandCompletions.isEmpty {
+                self.handleCommandCompletions(update.commandCompletions)
             }
         }
     }
@@ -453,6 +456,7 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
         putInformation("[*] Executing: \(serverCmd)")
 
         await withCheckedContinuation { continuation in
+            var resumed = false
             shell.beginExecute(
                 withCommand: serverCmd,
                 withTimeout: timeout,
@@ -463,9 +467,12 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
                     print("[Mosh Debug] Output chunk: \(output.prefix(100))")
                 },
                 withContinuationHandler: {
-                    print("[Mosh Debug] Complete output: \(capturedOutput)")
-                    continuation.resume()
-                    return true
+                    if !resumed {
+                        resumed = true
+                        print("[Mosh Debug] Complete output: \(capturedOutput)")
+                        continuation.resume()
+                    }
+                    return false
                 }
             )
         }
@@ -880,8 +887,8 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
         } withOutputDataBuffer: { [weak self] output in
             Task { @MainActor in
                 self?.termInterface.write(output)
+                self?.handleShellOutput(output)
             }
-            self?.handleShellOutput(output)
         } withContinuationHandler: { [weak self] in
             self?.continueDecision ?? false
         }

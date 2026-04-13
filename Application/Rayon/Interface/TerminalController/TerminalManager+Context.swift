@@ -239,11 +239,21 @@ extension TerminalManager {
         }
 
         private func publishHistoryRevision() {
-            historyRevision = historyRevision &+ 1
-            NotificationCenter.default.post(
-                name: Self.historyRevisionNotification,
-                object: id
-            )
+            if Thread.isMainThread {
+                historyRevision = historyRevision &+ 1
+                NotificationCenter.default.post(
+                    name: Self.historyRevisionNotification,
+                    object: id
+                )
+            } else {
+                DispatchQueue.main.async { [self] in
+                    historyRevision = historyRevision &+ 1
+                    NotificationCenter.default.post(
+                        name: Self.historyRevisionNotification,
+                        object: id
+                    )
+                }
+            }
         }
 
         private func consumeCommandMonitorOutput(_ output: String) {

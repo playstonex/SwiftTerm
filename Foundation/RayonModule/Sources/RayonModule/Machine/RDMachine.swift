@@ -67,7 +67,13 @@ extension RDMachine : iCloudSyncItem {
         }
         if var machine = machine {
             machine.lastModifiedDate = Date()
-            RayonStore.shared.machineGroup.insert(machine )
+            if Thread.isMainThread {
+                RayonStore.shared.machineGroup.insert(machine)
+            } else {
+                DispatchQueue.main.async {
+                    RayonStore.shared.machineGroup.insert(machine)
+                }
+            }
         }
         
         

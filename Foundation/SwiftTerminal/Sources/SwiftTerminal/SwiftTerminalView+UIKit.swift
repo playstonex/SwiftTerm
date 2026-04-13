@@ -289,6 +289,14 @@ public class SwiftTerminalView: UIView {
             self.metalView.terminal?.feed(buffer: bytes[...])
             self.metalView.normalizeViewportAfterExternalFeed()
             self.metalView.applyExternalFeedDiff(from: snapshot)
+            // Ensure the Metal view re-renders with updated content.
+            // A deferred refresh handles cases where the immediate draw doesn't
+            // produce a visible frame (e.g., when the MTKView drawable isn't
+            // available during the same run-loop iteration as the data feed).
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.metalView.refreshDisplay(immediately: true)
+            }
         }
         if Thread.isMainThread {
             process()
