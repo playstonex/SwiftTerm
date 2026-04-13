@@ -171,6 +171,17 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// The Metal renderer
     public var renderer: TerminalRenderer?
 
+    /// Selection highlight color (RGBA, sourceAlpha blending).
+    /// Setting this propagates to the renderer and triggers a redraw.
+    public var selectionColor: SIMD4<Float>? {
+        didSet {
+            if let selectionColor {
+                renderer?.selectionColor = selectionColor
+            }
+            setTerminalNeedsDisplay()
+        }
+    }
+
     /// Cell dimensions
     public var cellDimension: CGSize = .zero
 
@@ -182,6 +193,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     /// The terminal delegate (for external events)
     public weak var terminalDelegate: MetalTerminalViewDelegate?
+
+    /// Called with the selected text when a selection is completed (mouseUp / gesture end).
+    /// The text has already been copied to the system clipboard at this point.
+    public var onTextSelected: ((String) -> Void)?
 
     /// The accessibility service
     internal var accessibility: AccessibilityService = AccessibilityService()
@@ -333,7 +348,19 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         let snappedWidth = ceil(measuredCellWidth * scale) / scale
         let snappedHeight = ceil(cellHeight * scale) / scale
 
-        self.cellDimension = CGSize(width: max(1, snappedWidth), height: max(min(snappedHeight, 8192), 1))
+        // Adjust cell dimensions to exactly fill the view bounds, eliminating the
+        // edge gap where `cols * cellWidth < bounds.width`.  The adjustment is
+        // typically < 0.1 pt — imperceptible — but prevents applications like vim
+        // and apt from drawing a UI that doesn't span the full terminal view.
+        if bounds.width > 1, bounds.height > 1 {
+            let cols = max(1, Int(bounds.width / snappedWidth))
+            let rows = max(1, Int(bounds.height / snappedHeight))
+            let adjustedWidth = bounds.width / CGFloat(cols)
+            let adjustedHeight = bounds.height / CGFloat(rows)
+            self.cellDimension = CGSize(width: adjustedWidth, height: adjustedHeight)
+        } else {
+            self.cellDimension = CGSize(width: max(1, snappedWidth), height: max(min(snappedHeight, 8192), 1))
+        }
     }
 
     /// Get the backing scale factor
@@ -464,6 +491,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     public func colorsChanged(source: Terminal) {
         suppressLargeCursorRangeChanges = false
         renderer?.clearCache()
+        renderer?.markAllDirty(reason: "colorsChanged")
         setTerminalNeedsDisplay()
     }
 
@@ -551,7 +579,8 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func cellSizeInPixels(source: Terminal) -> (width: Int, height: Int)? {
-        return (Int(cellDimension.width), Int(cellDimension.height))
+        let s = self.scale
+        return (Int(round(cellDimension.width * s)), Int(round(cellDimension.height * s)))
     }
 
     public func cursorStyleChanged(source: Terminal, newStyle: CursorStyle) {
@@ -611,9 +640,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     open override func draw() {
-        if bounds.width > 1, bounds.height > 1 {
-            _ = syncTerminalSizeToView()
-        }
+        // Note: Do NOT call syncTerminalSizeToView() here.
+        // Resize should only happen from explicit signals (e.g., the SwiftUI
+        // parent's debounced geometry change handler). Calling it on every draw
+        // frame can trigger mid-render resizes that corrupt the buffer display.
         super.draw()
     }
 
@@ -636,6 +666,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         guard bounds.width > 1, bounds.height > 1 else { return false }
         guard cellDimension.width > 0, cellDimension.height > 0 else { return false }
 
+        computeCellDimension()
         updateDrawableMetrics()
 
         let targetSize = fittingTerminalSize()
@@ -793,6 +824,11 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         guard cellDimension.width > 0 && cellDimension.height > 0 else { return }
         guard newSize.width > 1 && newSize.height > 1 else { return }
 
+        // Recalculate cell dimensions so the adjustment (which stretches cells
+        // to exactly fill the view) matches the *new* bounds instead of the old
+        // ones.  Without this, cols * cellWidth can be < bounds.width, leaving
+        // a visible gap on the right/bottom edge.
+        computeCellDimension()
         updateDrawableMetrics()
 
         let newCols = max(1, Int(newSize.width / cellDimension.width))
@@ -817,6 +853,11 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     private func handleResize(newSize: CGSize) {
         guard cellDimension.width > 0 && cellDimension.height > 0 else { return }
 
+        // Recalculate cell dimensions so the adjustment (which stretches cells
+        // to exactly fill the view) matches the *new* bounds instead of the old
+        // ones.  Without this, cols * cellWidth can be < bounds.width, leaving
+        // a visible gap on the right/bottom edge.
+        computeCellDimension()
         updateDrawableMetrics()
 
         let newCols = max(1, Int(newSize.width / cellDimension.width))

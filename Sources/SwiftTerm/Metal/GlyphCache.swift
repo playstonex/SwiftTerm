@@ -66,7 +66,7 @@ class GlyphCache {
     private let commandQueue: MTLCommandQueue
 
     /// Scale factor for the display
-    private let scale: CGFloat
+    private var scale: CGFloat
 
     /// Maximum number of atlases
     private let _maxAtlases: Int
@@ -275,6 +275,13 @@ class GlyphCache {
 
         cache.removeAll()
         atlases = [GlyphAtlas(device: device)]
+    }
+
+    /// Update the display scale factor, clearing the cache if it changed
+    func updateScale(_ newScale: CGFloat) {
+        guard newScale != scale else { return }
+        scale = newScale
+        clear()
     }
 
     /// Get the atlas texture at the given index

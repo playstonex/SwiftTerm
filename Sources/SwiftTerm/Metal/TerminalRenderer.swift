@@ -181,6 +181,12 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     /// Controls cursor visibility for blinking animation
     public var cursorVisible: Bool = true
 
+    /// Selection highlight color propagated to the cell renderer
+    public var selectionColor: SIMD4<Float> {
+        get { cellRenderer.selectionColor }
+        set { cellRenderer.selectionColor = newValue }
+    }
+
     private var frameCount: Int = 0
     private var lastFrameTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     private var frameTimes: [CFTimeInterval] = []
@@ -361,8 +367,22 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         rebuildCachesIfNeeded(terminal: terminal, fontSet: fontSet, commandBuffer: commandBuffer)
         let builder = composeCachedFrame()
 
+        // Debug: log render state for diagnosing invisible pasted text
+        #if DEBUG
+        let debugFgColor = terminal.foregroundColor
+        let debugBgColor = terminal.backgroundColor
+        NSLog("[SwiftTerm] draw(in:) glyphs=%d bgVerts=%d fg(r=%d,g=%d,b=%d) bg(r=%d,g=%d,b=%d)",
+              builder.glyphVertices.count, builder.backgroundVertices.count,
+              debugFgColor.red, debugFgColor.green, debugFgColor.blue,
+              debugBgColor.red, debugBgColor.green, debugBgColor.blue)
+        #endif
+
         guard let descriptor = view.currentRenderPassDescriptor,
               let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+            // No drawable available — caches were already rebuilt but the frame was not
+            // presented.  Schedule a retry on the next display cycle so the content
+            // doesn't remain stale (e.g. invisible pasted text).
+            (view as? MetalTerminalView)?.setTerminalNeedsDisplay()
             return
         }
 
@@ -450,10 +470,15 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
 
     /// Update the terminal and font references
     func update(terminal: Terminal, fontSet: FontSet, cellDimension: CGSize, scale: CGFloat) {
+        let scaleChanged = self.scale != scale
         self.terminal = terminal
         self.fontSet = fontSet
         self.cellDimension = cellDimension
         self.scale = scale
+        cellRenderer.scale = scale
+        if scaleChanged {
+            cellRenderer.glyphCache.updateScale(scale)
+        }
         // Reset cached dimensions to force full redraw
         lastRenderedCols = -1
         lastRenderedRows = -1
