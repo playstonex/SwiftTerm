@@ -435,18 +435,21 @@ extension TerminalManager {
             putInformation("[*] Executing: \(serverCmd)")
 
             await withCheckedContinuation { continuation in
+                var resumed = false
                 shell.beginExecute(
                     withCommand: serverCmd,
                     withTimeout: timeout,
                     withOnCreate: {},
                     withOutput: { output in
-                        // Capture and log each chunk of output
                         capturedOutput += output
                         print("[Mosh Debug] Output chunk: \(output.prefix(100))")
                     },
                     withContinuationHandler: {
-                        print("[Mosh Debug] Complete output: \(capturedOutput)")
-                        continuation.resume()
+                        if !resumed {
+                            resumed = true
+                            print("[Mosh Debug] Complete output: \(capturedOutput)")
+                            continuation.resume()
+                        }
                         return true
                     }
                 )

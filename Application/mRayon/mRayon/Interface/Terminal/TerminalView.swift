@@ -1013,7 +1013,9 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
                 try await requestPermissions()
                 try configureAndStart()
             } catch {
-                UIBridge.presentError(with: String(localized: "Mic/Speech denied"))
+                let message = (error as? SpeechError)?.errorDescription
+                    ?? String(localized: "Mic/Speech denied")
+                UIBridge.presentError(with: message)
             }
         }
     }
@@ -1112,8 +1114,12 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
         recognitionRequest = request
 
         let inputNode = audioEngine.inputNode
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+        guard inputFormat.sampleRate > 0 else {
+            throw SpeechError.noAudioInput
+        }
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputNode.outputFormat(forBus: 0)) { [weak self] buffer, _ in
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
             self?.recognitionRequest?.append(buffer)
         }
 
@@ -1143,9 +1149,18 @@ final class TerminalSpeechInputController: NSObject, ObservableObject {
         }
     }
 
-    private enum SpeechError: Error {
+    private enum SpeechError: Error, LocalizedError {
         case permissionDenied
         case unavailable
+        case noAudioInput
+
+        var errorDescription: String? {
+            switch self {
+            case .permissionDenied: return String(localized: "Microphone permission denied")
+            case .unavailable: return String(localized: "Speech recognition unavailable")
+            case .noAudioInput: return String(localized: "No audio input device available")
+            }
+        }
     }
 
     private func currentDeltaTranscript() -> String {
