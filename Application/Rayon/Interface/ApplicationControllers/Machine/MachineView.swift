@@ -29,9 +29,15 @@ struct MachineView: View {
                 }
             }
             .background(
-                Color.accentColor
-                    .opacity((hoverd || forceHighlight) ? 0.1 : 0.05)
-                    .roundedCorner()
+                RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(DesignTokens.shadowOpacity),
+                            radius: (hoverd || forceHighlight) ? DesignTokens.shadowRadius + 4 : DesignTokens.shadowRadius,
+                            x: 0, y: DesignTokens.shadowY)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                    .stroke(Color.accentColor.opacity((hoverd || forceHighlight) ? 0.3 : 0.1), lineWidth: 1)
             )
             .sheet(isPresented: $openEditSheet) {
                 MachineEditView(inEditWith: machine)
@@ -39,69 +45,41 @@ struct MachineView: View {
             .onTapGesture(count: 2) {
                 TerminalManager.shared.createSession(withMachineID: machine)
             }.onHover(perform: { hovering in
-                hoverd = hovering
+                withAnimation(.spring(response: DesignTokens.springResponse, dampingFraction: DesignTokens.springDamping)) {
+                    hoverd = hovering
+                }
             })
     }
 
-    
     var contentView: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Image(systemName: "server.rack")
-                HStack {
-                    Text(store.machineGroup[machine].name)
-//                    TextField("Server Name", text: $store.machineGroup[machine].name)
-//                        .textFieldStyle(PlainTextFieldStyle())
-                    Spacer()
-//                    Image(systemName: "ellipsis")
-//                        .onTapGesture {
-//                    }
-//                    Button("", systemImage: "ellipsis", action: {
-//
-//                    }).buttonStyle(.borderedProminent);
-//                    Menu {
-//                        Button {
-//                        } label: {
-//                            Label("default", systemImage: "plus")
-//                        }
-//                        Button(role: .destructive) {
-//                        } label: {
-//                            Label("destructive", systemImage: "trash")
-//                        }
-//                    } label: {
-//                        Image(systemName: "line.horizontal.3")
-//                    }.menuStyle(BorderlessButtonMenuStyle())
+        VStack(alignment: .leading, spacing: 8) {
+            Text(store.machineGroup[machine].name)
+                .font(.system(.headline, design: .rounded))
+                .overlay(
+                    Rectangle()
+                        .cornerRadius(2)
+                        .foregroundColor(redactedColor)
+                        .expended()
+                        .opacity(store.machineRedacted.rawValue > 1 ? 1 : 0)
+                )
 
-                       
-
-                }
-//                .overlay(
-//                    Rectangle()
-//                        .cornerRadius(2)
-//                        .foregroundColor(redactedColor)
-//                        .expended()
-//                        .opacity(
-//                            store.machineRedacted.rawValue > 1 ? 1 : 0
-//                        )
-//                )
-            }
-            .font(.system(.headline, design: .rounded))
             HStack {
                 Text(store.machineGroup[machine].remoteAddress)
                 Spacer()
                 Text(store.machineGroup[machine].remotePort)
             }
+            .font(.system(.subheadline, design: .rounded))
+            .foregroundStyle(.secondary)
             .overlay(
                 Rectangle()
                     .cornerRadius(2)
                     .foregroundColor(redactedColor)
                     .expended()
-                    .opacity(
-                        store.machineRedacted.rawValue > 0 ? 1 : 0
-                    )
+                    .opacity(store.machineRedacted.rawValue > 0 ? 1 : 0)
             )
-            .font(.system(.subheadline, design: .rounded))
+
             Divider()
+
             HStack(spacing: 4) {
                 VStack(alignment: .trailing, spacing: 5) {
                     Text("Activity:")
@@ -135,18 +113,17 @@ struct MachineView: View {
                     .cornerRadius(2)
                     .foregroundColor(redactedColor)
                     .expended()
-                    .opacity(
-                        store.machineRedacted.rawValue > 1 ? 1 : 0
-                    )
+                    .opacity(store.machineRedacted.rawValue > 1 ? 1 : 0)
             )
-//            .textSelection(.enabled)
+
             Divider()
+
             Text(machine.uuidString)
                 .textSelection(.enabled)
-                .font(.system(size: 8, weight: .light, design: .monospaced))
+                .font(.system(size: 9, weight: .light, design: .monospaced))
         }
         .animation(.interactiveSpring(), value: store.machineRedacted)
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(DesignTokens.paddingStandard)
     }
 }

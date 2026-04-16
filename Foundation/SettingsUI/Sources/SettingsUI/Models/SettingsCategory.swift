@@ -41,6 +41,17 @@ public enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    public var tintColor: Color {
+        switch self {
+        case .about: return .blue
+        case .appearance: return .pink
+        case .premium: return .orange
+        case .sync: return .cyan
+        case .ai: return .purple
+        case .advanced: return .gray
+        }
+    }
+
     // Items within each category
     public var items: [SettingsItem] {
         switch self {

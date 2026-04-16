@@ -18,6 +18,8 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "memorychip")
+                        .symbolRenderingMode(.hierarchical)
+                        .font(.title3)
                     Text(L10n.tr("RAM"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
@@ -31,7 +33,7 @@ public extension ServerStatusViews {
                         Spacer()
                         Text(percentDescription())
                     }
-                    .font(.system(size: 8, weight: .regular, design: .monospaced))
+                    .font(.system(size: 10, weight: .regular, design: .monospaced))
                     ColorizedProgressView(
                         colors: [
                             .init(color: .yellow, weight: info.memory.memTotal - info.memory.memFree - info.memory.memCached),
@@ -48,34 +50,34 @@ public extension ServerStatusViews {
                         GridItem(.flexible()),
                     ], content: {
                         HStack {
-                            Circle()
-                                .foregroundColor(.yellow)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.yellow)
                                 .frame(width: 10, height: 10)
                             Text(L10n.tr("USED"))
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                             Spacer()
                         }
                         HStack {
-                            Circle()
-                                .foregroundColor(.orange)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.orange)
                                 .frame(width: 10, height: 10)
                             Text(L10n.tr("CACHE"))
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                             Spacer()
                         }
                         HStack {
-                            Circle()
-                                .foregroundColor(.green)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.green)
                                 .frame(width: 10, height: 10)
                             Text(L10n.tr("FREE"))
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                             Spacer()
                         }
                     })
                 Divider()
                 HStack {
                     Text(L10n.tr("Active & Inactive is not counted as free memory"))
-                        .font(.system(size: 8, weight: .regular, design: .monospaced))
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
                     Spacer()
                 }
                 .opacity(0.5)

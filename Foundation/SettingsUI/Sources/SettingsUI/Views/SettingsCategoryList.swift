@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// MARK: - Settings Category List (First Column)
+// MARK: - Settings Category List (Sidebar — System Settings Style)
 public struct SettingsCategoryList: View {
     @Binding var selectedCategory: SettingsCategory?
 
@@ -21,7 +21,7 @@ public struct SettingsCategoryList: View {
         #if os(macOS)
         .listStyle(.sidebar)
         #else
-        .listStyle(.plain)
+        .listStyle(.insetGrouped)
         #endif
         .navigationTitle(L10n.tr("Settings"))
     }

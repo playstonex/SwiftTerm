@@ -157,14 +157,23 @@ struct PortForwardElementView: View {
                 .font(.system(size: 8, weight: .light, design: .monospaced))
         }
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(DesignTokens.paddingComfortable)
         .background(
-            Color(
-                backend.sessionExists(withPortForwardID: forward) ?
-                    UIColor.systemBlue.withAlphaComponent(0.1)
-                    : UIColor.systemGray6
-            )
-            .roundedCorner()
+            Group {
+                if backend.sessionExists(withPortForwardID: forward) {
+                    RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                        .fill(.regularMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                                .fill(Color.blue.opacity(0.08))
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                        .fill(.regularMaterial)
+                }
+            }
+            .shadow(color: .black.opacity(DesignTokens.shadowOpacity),
+                    radius: DesignTokens.shadowRadius, x: 0, y: DesignTokens.shadowY)
         )
         .navigationDestination(isPresented: $openEdit) {
             EditPortForwardView { forward }

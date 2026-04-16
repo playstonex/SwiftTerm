@@ -13,7 +13,7 @@ extension View {
     }
 
     func roundedCorner() -> some View {
-        cornerRadius(8)
+        cornerRadius(DesignTokens.cornerRadiusMedium)
     }
 }
 

@@ -37,7 +37,7 @@ struct EditMachineView: View {
                 TextField("Name", text: $name)
                 TextField("Comment (Optional)", text: $comment)
             } header: {
-                Label("Name", systemImage: "mail.and.text.magnifyingglass")
+                Text("Name")
             }
 
             Section {
@@ -53,7 +53,7 @@ struct EditMachineView: View {
                     .textInputAutocapitalization(.never)
                     .keyboardType(.numberPad)
             } header: {
-                Label("Address", systemImage: "link")
+                Text("Address")
             }
 
             Section {
@@ -62,37 +62,37 @@ struct EditMachineView: View {
                         associatedIdentity = await RayonUtil.selectIdentity()
                     }
                 } label: {
-                    Label("Select Identity", systemImage: "arrow.right")
-                        .foregroundColor(.accentColor)
+                    HStack {
+                        Text("Select Identity")
+                        Spacer()
+                        if let aid = associatedIdentity {
+                            Text(RayonStore.shared.identityGroup[aid].shortDescription())
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        } else {
+                            Text("None")
+                                .foregroundStyle(.secondary)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             } header: {
-                Label("Identity", systemImage: "person")
-            } footer: {
-                if let aid = associatedIdentity {
-                    Text(RayonStore.shared.identityGroup[aid].shortDescription())
-                } else {
-                    Text("No Associated Identity (Optional)")
-                }
+                Text("Identity")
             }
-
-//                Group is not available on iOS, :P
-//                Section {
-//                    TextField("Group", text: $group)
-//                } header: {
-//                    Label("Group", systemImage: "square.stack.3d.down.right")
-//                } footer: {
-//                    Text("")
-//                }
 
             Section {
                 HStack {
-                    Text("Login Path: ")
-                    TextField("", text: $fileTransferLoginPath)
+                    Text("Login Path")
+                    Spacer()
+                    TextField("/", text: $fileTransferLoginPath)
                         .disableAutocorrection(true)
                         .textInputAutocapitalization(.never)
+                        .multilineTextAlignment(.trailing)
                 }
             } header: {
-                Label("SFTP", systemImage: "doc.text.magnifyingglass")
+                Text("SFTP")
             } footer: {
                 Text("Customization about SFTP features")
             }
@@ -114,7 +114,7 @@ struct EditMachineView: View {
                     }
                 }
             } header: {
-                Label("Connection", systemImage: "network")
+                Text("Connection")
             } footer: {
                 if connectionType == .mosh {
                     Text("Mosh provides better roaming and low-latency prediction. Requires mosh-server on the remote host.")
@@ -125,7 +125,7 @@ struct EditMachineView: View {
 
             if let identity = inEditWith?() {
                 Section {
-                    Button {
+                    Button(role: .destructive) {
                         UIBridge.requiresConfirmation(
                             message: "Are you sure you want to delete this machine?"
                         ) { confirmed in
@@ -135,8 +135,7 @@ struct EditMachineView: View {
                             }
                         }
                     } label: {
-                        Label("Delete Machine", systemImage: "trash")
-                            .foregroundColor(.red)
+                        Text("Delete Machine")
                     }
                 }
             }

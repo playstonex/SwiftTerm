@@ -16,7 +16,7 @@ struct SnippetElementView: View {
     @State var openEdit: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: store.snippetGroup[identity].getSFAvatar())
                     .font(.system(.subheadline, design: .rounded))
@@ -44,10 +44,12 @@ struct SnippetElementView: View {
             Text(identity.uuidString)
                 .font(.system(size: 8, weight: .light, design: .rounded))
         }
-        .padding()
+        .padding(DesignTokens.paddingComfortable)
         .background(
-            Color(UIColor.systemGray6)
-                .roundedCorner()
+            RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(DesignTokens.shadowOpacity),
+                        radius: DesignTokens.shadowRadius, x: 0, y: DesignTokens.shadowY)
         )
         .navigationDestination(isPresented: $openEdit) {
             EditSnippetView { identity }

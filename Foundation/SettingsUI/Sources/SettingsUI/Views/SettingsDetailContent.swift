@@ -17,6 +17,77 @@ import Speech
 import SwiftUI
 import UniformTypeIdentifiers
 
+// MARK: - Settings Group (System Settings Style Card)
+struct SettingsGroup<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if !title.isEmpty {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 8)
+            }
+            VStack(spacing: 0) {
+                content()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            #if os(macOS)
+            .background(.regularMaterial)
+            #else
+            .background(Color(UIColor.secondarySystemGroupedBackground))
+            #endif
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+    }
+}
+
+// MARK: - Settings Row (Title + Control — System Settings Style)
+struct SettingsIconRow<Content: View>: View {
+    let icon: String // kept for API compatibility, not rendered on macOS
+    let tint: Color // kept for API compatibility, not rendered on macOS
+    let title: String
+    let subtitle: String?
+    @ViewBuilder let control: () -> Content
+
+    init(icon: String, tint: Color = .blue, title: String, subtitle: String? = nil,
+         @ViewBuilder control: @escaping () -> Content)
+    {
+        self.icon = icon
+        self.tint = tint
+        self.title = title
+        self.subtitle = subtitle
+        self.control = control
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            Spacer()
+            control()
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+// MARK: - Settings Divider (Inset from Card Edges)
+struct SettingsDivider: View {
+    var body: some View {
+        Divider().padding(.horizontal, 8)
+    }
+}
+
 // MARK: - Settings Detail Content
 public struct SettingsDetailContent: View {
     public let item: SettingsItem
@@ -202,41 +273,51 @@ public struct SettingsDetailContent: View {
     // MARK: - About Views
 
     private var appInfoView: some View {
-        Section(L10n.tr("App")) {
-            HStack {
-                Text(L10n.tr("Name"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("App")) {
+            SettingsIconRow(icon: "app", tint: .blue, title: L10n.tr("Name")) {
                 Text("GoodTerm")
+                    .foregroundStyle(.secondary)
             }
-
-            HStack {
-                Text(L10n.tr("Version"))
-                Spacer()
+            SettingsDivider()
+            SettingsIconRow(icon: "info.circle", tint: .gray, title: L10n.tr("Version")) {
                 Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? L10n.tr("Unknown"))
+                    .foregroundStyle(.secondary)
             }
-
-            HStack {
-                Text(L10n.tr("Build"))
-                Spacer()
+            SettingsDivider()
+            SettingsIconRow(icon: "hammer", tint: .gray, title: L10n.tr("Build")) {
                 Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? L10n.tr("Unknown"))
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
     private var documentsView: some View {
-        Section(L10n.tr("Documents")) {
-            tappableTextRow("Thanks") { showingThanks = true }
-            tappableTextRow("Software License") { showingLicense = true }
+        SettingsGroup(title: L10n.tr("Documents")) {
+            SettingsIconRow(icon: "heart.fill", tint: .pink, title: L10n.tr("Thanks")) {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { showingThanks = true }
+
+            SettingsDivider()
+
+            SettingsIconRow(icon: "doc.text.fill", tint: .blue, title: L10n.tr("Software License")) {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { showingLicense = true }
         }
     }
 
     // MARK: - Appearance Views
 
     private var appThemeView: some View {
-        Section(L10n.tr("Appearance")) {
-            HStack {
-                Text(L10n.tr("Appearance"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Appearance")) {
+            SettingsIconRow(icon: "paintbrush.fill", tint: .pink, title: L10n.tr("Appearance")) {
                 Picker(L10n.tr("Appearance"), selection: $store.themePreference) {
                     Text(L10n.tr("System")).tag("system")
                     Text(L10n.tr("Light")).tag("light")
@@ -248,10 +329,8 @@ public struct SettingsDetailContent: View {
     }
 
     private var terminalThemeView: some View {
-        Section(L10n.tr("Terminal")) {
-            HStack {
-                Text(L10n.tr("Terminal Theme"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Terminal")) {
+            SettingsIconRow(icon: "paintpalette", tint: .purple, title: L10n.tr("Terminal Theme")) {
                 Picker(L10n.tr("Terminal Theme"), selection: $store.terminalThemeName) {
                     ForEach(TerminalTheme.allThemes, id: \.name) { theme in
                         Text(theme.name).tag(theme.name)
@@ -261,21 +340,21 @@ public struct SettingsDetailContent: View {
                 .labelsHidden()
             }
 
-            Button {
-                showingItermImporter = true
-            } label: {
-                HStack {
-                    Text("Import iTerm2 Theme")
-                    Spacer()
-                    Image(systemName: "square.and.arrow.down")
+            SettingsDivider()
+
+            SettingsIconRow(icon: "square.and.arrow.down", tint: .blue, title: "Import iTerm2 Theme") {
+                Button {
+                    showingItermImporter = true
+                } label: {
+                    Image(systemName: "arrow.up.doc")
                 }
+                .buttonStyle(.plain)
             }
 
             if !TerminalTheme.customThemes.isEmpty {
                 ForEach(TerminalTheme.customThemes, id: \.name) { theme in
-                    HStack {
-                        Text(theme.name)
-                        Spacer()
+                    SettingsDivider()
+                    SettingsIconRow(icon: "trash", tint: .red, title: theme.name) {
                         Button {
                             TerminalTheme.removeCustomTheme(named: theme.name)
                             customThemeVersion += 1
@@ -291,9 +370,9 @@ public struct SettingsDetailContent: View {
                 }
             }
 
-            HStack {
-                Text(L10n.tr("Terminal Font"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "textformat", tint: .orange, title: L10n.tr("Terminal Font")) {
                 Picker(L10n.tr("Terminal Font"), selection: $store.terminalFontName) {
                     Text("Menlo").tag("Menlo")
                     Text("Monaco").tag("Monaco")
@@ -310,54 +389,56 @@ public struct SettingsDetailContent: View {
                 .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Terminal Font Size"))
-                Spacer()
-                Text("\(store.terminalFontSize)")
-                    .foregroundStyle(.secondary)
-                Stepper("", value: $store.terminalFontSize, in: 5...30)
-                    .labelsHidden()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "textformat.size", tint: .indigo, title: L10n.tr("Terminal Font Size")) {
+                HStack(spacing: 6) {
+                    Text("\(store.terminalFontSize)")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, alignment: .trailing)
+                    Stepper("", value: $store.terminalFontSize, in: 5...30)
+                        .labelsHidden()
+                }
             }
 
-            HStack {
-                Text(L10n.tr("iOS Return Sends Line Feed"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "return", tint: .green, title: L10n.tr("iOS Return Sends Line Feed")) {
                 Toggle("", isOn: $store.terminalReturnKeySendsLineFeed)
                     .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Command Notifications"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "bell.fill", tint: .red, title: L10n.tr("Command Notifications")) {
                 Toggle("", isOn: $store.terminalCommandNotificationsEnabled)
                     .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Only When App Is Inactive"))
-                Spacer()
-                Toggle("", isOn: $store.terminalCommandNotificationsOnlyWhenInactive)
-                    .labelsHidden()
-                    .disabled(!store.terminalCommandNotificationsEnabled)
-            }
+            if store.terminalCommandNotificationsEnabled {
+                SettingsDivider()
+                SettingsIconRow(icon: "moon.fill", tint: .indigo, title: L10n.tr("Only When App Is Inactive")) {
+                    Toggle("", isOn: $store.terminalCommandNotificationsOnlyWhenInactive)
+                        .labelsHidden()
+                }
 
-            HStack {
-                Text(L10n.tr("Notification Threshold"))
-                Spacer()
-                Text("\(store.terminalCommandNotificationMinimumDuration)s")
-                    .foregroundStyle(.secondary)
-                Stepper("", value: $store.terminalCommandNotificationMinimumDuration, in: 1...3600)
-                    .labelsHidden()
-                    .disabled(!store.terminalCommandNotificationsEnabled)
+                SettingsDivider()
+                SettingsIconRow(icon: "clock", tint: .teal, title: L10n.tr("Notification Threshold")) {
+                    HStack(spacing: 6) {
+                        Text("\(store.terminalCommandNotificationMinimumDuration)s")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 40, alignment: .trailing)
+                        Stepper("", value: $store.terminalCommandNotificationMinimumDuration, in: 1...3600)
+                            .labelsHidden()
+                    }
+                }
             }
         }
     }
 
     private var effectsView: some View {
-        Section(L10n.tr("Effects")) {
-            HStack {
-                Text(L10n.tr("Reduced Effect"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Effects")) {
+            SettingsIconRow(icon: "sparkles", tint: .yellow, title: L10n.tr("Reduced Effect")) {
                 Toggle("", isOn: $store.reducedViewEffects)
                     .labelsHidden()
             }
@@ -365,10 +446,8 @@ public struct SettingsDetailContent: View {
     }
 
     private var voiceSettingsView: some View {
-        Section(L10n.tr("Voice Input")) {
-            HStack {
-                Text(L10n.tr("Engine"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Voice Input")) {
+            SettingsIconRow(icon: "waveform.badge.mic", tint: .green, title: L10n.tr("Engine")) {
                 Picker(L10n.tr("Engine"), selection: $store.speechInputEngine) {
                     Text(L10n.tr("Apple (On-device/API)")).tag("apple")
                     Text(L10n.tr("Disabled")).tag("disabled")
@@ -376,9 +455,9 @@ public struct SettingsDetailContent: View {
                 .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Language"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "globe", tint: .blue, title: L10n.tr("Language")) {
                 Picker(L10n.tr("Language"), selection: $store.speechInputLocaleIdentifier) {
                     Text(L10n.tr("System Default")).tag("system")
                     ForEach(Self.supportedSpeechLocaleIdentifiers, id: \.self) { identifier in
@@ -395,110 +474,103 @@ public struct SettingsDetailContent: View {
 
     private var subscriptionStatusPlaceholderView: some View {
         Group {
-            Section {
+            SettingsGroup(title: L10n.tr("Subscription Status")) {
                 premiumStatusSummaryView
 
                 if premium.isSubscribed {
+                    SettingsDivider()
                     premiumSubscriptionDetailsView
                 }
-            } header: {
-                Text(L10n.tr("Subscription Status"))
             }
 
             if !premium.isSubscribed {
-                Section {
+                SettingsGroup(title: L10n.tr("Subscription Options")) {
                     subscriptionOptionsView
-                } header: {
-                    Text(L10n.tr("Subscription Options"))
-                } footer: {
-                    Text(L10n.tr("Choose a plan to unlock all premium features."))
                 }
             }
 
-            Section {
-                Link(destination: SubscriptionLegalLinks.termsOfUseURL) {
-                    Label(L10n.tr("Terms of Use"), systemImage: "arrow.up.right.square")
+            SettingsGroup(title: L10n.tr("Legal")) {
+                SettingsIconRow(icon: "doc.text.fill", tint: .blue, title: L10n.tr("Terms of Use")) {
+                    Link(destination: SubscriptionLegalLinks.termsOfUseURL) {
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .buttonStyle(.plain)
                 }
 
-                Link(destination: SubscriptionLegalLinks.privacyPolicyURL) {
-                    Label(L10n.tr("Privacy Policy"), systemImage: "arrow.up.right.square")
+                SettingsDivider()
+
+                SettingsIconRow(icon: "hand.raised.fill", tint: .purple, title: L10n.tr("Privacy Policy")) {
+                    Link(destination: SubscriptionLegalLinks.privacyPolicyURL) {
+                        Image(systemName: "arrow.up.right.square")
+                    }
+                    .buttonStyle(.plain)
                 }
-            } header: {
-                Text(L10n.tr("Legal"))
-            } footer: {
-                Text(L10n.tr("Read the Terms of Use and Privacy Policy before purchasing."))
             }
 
             if !premium.isSubscribed {
-                Section {
+                SettingsGroup(title: L10n.tr("Subscription Reminders")) {
                     subscriptionRemindersView
-                } header: {
-                    Text(L10n.tr("Subscription Reminders"))
                 }
             }
 
-            Section {
-                Button {
-                    Task {
-                        await restorePurchases()
-                    }
-                } label: {
-                    if isRestoringPurchases {
-                        Label {
-                            Text(L10n.tr("Restoring Purchases..."))
-                        } icon: {
-                            ProgressView()
+            SettingsGroup(title: L10n.tr("Subscription Actions")) {
+                SettingsIconRow(icon: "arrow.clockwise", tint: .green, title: L10n.tr("Restore Purchases")) {
+                    Button {
+                        Task { await restorePurchases() }
+                    } label: {
+                        if isRestoringPurchases {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text(L10n.tr("Restore"))
                         }
-                    } else {
-                        Label(L10n.tr("Restore Purchases"), systemImage: "arrow.clockwise")
                     }
+                    .disabled(isRestoringPurchases)
                 }
-                .disabled(isRestoringPurchases)
 
                 if let url = premium.getManageSubscriptionURL() {
-                    Button {
-                        openURL(url)
-                    } label: {
-                        Label(L10n.tr("Manage in App Store"), systemImage: "link")
+                    SettingsDivider()
+                    SettingsIconRow(icon: "link", tint: .blue, title: L10n.tr("Manage in App Store")) {
+                        Button { openURL(url) } label: {
+                            Image(systemName: "arrow.up.right.square")
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
 
-                Button {
-                    Task {
-                        restoreMessage = nil
-                        restoreMessageIsSuccess = false
-                        await premium.refreshSubscriptionStatus()
+                SettingsDivider()
+
+                SettingsIconRow(icon: "arrow.triangle.2.circlepath", tint: .orange, title: L10n.tr("Refresh Subscription Status")) {
+                    Button {
+                        Task {
+                            restoreMessage = nil
+                            restoreMessageIsSuccess = false
+                            await premium.refreshSubscriptionStatus()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.triangle.2.circlepath")
                     }
-                } label: {
-                    Label(L10n.tr("Refresh Subscription Status"), systemImage: "arrow.triangle.2.circlepath")
+                    .buttonStyle(.plain)
                 }
 
                 if let restoreMessage {
                     Text(restoreMessage)
                         .font(.caption)
                         .foregroundStyle(restoreMessageIsSuccess ? .green : .red)
+                        .padding(.top, 4)
                 }
-            } header: {
-                Text(L10n.tr("Subscription Actions"))
             }
         }
     }
 
     private var premiumStatusSummaryView: some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill((premium.isSubscribed ? Color.green : Color.orange).opacity(0.18))
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: premium.isSubscribed ? "crown.fill" : "crown")
-                    .foregroundStyle(premium.isSubscribed ? .green : .orange)
-                    .font(.title3)
-            }
-
             VStack(alignment: .leading, spacing: 4) {
-                Text(premium.isSubscribed ? L10n.tr("Premium Active") : L10n.tr("Free Plan"))
-                    .font(.headline)
+                HStack(spacing: 6) {
+                    Image(systemName: premium.isSubscribed ? "crown.fill" : "crown")
+                        .foregroundStyle(premium.isSubscribed ? .green : .orange)
+                    Text(premium.isSubscribed ? L10n.tr("Premium Active") : L10n.tr("Free Plan"))
+                        .font(.headline)
+                }
 
                 Text(
                     premium.isSubscribed
@@ -651,39 +723,21 @@ public struct SettingsDetailContent: View {
     }
 
     private func premiumDetailRow(icon: String, tint: Color, title: String, value: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(tint)
-                .frame(width: 20)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline)
-
-                Text(value)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
+        SettingsIconRow(icon: icon, tint: tint, title: title, subtitle: value) {
+            EmptyView()
         }
-        .padding(.vertical, 2)
     }
 
     private var premiumFeaturesView: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        SettingsGroup(title: L10n.tr("Premium Features")) {
             FeatureRow(icon: "infinity", title: "Unlimited Connections", description: "Connect to unlimited number of servers")
-            Divider()
-                .padding(.leading, 40)
+            SettingsDivider()
             FeatureRow(icon: "bolt.fill", title: "Advanced Monitoring", description: "Real-time system status and alerts")
-            Divider()
-                .padding(.leading, 40)
+            SettingsDivider()
             FeatureRow(icon: "brain.head.profile", title: "AI Assistant", description: "Smart command suggestions and explanations")
-            Divider()
-                .padding(.leading, 40)
+            SettingsDivider()
             FeatureRow(icon: "folder.fill", title: "File Transfer", description: "Enhanced file transfer capabilities")
-            Divider()
-                .padding(.leading, 40)
+            SettingsDivider()
             FeatureRow(icon: "moon.fill", title: "Dark Mode Themes", description: "Premium terminal color schemes")
         }
     }
@@ -708,8 +762,9 @@ public struct SettingsDetailContent: View {
     // MARK: - Sync & Automation Views
 
     private var cloudSyncView: some View {
-        Section(L10n.tr("Sync")) {
-            HStack(spacing: 12) {
+        SettingsGroup(title: L10n.tr("Sync")) {
+            SettingsIconRow(icon: "icloud", tint: .blue, title: L10n.tr("Sync Now"),
+                            subtitle: L10n.tr("Last sync: %@", lastSyncDateString)) {
                 Button {
                     Task { await performSync() }
                 } label: {
@@ -717,50 +772,60 @@ public struct SettingsDetailContent: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Label(L10n.tr("Sync Now"), systemImage: "arrow.counterclockwise.icloud")
+                        Image(systemName: "arrow.counterclockwise.icloud")
                     }
                 }
                 .disabled(syncManager.isSyncing)
-
-                Text(L10n.tr("Last sync: %@", lastSyncDateString))
-                    .foregroundColor(.secondary)
-                    .font(.caption)
             }
 
             if let error = syncManager.syncError {
-                Text(L10n.tr("Error: %@", error.localizedDescription))
-                    .foregroundColor(.red)
-                    .font(.caption)
+                SettingsDivider()
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                        .frame(width: 26)
+                    Text(L10n.tr("Error: %@", error.localizedDescription))
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                    Spacer()
+                }
             }
         }
     }
 
     private var snapshotsView: some View {
-        Section(L10n.tr("Cloud Backup Snapshots")) {
-            HStack {
-                TextField(L10n.tr("Snapshot reason"), text: $snapshotReason)
-                    #if os(macOS)
-                    .textFieldStyle(.plain)
-                    #endif
-                    .textFieldStyle(.roundedBorder)
-                Button(L10n.tr("Create Snapshot")) {
-                    guard premium.isSubscribed else { return }
-                    let reason = snapshotReason.trimmingCharacters(in: .whitespacesAndNewlines)
-                    store.createSyncSnapshot(reason: reason.isEmpty ? "manual" : reason)
+        SettingsGroup(title: L10n.tr("Cloud Backup Snapshots")) {
+            SettingsIconRow(icon: "camera.fill", tint: .blue, title: L10n.tr("Snapshot reason")) {
+                HStack(spacing: 8) {
+                    TextField("", text: $snapshotReason)
+                        #if os(macOS)
+                        .textFieldStyle(.plain)
+                        #endif
+                        .frame(width: 120)
+                    Button(L10n.tr("Create")) {
+                        guard premium.isSubscribed else { return }
+                        let reason = snapshotReason.trimmingCharacters(in: .whitespacesAndNewlines)
+                        store.createSyncSnapshot(reason: reason.isEmpty ? "manual" : reason)
+                    }
+                    .disabled(!premium.isSubscribed)
+                    .controlSize(.small)
                 }
-                .disabled(!premium.isSubscribed)
             }
 
             ForEach(Array(snapshots.prefix(8)), id: \.id) { snapshot in
-                HStack {
-                    Text(snapshot.reason).lineLimit(1)
-                    Spacer()
-                    Text(snapshot.createdAt, style: .date).foregroundColor(.secondary).font(.caption)
-                    Button(L10n.tr("Rollback")) {
-                        guard premium.isSubscribed else { return }
-                        _ = store.rollbackSyncSnapshot(id: snapshot.id)
+                SettingsDivider()
+                SettingsIconRow(icon: "clock.arrow.circlepath", tint: .teal, title: snapshot.reason) {
+                    HStack(spacing: 8) {
+                        Text(snapshot.createdAt, style: .date)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button(L10n.tr("Rollback")) {
+                            guard premium.isSubscribed else { return }
+                            _ = store.rollbackSyncSnapshot(id: snapshot.id)
+                        }
+                        .disabled(!premium.isSubscribed)
+                        .controlSize(.small)
                     }
-                    .disabled(!premium.isSubscribed)
                 }
             }
         }
@@ -768,20 +833,19 @@ public struct SettingsDetailContent: View {
 
     private var automationView: some View {
         Group {
-            Section(L10n.tr("Create Automation Task")) {
-                HStack {
-                    Text(L10n.tr("Task name"))
-                    Spacer()
+            SettingsGroup(title: L10n.tr("Create Automation Task")) {
+                SettingsIconRow(icon: "text.cursor", tint: .blue, title: L10n.tr("Task name")) {
                     TextField("", text: $taskName)
                         #if os(macOS)
                         .textFieldStyle(.plain)
                         #endif
                         .multilineTextAlignment(.trailing)
+                        .frame(width: 160)
                 }
 
-                HStack {
-                    Text(L10n.tr("Snippet Template"))
-                    Spacer()
+                SettingsDivider()
+
+                SettingsIconRow(icon: "chevron.left.forwardslash.chevron.right", tint: .purple, title: L10n.tr("Snippet Template")) {
                     Picker(L10n.tr("Snippet Template"), selection: Binding<UUID>(
                         get: { selectedSnippetId ?? snippets.first?.id ?? UUID() },
                         set: { selectedSnippetId = $0 }
@@ -794,10 +858,13 @@ public struct SettingsDetailContent: View {
                     .disabled(snippets.isEmpty)
                 }
 
+                SettingsDivider()
+
+                SettingsIconRow(icon: "desktopcomputer", tint: .teal, title: L10n.tr("Target Machines")) {
+                    EmptyView()
+                }
+
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.tr("Target Machines"))
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
                     ForEach(machines, id: \.id) { machine in
                         HStack {
                             Text(machine.name)
@@ -813,11 +880,11 @@ public struct SettingsDetailContent: View {
                         }
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.leading, 50)
 
-                HStack {
-                    Text(L10n.tr("Schedule"))
-                    Spacer()
+                SettingsDivider()
+
+                SettingsIconRow(icon: "clock.badge", tint: .orange, title: L10n.tr("Schedule")) {
                     Picker(L10n.tr("Schedule"), selection: $scheduleKind) {
                         Text(L10n.tr("Manual")).tag(AutomationSchedule.Kind.manual)
                         Text(L10n.tr("Interval")).tag(AutomationSchedule.Kind.interval)
@@ -830,9 +897,8 @@ public struct SettingsDetailContent: View {
                 }
 
                 if scheduleKind == .interval {
-                    HStack {
-                        Text(L10n.tr("Every"))
-                        Spacer()
+                    SettingsDivider()
+                    SettingsIconRow(icon: "timer", tint: .indigo, title: L10n.tr("Every")) {
                         HStack(spacing: 8) {
                             Text("\(intervalMinutes)")
                                 .foregroundStyle(.secondary)
@@ -844,62 +910,69 @@ public struct SettingsDetailContent: View {
                     }
                 }
                 if scheduleKind == .daily {
-                    HStack {
-                        Text(L10n.tr("Hour"))
-                        Spacer()
-                        Text("\(dailyHour)")
-                            .foregroundStyle(.secondary)
-                        Stepper("", value: $dailyHour, in: 0...23)
-                            .labelsHidden()
+                    SettingsDivider()
+                    SettingsIconRow(icon: "sun.max", tint: .yellow, title: L10n.tr("Hour")) {
+                        HStack(spacing: 6) {
+                            Text("\(dailyHour)")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24, alignment: .trailing)
+                            Stepper("", value: $dailyHour, in: 0...23)
+                                .labelsHidden()
+                        }
                     }
-
-                    HStack {
-                        Text(L10n.tr("Minute"))
-                        Spacer()
-                        Text("\(dailyMinute)")
-                            .foregroundStyle(.secondary)
-                        Stepper("", value: $dailyMinute, in: 0...59)
-                            .labelsHidden()
+                    SettingsDivider()
+                    SettingsIconRow(icon: "clock", tint: .cyan, title: L10n.tr("Minute")) {
+                        HStack(spacing: 6) {
+                            Text("\(dailyMinute)")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24, alignment: .trailing)
+                            Stepper("", value: $dailyMinute, in: 0...59)
+                                .labelsHidden()
+                        }
                     }
                 }
 
-                tappableTextRow(
-                    "Create Task",
-                    isDisabled: !premium.isSubscribed || snippets.isEmpty || machines.isEmpty
-                ) {
-                    guard premium.isSubscribed else { return }
-                    guard let snippetId = selectedSnippetId else { return }
-                    guard !taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                    guard !selectedMachineIds.isEmpty else { return }
+                SettingsDivider()
 
-                    let schedule = AutomationSchedule(kind: scheduleKind, intervalMinutes: intervalMinutes, hour: dailyHour, minute: dailyMinute)
-                    automation.upsertTask(
-                        AutomationTask(name: taskName, snippetId: snippetId, machineIds: Array(selectedMachineIds), schedule: schedule)
-                    )
-                    taskName = ""
+                HStack {
+                    Spacer()
+                    Button(L10n.tr("Create Task")) {
+                        guard premium.isSubscribed else { return }
+                        guard let snippetId = selectedSnippetId else { return }
+                        guard !taskName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                        guard !selectedMachineIds.isEmpty else { return }
+
+                        let schedule = AutomationSchedule(kind: scheduleKind, intervalMinutes: intervalMinutes, hour: dailyHour, minute: dailyMinute)
+                        automation.upsertTask(
+                            AutomationTask(name: taskName, snippetId: snippetId, machineIds: Array(selectedMachineIds), schedule: schedule)
+                        )
+                        taskName = ""
+                    }
+                    .disabled(!premium.isSubscribed || snippets.isEmpty || machines.isEmpty)
+                    .buttonStyle(.borderedProminent)
                 }
             }
 
-            Section(L10n.tr("Tasks")) {
+            SettingsGroup(title: L10n.tr("Tasks")) {
                 ForEach(automation.tasks, id: \.id) { task in
-                    HStack {
-                        Toggle("", isOn: Binding<Bool>(
-                            get: { task.enabled },
-                            set: { enabled in
-                                var updated = task
-                                updated.enabled = enabled
-                                automation.upsertTask(updated)
-                            }
-                        ))
-                        .labelsHidden()
-                        Text(task.name)
-                        Spacer()
-                        Button(L10n.tr("Run")) { Task { await automation.runNow(taskId: task.id) } }
-                            .disabled(!premium.isSubscribed)
-                            .controlSize(.small)
-                        Button(L10n.tr("Delete")) { automation.removeTask(id: task.id) }
-                            .disabled(!premium.isSubscribed)
-                            .controlSize(.small)
+                    SettingsIconRow(icon: "gearshape.2", tint: .purple, title: task.name) {
+                        HStack(spacing: 8) {
+                            Toggle("", isOn: Binding<Bool>(
+                                get: { task.enabled },
+                                set: { enabled in
+                                    var updated = task
+                                    updated.enabled = enabled
+                                    automation.upsertTask(updated)
+                                }
+                            ))
+                            .labelsHidden()
+                            Button(L10n.tr("Run")) { Task { await automation.runNow(taskId: task.id) } }
+                                .disabled(!premium.isSubscribed)
+                                .controlSize(.small)
+                            Button(L10n.tr("Delete")) { automation.removeTask(id: task.id) }
+                                .disabled(!premium.isSubscribed)
+                                .controlSize(.small)
+                        }
                     }
                 }
             }
@@ -907,10 +980,8 @@ public struct SettingsDetailContent: View {
     }
 
     private var monitoringView: some View {
-        Section(L10n.tr("Monitoring Thresholds & Export")) {
-            HStack {
-                Text(L10n.tr("Machine"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Monitoring Thresholds & Export")) {
+            SettingsIconRow(icon: "desktopcomputer", tint: .blue, title: L10n.tr("Machine")) {
                 Picker(L10n.tr("Machine"), selection: Binding<UUID>(
                     get: { selectedMachineForMonitor ?? machines.first?.id ?? UUID() },
                     set: { selectedMachineForMonitor = $0 }
@@ -923,49 +994,39 @@ public struct SettingsDetailContent: View {
                 .disabled(machines.isEmpty)
             }
 
-            HStack {
-                Text(L10n.tr("CPU"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "cpu", tint: .red, title: L10n.tr("CPU")) {
                 Picker(L10n.tr("CPU"), selection: $cpuThreshold) {
-                    Text("70%").tag(70.0)
-                    Text("75%").tag(75.0)
-                    Text("80%").tag(80.0)
-                    Text("85%").tag(85.0)
-                    Text("90%").tag(90.0)
-                    Text("95%").tag(95.0)
+                    Text("70%").tag(70.0); Text("75%").tag(75.0); Text("80%").tag(80.0)
+                    Text("85%").tag(85.0); Text("90%").tag(90.0); Text("95%").tag(95.0)
                 }
                 .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Memory"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "memorychip", tint: .orange, title: L10n.tr("Memory")) {
                 Picker(L10n.tr("Memory"), selection: $memoryThreshold) {
-                    Text("70%").tag(70.0)
-                    Text("75%").tag(75.0)
-                    Text("80%").tag(80.0)
-                    Text("85%").tag(85.0)
-                    Text("90%").tag(90.0)
-                    Text("95%").tag(95.0)
+                    Text("70%").tag(70.0); Text("75%").tag(75.0); Text("80%").tag(80.0)
+                    Text("85%").tag(85.0); Text("90%").tag(90.0); Text("95%").tag(95.0)
                 }
                 .labelsHidden()
             }
+
+            SettingsDivider()
+
+            SettingsIconRow(icon: "square.stack.3d.up.fill", tint: .teal, title: L10n.tr("Disk")) {
+                Picker(L10n.tr("Disk"), selection: $diskThreshold) {
+                    Text("70%").tag(70.0); Text("75%").tag(75.0); Text("80%").tag(80.0)
+                    Text("85%").tag(85.0); Text("90%").tag(90.0); Text("95%").tag(95.0)
+                }
+                .labelsHidden()
+            }
+
+            SettingsDivider()
 
             HStack {
-                Text(L10n.tr("Disk"))
-                Spacer()
-                Picker(L10n.tr("Disk"), selection: $diskThreshold) {
-                    Text("70%").tag(70.0)
-                    Text("75%").tag(75.0)
-                    Text("80%").tag(80.0)
-                    Text("85%").tag(85.0)
-                    Text("90%").tag(90.0)
-                    Text("95%").tag(95.0)
-                }
-                .labelsHidden()
-            }
-
-            HStack(spacing: 12) {
                 Button(L10n.tr("Save Thresholds")) {
                     guard premium.isSubscribed, let machineId = selectedMachineForMonitor else { return }
                     MonitorTelemetryManager.shared.setThreshold(
@@ -1035,46 +1096,72 @@ public struct SettingsDetailContent: View {
         }
 
         private var statusSection: some View {
-            Section(L10n.tr("Status")) {
-                Toggle(L10n.tr("Enable AI Assistant"), isOn: $aiAssistant.isEnabled)
+            SettingsGroup(title: L10n.tr("Status")) {
+                SettingsIconRow(icon: "brain.head.profile", tint: .purple, title: L10n.tr("Enable AI Assistant")) {
+                    Toggle("", isOn: $aiAssistant.isEnabled)
+                        .labelsHidden()
+                }
             }
         }
 
         private var configurationSection: some View {
-            Section(L10n.tr("Configuration")) {
-                Picker(L10n.tr("AI Provider"), selection: $aiAssistant.provider) {
-                    ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
-                        Text(provider.displayName).tag(provider)
-                    }
-                }
-                .pickerStyle(.menu)
-
-                SecureField(L10n.tr("API Key"), text: $aiAssistant.apiKey)
-
-                TextField(L10n.tr("Custom Base URL (optional)"), text: $aiAssistant.customBaseURL)
-                    .disableAutocorrection(true)
-
-                TextField(L10n.tr("Custom Model (optional)"), text: $aiAssistant.customModel)
-                    .disableAutocorrection(true)
-
-                Button(action: {
-                    Task {
-                        await testAPIConnection()
-                    }
-                }) {
-                    HStack {
-                        if isTesting {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text(L10n.tr("Testing..."))
-                        } else {
-                            Image(systemName: "checkmark.circle")
-                            Text(L10n.tr("Test Connection"))
+            SettingsGroup(title: L10n.tr("Configuration")) {
+                SettingsIconRow(icon: "server.rack", tint: .blue, title: L10n.tr("AI Provider")) {
+                    Picker(L10n.tr("AI Provider"), selection: $aiAssistant.provider) {
+                        ForEach(AIAssistant.AIProvider.allCases, id: \.self) { provider in
+                            Text(provider.displayName).tag(provider)
                         }
                     }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(isTesting || aiAssistant.apiKey.isEmpty)
+
+                SettingsDivider()
+
+                SettingsIconRow(icon: "key.fill", tint: .yellow, title: L10n.tr("API Key")) {
+                    SecureField(L10n.tr("API Key"), text: $aiAssistant.apiKey)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 180)
+                }
+
+                SettingsDivider()
+
+                SettingsIconRow(icon: "link", tint: .teal, title: L10n.tr("Custom Base URL (optional)")) {
+                    TextField("", text: $aiAssistant.customBaseURL)
+                        .disableAutocorrection(true)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 180)
+                }
+
+                SettingsDivider()
+
+                SettingsIconRow(icon: "cpu", tint: .indigo, title: L10n.tr("Custom Model (optional)")) {
+                    TextField("", text: $aiAssistant.customModel)
+                        .disableAutocorrection(true)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 180)
+                }
+
+                SettingsDivider()
+
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        Task { await testAPIConnection() }
+                    }) {
+                        HStack {
+                            if isTesting {
+                                ProgressView().controlSize(.small)
+                                Text(L10n.tr("Testing..."))
+                            } else {
+                                Image(systemName: "checkmark.circle")
+                                Text(L10n.tr("Test Connection"))
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isTesting || aiAssistant.apiKey.isEmpty)
+                }
 
                 if let result = testResult {
                     HStack(spacing: 12) {
@@ -1100,7 +1187,7 @@ public struct SettingsDetailContent: View {
                     .cornerRadius(8)
                 }
 
-                Divider()
+                SettingsDivider()
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.tr("Leave custom fields empty to use defaults."))
@@ -1119,7 +1206,7 @@ public struct SettingsDetailContent: View {
         }
 
         private var featuresSection: some View {
-            Section(L10n.tr("Features")) {
+            SettingsGroup(title: L10n.tr("Features")) {
                 VStack(alignment: .leading, spacing: 6) {
                     Label(L10n.tr("Command explanation"), systemImage: "info.circle")
                     Label(L10n.tr("Smart suggestions"), systemImage: "lightbulb")
@@ -1148,25 +1235,22 @@ public struct SettingsDetailContent: View {
     // MARK: - Advanced Views
 
     private var applicationSettingsView: some View {
-        Section(L10n.tr("Application")) {
-            HStack {
-                Text(L10n.tr("Disable Confirmation"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Application")) {
+            SettingsIconRow(icon: "exclamationmark.shield.fill", tint: .orange, title: L10n.tr("Disable Confirmation")) {
                 Toggle("", isOn: $store.disableConformation)
                     .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Record Recent"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "clock.arrow.circlepath", tint: .teal, title: L10n.tr("Record Recent")) {
                 Toggle("", isOn: $store.storeRecent)
                     .labelsHidden()
             }
 
             #if os(iOS)
-            HStack {
-                Text(L10n.tr("Open at Connect"))
-                Spacer()
+            SettingsDivider()
+            SettingsIconRow(icon: "arrow.right.circle", tint: .green, title: L10n.tr("Open at Connect")) {
                 Toggle("", isOn: $store.openInterfaceAutomatically)
                     .labelsHidden()
             }
@@ -1175,10 +1259,8 @@ public struct SettingsDetailContent: View {
     }
 
     private var connectionSettingsView: some View {
-        Section(L10n.tr("Connection")) {
-            HStack {
-                Text(L10n.tr("Timeout"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Connection")) {
+            SettingsIconRow(icon: "clock.badge", tint: .red, title: L10n.tr("Timeout")) {
                 Picker(L10n.tr("Timeout"), selection: $store.timeout) {
                     Text("2s").tag(2)
                     Text("5s").tag(5)
@@ -1190,9 +1272,9 @@ public struct SettingsDetailContent: View {
                 .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Monitor interval"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "chart.line.uptrend.xyaxis", tint: .purple, title: L10n.tr("Monitor interval")) {
                 Picker(L10n.tr("Monitor interval"), selection: $store.monitorInterval) {
                     Text("5s").tag(5)
                     Text("10s").tag(10)
@@ -1207,10 +1289,8 @@ public struct SettingsDetailContent: View {
     }
 
     private var fileTransferSettingsView: some View {
-        Section(L10n.tr("File Transfer")) {
-            HStack {
-                Text(L10n.tr("Conflict Policy"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("File Transfer")) {
+            SettingsIconRow(icon: "arrow.triangle.2.circlepath", tint: .yellow, title: L10n.tr("Conflict Policy")) {
                 Picker(L10n.tr("Conflict Policy"), selection: $store.fileTransferConflictPolicy) {
                     Text(L10n.tr("Rename")).tag("rename")
                     Text(L10n.tr("Overwrite")).tag("overwrite")
@@ -1219,27 +1299,33 @@ public struct SettingsDetailContent: View {
                 .labelsHidden()
             }
 
-            HStack {
-                Text(L10n.tr("Max Concurrent Transfers"))
-                Spacer()
-                Text("\(store.fileTransferMaxConcurrent)")
-                    .foregroundStyle(.secondary)
-                Stepper("", value: $store.fileTransferMaxConcurrent, in: 1...16)
-                    .labelsHidden()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "arrow.up.arrow.down.circle", tint: .blue, title: L10n.tr("Max Concurrent Transfers")) {
+                HStack(spacing: 6) {
+                    Text("\(store.fileTransferMaxConcurrent)")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, alignment: .trailing)
+                    Stepper("", value: $store.fileTransferMaxConcurrent, in: 1...16)
+                        .labelsHidden()
+                }
             }
 
-            HStack {
-                Text(L10n.tr("Rate Limit (KB/s)"))
-                Spacer()
-                Text("\(store.fileTransferRateLimitKBps)")
-                    .foregroundStyle(.secondary)
-                Stepper("", value: $store.fileTransferRateLimitKBps, in: 0...20000, step: 100)
-                    .labelsHidden()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "gauge.with.dots.needle.67percent", tint: .orange, title: L10n.tr("Rate Limit (KB/s)")) {
+                HStack(spacing: 6) {
+                    Text("\(store.fileTransferRateLimitKBps)")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 48, alignment: .trailing)
+                    Stepper("", value: $store.fileTransferRateLimitKBps, in: 0...20000, step: 100)
+                        .labelsHidden()
+                }
             }
 
-            HStack {
-                Text(L10n.tr("Enable Resume for Failed Transfers"))
-                Spacer()
+            SettingsDivider()
+
+            SettingsIconRow(icon: "arrow.uturn.backward.circle", tint: .green, title: L10n.tr("Enable Resume for Failed Transfers")) {
                 Toggle("", isOn: $store.fileTransferResumeEnabled)
                     .labelsHidden()
             }
@@ -1247,28 +1333,25 @@ public struct SettingsDetailContent: View {
     }
 
     private var tmuxSettingsView: some View {
-        Section(L10n.tr("Tmux")) {
-            HStack {
-                Text(L10n.tr("Use Tmux Session"))
-                Spacer()
+        SettingsGroup(title: L10n.tr("Tmux")) {
+            SettingsIconRow(icon: "terminal.fill", tint: .green, title: L10n.tr("Use Tmux Session")) {
                 Toggle("", isOn: $store.useTmux)
                     .labelsHidden()
             }
 
             if store.useTmux {
-                HStack {
-                    Text(L10n.tr("Tmux Session Name"))
-                    Spacer()
+                SettingsDivider()
+                SettingsIconRow(icon: "tag.fill", tint: .purple, title: L10n.tr("Tmux Session Name")) {
                     TextField("", text: $store.tmuxSessionName)
                         #if os(macOS)
                         .textFieldStyle(.plain)
                         #endif
                         .multilineTextAlignment(.trailing)
+                        .frame(width: 120)
                 }
 
-                HStack {
-                    Text(L10n.tr("Auto-create Session"))
-                    Spacer()
+                SettingsDivider()
+                SettingsIconRow(icon: "plus.circle.fill", tint: .blue, title: L10n.tr("Auto-create Session")) {
                     Toggle("", isOn: $store.tmuxAutoCreate)
                         .labelsHidden()
                 }
@@ -1354,23 +1437,9 @@ struct FeatureRow: View {
     let description: String
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(.accentColor)
-                .frame(width: 32)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.tr(title))
-                    .font(.headline)
-
-                Text(L10n.tr(description))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
+        SettingsIconRow(icon: icon, tint: .accentColor, title: title, subtitle: description) {
+            EmptyView()
         }
-        .padding(.vertical, 8)
     }
 }
 

@@ -38,7 +38,7 @@ struct SidebarView: View {
 //            portForward
             if store.storeRecent { recent }
         }
-        .listStyle(SidebarListStyle())
+        .listStyle(.sidebar)
         .navigationTitle("GoodTerm")
     }
 

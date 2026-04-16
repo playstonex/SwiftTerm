@@ -23,8 +23,8 @@ public struct ColorizedProgressView: View {
     init(
         colors: [ColorInfo],
         reservedWeight: Float = 0,
-        height: Float = 8,
-        backgroundColor: Color = .black.opacity(0.1),
+        height: Float = 6,
+        backgroundColor: Color = .black.opacity(0.06),
         rounded: Bool = true
     ) {
         elements = colors
@@ -45,16 +45,18 @@ public struct ColorizedProgressView: View {
         GeometryReader { reader in
             HStack(spacing: 0) {
                 ForEach(0 ..< elements.count, id: \.self) { idx in
-                    elements[idx]
-                        .color
-                        .frame(width: size(for: idx))
+                    LinearGradient(
+                        colors: [elements[idx].color, elements[idx].color.opacity(0.7)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: size(for: idx))
                 }
                 Spacer()
                     .frame(minWidth: 0, minHeight: 0)
             }
             .onAppear { contentSize = reader.size }
-            .onChange(of: reader.size) { newValue in
-                contentSize = newValue
+            .onChange(of: reader.size) {
+                contentSize = reader.size
             }
         }
         .animation(.spring(response: 0.25), value: elements)

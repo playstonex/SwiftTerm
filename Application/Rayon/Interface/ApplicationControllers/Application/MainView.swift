@@ -37,9 +37,9 @@ struct MainView: View {
                 .overlay(
                     SheetTemplate.makeProgress(text: "Operation in progress")
                         .padding()
-                        .background(Color("Background"))
-                        .roundedCorner()
-                        .dropShadow()
+                        .background(.regularMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusLarge))
+                        .shadow(color: .black.opacity(0.15), radius: 16, y: 4)
                         .opacity(store.globalProgressInPresent ? 1 : 0)
                 )
                 .ignoresSafeArea()

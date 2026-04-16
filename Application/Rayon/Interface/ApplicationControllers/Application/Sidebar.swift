@@ -17,10 +17,10 @@ struct SidebarView: View {
     var body: some View {
         List {
             Text("GoodTerm")
-                .font(.headline)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 8)
+                .padding(.bottom, 12)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 0, trailing: 16))
 
@@ -65,7 +65,7 @@ struct SidebarView: View {
             }
             .badge(store.portForwardGroup.count)
             NavigationLink {
-                SettingView().requiresFrame()
+                SettingView()
             } label: {
                 Label("Setting", systemImage: "gearshape.fill")
             }

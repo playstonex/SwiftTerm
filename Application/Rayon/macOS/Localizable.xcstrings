@@ -63,6 +63,9 @@
         }
       }
     },
+    "/" : {
+
+    },
     "%@" : {
       "localizations" : {
         "en" : {
@@ -230,6 +233,7 @@
       }
     },
     "Accepted Connection: Secure Shell" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -281,7 +285,6 @@
       }
     },
     "Address" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -809,6 +812,7 @@
       }
     },
     "By entering your server address, we will guide you through the server creation process." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1098,6 +1102,7 @@
       }
     },
     "Comment: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1108,6 +1113,7 @@
       }
     },
     "Comment: Not Available" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1297,6 +1303,7 @@
       }
     },
     "Connection Type" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1964,6 +1971,7 @@
       }
     },
     "Editing with GoodTermID: %@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2078,6 +2086,9 @@
           }
         }
       }
+    },
+    "Enter your server address to begin the guided setup." : {
+
     },
     "Error diagnosis" : {
       "localizations" : {
@@ -2403,6 +2414,7 @@
       }
     },
     "GoodTerm is a lobby boy that helps you to manage your servers." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2495,6 +2507,9 @@
         }
       }
     },
+    "ID: %@" : {
+
+    },
     "Identities - %lld available" : {
       "localizations" : {
         "en" : {
@@ -2536,6 +2551,9 @@
           }
         }
       }
+    },
+    "In place editing is supported on some fields" : {
+
     },
     "In place editing is supported on some fields~" : {
       "localizations" : {
@@ -3722,6 +3740,7 @@
       }
     },
     "Prediction Mode" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4273,6 +4292,7 @@
       }
     },
     "SFTP Login Path" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

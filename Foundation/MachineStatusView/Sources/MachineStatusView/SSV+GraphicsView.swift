@@ -26,6 +26,8 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "n.circle.fill")
+                        .symbolRenderingMode(.multicolor)
+                        .font(.title3)
                     Text(L10n.tr("GPU"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
@@ -33,7 +35,7 @@ public extension ServerStatusViews {
                 Divider()
                 if from.units.isEmpty {
                     Text(L10n.tr("No GPU Available"))
-                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
                 } else {
                     VStack(spacing: 12) {
                         ForEach(from.units) { element in
@@ -44,7 +46,7 @@ public extension ServerStatusViews {
                 Divider()
                 HStack {
                     Text(L10n.tr("Driver Version: %@", from.version))
-                        .font(.system(size: 8, weight: .regular, design: .monospaced))
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
                     Spacer()
                 }
                 .opacity(0.5)
@@ -62,7 +64,7 @@ public extension ServerStatusViews {
                 HStack {
                     HStack(spacing: 0) {
                         Text(L10n.tr("GPU: %@", gpuPercentDescription(for: element)))
-                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
                             .foregroundColor(element.utilization.gpu_util > 75 ? .red : .blue)
                             .multilineTextAlignment(.leading)
                         Spacer()
@@ -78,7 +80,7 @@ public extension ServerStatusViews {
                 HStack {
                     HStack(spacing: 0) {
                         Text(L10n.tr("RAM: %@", ramPercentDescription(for: element)))
-                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
                             .foregroundColor((element.memory.used / element.memory.total) * 100 > 75 ? .red : .blue)
                             .multilineTextAlignment(.leading)
                         Spacer()
@@ -96,7 +98,7 @@ public extension ServerStatusViews {
                     Text(L10n.tr("fan: %@", element.fan_speed))
                     Spacer()
                 }
-                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                .font(.system(size: 11, weight: .regular, design: .monospaced))
             }
         }
 

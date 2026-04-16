@@ -18,6 +18,8 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "cpu")
+                        .symbolRenderingMode(.hierarchical)
+                        .font(.title3)
                     Text(L10n.tr("CPU"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
@@ -37,7 +39,7 @@ public extension ServerStatusViews {
                     }
                 } else {
                     Text(L10n.tr("No Data Available"))
-                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
                 }
                 Divider()
                 LazyVGrid(columns:
@@ -48,35 +50,35 @@ public extension ServerStatusViews {
                         GridItem(.flexible()),
                     ], content: {
                         HStack {
-                            Circle()
-                                .foregroundColor(.yellow)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.yellow)
                                 .frame(width: 10, height: 10)
                             Text(L10n.tr("USER"))
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                             Spacer()
                         }
                         HStack {
-                            Circle()
-                                .foregroundColor(.red)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.red)
                                 .frame(width: 10, height: 10)
                             Text(L10n.tr("SYS"))
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                             Spacer()
                         }
                         HStack {
-                            Circle()
-                                .foregroundColor(.orange)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.orange)
                                 .frame(width: 10, height: 10)
                             Text(L10n.tr("IO"))
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                             Spacer()
                         }
                         HStack {
-                            Circle()
-                                .foregroundColor(.blue)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.blue)
                                 .frame(width: 10, height: 10)
                             Text(L10n.tr("NICE"))
-                                .font(.system(size: 10, weight: .semibold, design: .default))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
                             Spacer()
                         }
                     })

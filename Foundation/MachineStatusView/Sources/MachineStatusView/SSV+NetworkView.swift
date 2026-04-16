@@ -38,6 +38,8 @@ public extension ServerStatusViews {
             VStack {
                 HStack {
                     Image(systemName: "network")
+                        .symbolRenderingMode(.hierarchical)
+                        .font(.title3)
                     Text(L10n.tr("NET"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                     Spacer()
@@ -85,12 +87,12 @@ public extension ServerStatusViews {
                         }
                     } else {
                         Text(L10n.tr("No Data Available"))
-                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .font(.system(size: 11, weight: .regular, design: .monospaced))
                     }
                 }
                 HStack {
                     Text(L10n.tr("Displaying network speed, measured each second"))
-                        .font(.system(size: 8, weight: .regular, design: .monospaced))
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
                     Spacer()
                 }
                 .opacity(0.5)

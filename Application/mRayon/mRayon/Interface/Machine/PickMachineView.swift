@@ -43,12 +43,13 @@ struct PickMachineView: View {
         List {
             Section {
                 if rawSelection.isEmpty {
-                    Label("Not Selected", systemImage: "questionmark.square.dashed")
+                    Text("Not Selected")
+                        .foregroundStyle(.secondary)
                 } else {
-                    Label("\(rawSelection.count) Selected", systemImage: "server.rack")
+                    Text("\(rawSelection.count) Selected")
                 }
             } header: {
-                Label("Selected Machine", systemImage: "arrow.right")
+                Text("Selected Machine")
             } footer: {
                 if !selectionFooter.isEmpty {
                     Text(selectionFooter)
@@ -59,32 +60,31 @@ struct PickMachineView: View {
 
             Section {
                 if store.machineGroup.machines.isEmpty {
-                    Label("No Machine Available", systemImage: "questionmark.square.dashed")
+                    Text("No Machine Available")
+                        .foregroundStyle(.secondary)
                 } else {
                     ForEach(store.machineGroup.machines) { machine in
                         Button {
                             toggleSelection(for: machine.id)
                         } label: {
-                            Label(machine.shortDescription(), systemImage: sysImage(for: machine))
-
-//                            HStack(spacing: 5) {
-//                                Image(systemName: sysImage(for: machine))
-//                                    .frame(width: 20)
-//                                Text(machine.shortDescription())
-//                            }
+                            HStack {
+                                Image(systemName: sysImage(for: machine))
+                                    .foregroundStyle(rawSelection.contains(machine.id) ? .blue : .secondary)
+                                Text(machine.shortDescription())
+                                Spacer()
+                            }
                         }
-//                        .disabled(machine.associatedIdentity == nil)
                     }
                 }
             } header: {
-                Label("Available Machines", systemImage: "square.stack.3d.down.forward")
+                Text("Available Machines")
             }
 
             Section {
                 Button {
                     rawSelection = []
                 } label: {
-                    Label("Clear Selection", systemImage: "xmark")
+                    Text("Clear Selection")
                 }
                 .disabled(rawSelection.isEmpty)
             }

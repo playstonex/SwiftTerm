@@ -542,6 +542,7 @@
       }
     },
     "Choose a plan to unlock all premium features." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -712,6 +713,7 @@
       }
     },
     "Create Snapshot" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1605,6 +1607,7 @@
       }
     },
     "Read the Terms of Use and Privacy Policy before purchasing." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1685,6 +1688,7 @@
       }
     },
     "Restoring Purchases..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1733,6 +1737,9 @@
           }
         }
       }
+    },
+    "Select a category" : {
+
     },
     "Server monitoring thresholds" : {
       "localizations" : {

@@ -29,16 +29,8 @@ struct IdentityElementView: View {
             .formatted()
     }
     
-    func bgColor() -> UIColor {
-#if os(visionOS)
-        return UIColor.systemGray2
-#else
-        return UIColor.systemGray6
-#endif
-    }
-    
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(store.identityGroup[identity].username)
                     .font(.system(.headline, design: .rounded))
@@ -59,10 +51,12 @@ struct IdentityElementView: View {
             Text(identity.uuidString)
                 .font(.system(size: 8, weight: .light, design: .rounded))
         }
-        .padding()
+        .padding(DesignTokens.paddingComfortable)
         .background(
-            Color(bgColor())
-                .roundedCorner()
+            RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(DesignTokens.shadowOpacity),
+                        radius: DesignTokens.shadowRadius, x: 0, y: DesignTokens.shadowY)
         )
         .navigationDestination(isPresented: $openEdit) {
             EditIdentityView { identity }

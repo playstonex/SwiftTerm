@@ -88,28 +88,23 @@ struct MachinePickerView: View {
 
         var body: some View {
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Image(systemName: "server.rack")
-                    HStack {
-                        Text(store.machineGroup[machine].name)
-                            .textFieldStyle(PlainTextFieldStyle())
-                        Spacer()
-                    }
-                }
-                .font(.system(.headline, design: .rounded))
+                Text(store.machineGroup[machine].name)
+                    .font(.system(.headline, design: .rounded))
                 Divider()
                 HStack {
-                    Text("Address: " + store.machineGroup[machine].remoteAddress)
-                        .textFieldStyle(PlainTextFieldStyle())
+                    Text(store.machineGroup[machine].remoteAddress)
                     Spacer()
                     Text(store.machineGroup[machine].remotePort)
                         .multilineTextAlignment(.trailing)
-                        .textFieldStyle(PlainTextFieldStyle())
                         .frame(width: 50)
                 }
-                .font(.system(.footnote, design: .monospaced)) // "Address: ".count == "Comment: ".count
-                Text(store.machineGroup[machine].comment.count > 0 ? "Comment: \(store.machineGroup[machine].comment)" : "Comment: Not Available")
-                    .font(.system(.footnote, design: .monospaced))
+                .font(.system(.footnote, design: .monospaced))
+                .foregroundStyle(.secondary)
+                if store.machineGroup[machine].comment.count > 0 {
+                    Text(store.machineGroup[machine].comment)
+                        .font(.system(.footnote, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }

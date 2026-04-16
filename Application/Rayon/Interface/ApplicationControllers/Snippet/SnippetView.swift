@@ -26,9 +26,14 @@ struct SnippetView: View {
                 }
             }
             .background(
-                Color.accentColor
-                    .opacity(0.05)
-                    .roundedCorner()
+                RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(DesignTokens.shadowOpacity),
+                            radius: DesignTokens.shadowRadius, x: 0, y: DesignTokens.shadowY)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                    .stroke(Color.accentColor.opacity(0.1), lineWidth: 1)
             )
             .sheet(isPresented: $openEditSheet, onDismiss: nil, content: {
                 EditSnippetSheetView(inEdit: snippet)
@@ -63,7 +68,7 @@ struct SnippetView: View {
                 .font(.system(size: 5, weight: .light, design: .monospaced))
         }
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(DesignTokens.paddingComfortable)
     }
 }
 

@@ -45,6 +45,7 @@
 		509F7F7627B2C95F00F28752 /* Sidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509F7F7427B2C95F00F28752 /* Sidebar.swift */; };
 		509F7F7D27B2CB0D00F28752 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509F7F7B27B2CB0D00F28752 /* WelcomeView.swift */; };
 		509F7F8127B2CB4100F28752 /* GenericViewModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509F7F7F27B2CB4100F28752 /* GenericViewModifier.swift */; };
+		AA0DT0012F3AB00000B4F3DB /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0DT0002F3AB00000B4F3DB /* DesignTokens.swift */; };
 		509F7F8D27B2E08600F28752 /* SnippetManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509F7F8B27B2E08600F28752 /* SnippetManager.swift */; };
 		509F7F9027B2E14900F28752 /* MachineManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509F7F8E27B2E14900F28752 /* MachineManagerView.swift */; };
 		509F7F9527B2E3EE00F28752 /* StarLinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 509F7F9327B2E3EE00F28752 /* StarLinkView.swift */; };
@@ -128,6 +129,7 @@
 		509F7F7427B2C95F00F28752 /* Sidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sidebar.swift; sourceTree = "<group>"; };
 		509F7F7B27B2CB0D00F28752 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		509F7F7F27B2CB4100F28752 /* GenericViewModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericViewModifier.swift; sourceTree = "<group>"; };
+		AA0DT0002F3AB00000B4F3DB /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		509F7F8B27B2E08600F28752 /* SnippetManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetManager.swift; sourceTree = "<group>"; };
 		509F7F8E27B2E14900F28752 /* MachineManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineManagerView.swift; sourceTree = "<group>"; };
 		509F7F9327B2E3EE00F28752 /* StarLinkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarLinkView.swift; sourceTree = "<group>"; };
@@ -253,6 +255,7 @@
 			isa = PBXGroup;
 			children = (
 				509F7F7F27B2CB4100F28752 /* GenericViewModifier.swift */,
+				AA0DT0002F3AB00000B4F3DB /* DesignTokens.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -550,6 +553,7 @@
 				509F7F9027B2E14900F28752 /* MachineManagerView.swift in Sources */,
 				509F7F9527B2E3EE00F28752 /* StarLinkView.swift in Sources */,
 				509F7F8127B2CB4100F28752 /* GenericViewModifier.swift in Sources */,
+				AA0DT0012F3AB00000B4F3DB /* DesignTokens.swift in Sources */,
 				50A8A6AC27B850E9004F6DDC /* BatchSnippetExecContext.swift in Sources */,
 				5020A65927D9884300F6EA0D /* SettingView.swift in Sources */,
 				AA00000227D9884300F6EA0D /* SettingWindow.swift in Sources */,

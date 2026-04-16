@@ -118,7 +118,7 @@ struct MachineManagerView: View {
     }
 
     var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 280, maximum: 500), spacing: itemSpacing)]
+        [GridItem(.adaptive(minimum: DesignTokens.gridMinWidth, maximum: DesignTokens.gridMaxWidth), spacing: DesignTokens.gridSpacing)]
     }
 
     var collections: some View {
@@ -136,9 +136,9 @@ struct MachineManagerView: View {
                                     selection = []
                                 }
                         )
-                        .padding(20)
+                        .padding(DesignTokens.paddingScrollable)
                 }
-                .padding(-20)
+                .padding(-DesignTokens.paddingScrollable)
             }
         }
     }
@@ -153,7 +153,7 @@ struct MachineManagerView: View {
                     )
                     Spacer()
                 }
-                .font(.system(.headline, design: .rounded))
+                .font(.system(size: DesignTokens.sectionHeaderSize, weight: .bold, design: .rounded))
                 LazyVGrid(columns: columns, alignment: .leading, spacing: itemSpacing) {
                     ForEach(searchResultFor(section: section)) { machine in
                         ZStack(alignment: .topTrailing) {
@@ -166,13 +166,13 @@ struct MachineManagerView: View {
                                 .opacity(hoverSelection == machine.id ? 1 : 0)
                         }
                         .contentShape(Rectangle())
-//                        .border(Color.gray, width: selection.contains(machine.id) ? 0.5 : 0)
-//                        .border(Color.accentColor, width: hoverSelection == machine.id ? 0.5 : 0)
                         .onHover { hover in
-                            if hover {
-                                hoverSelection = machine.id
-                            } else if hoverSelection == machine.id {
-                                hoverSelection = nil
+                            withAnimation(.spring(response: DesignTokens.springResponse, dampingFraction: DesignTokens.springDamping)) {
+                                if hover {
+                                    hoverSelection = machine.id
+                                } else if hoverSelection == machine.id {
+                                    hoverSelection = nil
+                                }
                             }
                         }
                             .onTapGesture {
@@ -187,8 +187,9 @@ struct MachineManagerView: View {
                 }
             }
             Divider()
-            Label("In place editing is supported on some fields~", systemImage: "pencil.circle.fill")
+            Text("In place editing is supported on some fields")
                 .font(.system(.footnote, design: .rounded))
+                .foregroundStyle(.secondary)
         }
     }
 

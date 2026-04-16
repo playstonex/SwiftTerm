@@ -10,6 +10,7 @@
 		000000000000CFF5835B0D8D /* SettingsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0000000000005306EABAF4A4 /* SettingsUI */; };
 		500D726827CF1BC000149A43 /* MachineElement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726727CF1BC000149A43 /* MachineElement.swift */; };
 		500D726A27CF1C0800149A43 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726927CF1C0800149A43 /* View.swift */; };
+		AA0DT0022F3AB00000B4F3DB /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0DT0032F3AB00000B4F3DB /* DesignTokens.swift */; };
 		500D726D27CF269700149A43 /* PlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726C27CF269700149A43 /* PlaceholderView.swift */; };
 		500D726F27CF382100149A43 /* StarLinkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726E27CF382100149A43 /* StarLinkView.swift */; };
 		500D727127CF40CC00149A43 /* EditIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D727027CF40CC00149A43 /* EditIdentityView.swift */; };
@@ -164,6 +165,7 @@
 		ABB80CC02B8EC2C800FDD779 /* UIViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1D527D1228900C71C0F /* UIViewController.swift */; };
 		ABB80CC12B8EC2BA000FDD7D /* AssistantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EA7ACF8AB114CB89ED2BB29 /* AssistantDetailView.swift */; };
 		ABB80CC12B8EC2C800FDD779 /* View.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D726927CF1C0800149A43 /* View.swift */; };
+		AA0DT0042F3AB00000B4F3DB /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0DT0032F3AB00000B4F3DB /* DesignTokens.swift */; };
 		ABB80CC22B8EC2C800FDD779 /* FilePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500D727427CF43CE00149A43 /* FilePicker.swift */; };
 		ABB80CC32B8EC2C800FDD779 /* Util.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5082A1C227D087FB00C71C0F /* Util.swift */; };
 		ABB80CC42B8EC2CC00FDD779 /* DoubleConfirm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C90AF127CF125200F60B51 /* DoubleConfirm.swift */; };
@@ -206,6 +208,7 @@
 		4B41DC054D8C445085661220 /* EditBrowserSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditBrowserSessionView.swift; sourceTree = "<group>"; };
 		500D726727CF1BC000149A43 /* MachineElement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MachineElement.swift; sourceTree = "<group>"; };
 		500D726927CF1C0800149A43 /* View.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = View.swift; sourceTree = "<group>"; };
+		AA0DT0032F3AB00000B4F3DB /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		500D726C27CF269700149A43 /* PlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceholderView.swift; sourceTree = "<group>"; };
 		500D726E27CF382100149A43 /* StarLinkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarLinkView.swift; sourceTree = "<group>"; };
 		500D727027CF40CC00149A43 /* EditIdentityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditIdentityView.swift; sourceTree = "<group>"; };
@@ -448,6 +451,7 @@
 			children = (
 				5082A1C227D087FB00C71C0F /* Util.swift */,
 				500D726927CF1C0800149A43 /* View.swift */,
+					AA0DT0032F3AB00000B4F3DB /* DesignTokens.swift */,
 				500D727427CF43CE00149A43 /* FilePicker.swift */,
 				50C90AF627CF12E000F60B51 /* UIWindow.swift */,
 				5082A1D527D1228900C71C0F /* UIViewController.swift */,
@@ -864,6 +868,7 @@
 				50D3AEFB27D05D6D0085F899 /* EditMachineView.swift in Sources */,
 				5047BE9B27DCCB76008887A7 /* PortForwardElementView.swift in Sources */,
 				500D726A27CF1C0800149A43 /* View.swift in Sources */,
+				AA0DT0022F3AB00000B4F3DB /* DesignTokens.swift in Sources */,
 				5047BE9D27DCCC8B008887A7 /* EditPortForwardView.swift in Sources */,
 				50C90AEC27CF119500F60B51 /* TabsView.swift in Sources */,
 				5013B51527E4B14100EF01C4 /* FileTransferManager.swift in Sources */,
@@ -938,6 +943,7 @@
 				ABB80C9B2B8EC29900FDD779 /* AgreementView.swift in Sources */,
 				ABB80CA02B8EC29E00FDD779 /* WelcomeView.swift in Sources */,
 				ABB80CC12B8EC2C800FDD779 /* View.swift in Sources */,
+				AA0DT0042F3AB00000B4F3DB /* DesignTokens.swift in Sources */,
 				ABB80CA62B8EC2A200FDD779 /* PickMachineView.swift in Sources */,
 				ABB80C712B8EC0AD00FDD779 /* vRayonApp.swift in Sources */,
 				ABB80CBC2B8EC2BB00FDD779 /* FileTransferView.swift in Sources */,

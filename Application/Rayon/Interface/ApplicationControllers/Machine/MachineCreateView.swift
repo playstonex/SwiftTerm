@@ -59,59 +59,54 @@ struct MachineCreateView: View {
     }
 
     var remoteAddressView: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Create Server", systemImage: "plus.viewfinder")
-                .font(.system(.title, design: .rounded))
-            Text("GoodTerm is a lobby boy that helps you to manage your servers.")
-            Divider()
-            Text("Accepted Connection: Secure Shell")
-            Text("By entering your server address, we will guide you through the server creation process.")
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Create Server")
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                Text("Enter your server address to begin the guided setup.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
 
-            HStack {
-                TextField("www.example.com", text: $serverLocation)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .padding(6)
-                    .background(
-                        Rectangle()
-                            .opacity(0.1)
-                            .roundedCorner()
-                    )
-                Text(":")
-                TextField("Port", text: $serverPort)
-                    .onSubmit {
-                        if serverLocation.count == 0 {
-                            return
-                        }
-                        if UInt16(serverPort) == nil {
-                            return
-                        }
-                        beginConnectButton()
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Text("Address")
+                        .font(.body)
+                    Spacer()
+                    HStack(spacing: 4) {
+                        TextField("www.example.com", text: $serverLocation)
+                            .textFieldStyle(.plain)
+                        Text(":")
+                            .foregroundStyle(.secondary)
+                        TextField("Port", text: $serverPort)
+                            .textFieldStyle(.plain)
+                            .frame(width: 60)
+                            .onSubmit {
+                                if serverLocation.isEmpty { return }
+                                if UInt16(serverPort) == nil { return }
+                                beginConnectButton()
+                            }
                     }
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .padding(6)
-                    .background(
-                        Rectangle()
-                            .opacity(0.1)
-                            .roundedCorner()
-                    )
-                    .frame(width: 75)
-            }
-            .font(.system(size: 16, weight: .semibold, design: .rounded))
-
-            Button {
-                createWithoutConnectView = true
-            } label: {
-                HStack {
-                    Image(systemName: "checkmark.circle.trianglebadge.exclamationmark")
-                    Text("Create Without Connection")
-                        .underline()
                 }
-                .font(.system(.footnote, design: .rounded))
+                .padding(.vertical, 6)
+                Divider().padding(.horizontal, 8)
+                HStack {
+                    Button {
+                        createWithoutConnectView = true
+                    } label: {
+                        Text("Create Without Connection")
+                            .font(.system(.footnote, design: .rounded))
+                    }
+                    .buttonStyle(.borderless)
+                    Spacer()
+                }
+                .padding(.vertical, 6)
             }
-            .foregroundColor(.accentColor)
-            .buttonStyle(.borderless)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
 
-            Divider()
             HStack {
                 Button {
                     beginConnectButton()
@@ -119,7 +114,7 @@ struct MachineCreateView: View {
                     Text("Begin Connection")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(serverLocation.count == 0)
+                .disabled(serverLocation.isEmpty)
                 .disabled(UInt16(serverPort) == nil)
 
                 if requiresDismissAction {

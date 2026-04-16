@@ -29,22 +29,24 @@ struct PlaceholderView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Image(image.rawValue)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 128, height: 128)
+                .frame(width: 140, height: 140)
+                .opacity(0.7)
             ZStack {
-                Color(UIColor.systemGray6)
+                RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                    .fill(.regularMaterial)
             }
-            .frame(height: 40)
+            .frame(height: 44)
             .frame(maxWidth: .infinity)
             .frame(maxWidth: 400)
             .overlay(
                 Text(hint)
-                    .font(.system(.headline, design: .rounded))
+                    .font(.system(.title3, design: .rounded))
+                    .foregroundStyle(.secondary)
             )
-            .roundedCorner()
             Spacer()
                 .frame(width: 40, height: 40)
         }

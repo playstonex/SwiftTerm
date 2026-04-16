@@ -33,7 +33,7 @@ struct MachineView: View {
     }
 
     var columns: [GridItem] {
-        [GridItem(.adaptive(minimum: 280, maximum: 500), spacing: 10)]
+        [GridItem(.adaptive(minimum: DesignTokens.gridMinWidth, maximum: DesignTokens.gridMaxWidth), spacing: DesignTokens.gridSpacing)]
     }
 
     var body: some View {
@@ -42,11 +42,11 @@ struct MachineView: View {
                 PlaceholderView("No Machine Available", img: .emptyWindow)
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: DesignTokens.itemSpacingStandard) {
                         Label("\(content.count) machine(s) available, tap for option.", systemImage: "server.rack")
                             .font(.system(.footnote, design: .rounded))
                         Divider()
-                        LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: DesignTokens.itemSpacingRelaxed) {
                             ForEach(content, id: \.self) { identity in
                                 MachineElementView(machine: identity)
                             }

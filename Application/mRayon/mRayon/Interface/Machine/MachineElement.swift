@@ -83,47 +83,37 @@ struct MachineElementView: View {
     }
 
     var contentView: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack {
-                Image(systemName: "server.rack")
-                HStack {
-                    Text(store.machineGroup[machine].name)
-                    Spacer()
-                }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(store.machineGroup[machine].name)
+                .font(.system(.headline, design: .rounded))
                 .overlay(
                     Rectangle()
                         .cornerRadius(2)
                         .foregroundColor(redactedColor)
                         .expended()
-                        .opacity(
-                            store.machineRedacted.rawValue > 1 ? 1 : 0
-                        )
+                        .opacity(store.machineRedacted.rawValue > 1 ? 1 : 0)
                 )
-            }
-            .font(.system(.headline, design: .rounded))
+
             HStack {
                 Text(store.machineGroup[machine].remoteAddress)
                 Spacer()
-                HStack(spacing: 0) {
-                    Spacer()
-                    Text(store.machineGroup[machine].remotePort)
-                }
-                .frame(width: 75)
+                Text(store.machineGroup[machine].remotePort)
+                    .frame(width: 75)
             }
             .font(.system(.footnote, design: .rounded))
+            .foregroundStyle(.secondary)
             .overlay(
                 Rectangle()
                     .cornerRadius(2)
                     .foregroundColor(redactedColor)
                     .expended()
-                    .opacity(
-                        store.machineRedacted.rawValue > 0 ? 1 : 0
-                    )
+                    .opacity(store.machineRedacted.rawValue > 0 ? 1 : 0)
             )
-            .font(.system(.subheadline, design: .rounded))
+
             Divider()
+
             HStack(spacing: 4) {
-                VStack(alignment: .trailing, spacing: 5) {
+                VStack(alignment: .trailing, spacing: 6) {
                     Text("Activity:")
                         .lineLimit(1)
                     Text("Banner:")
@@ -131,7 +121,7 @@ struct MachineElementView: View {
                     Text("Comment:")
                         .lineLimit(1)
                 }
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(
                         store.machineGroup[machine]
                             .lastConnection
@@ -162,36 +152,27 @@ struct MachineElementView: View {
                     .cornerRadius(2)
                     .foregroundColor(redactedColor)
                     .expended()
-                    .opacity(
-                        store.machineRedacted.rawValue > 1 ? 1 : 0
-                    )
+                    .opacity(store.machineRedacted.rawValue > 1 ? 1 : 0)
             )
+
             Divider()
+
             Text(machine.uuidString)
                 .textSelection(.enabled)
                 .font(.system(size: 10, weight: .light, design: .monospaced))
         }
         .animation(.interactiveSpring(), value: store.machineRedacted)
         .frame(maxWidth: .infinity)
-        .padding()
+        .padding(DesignTokens.paddingStandard)
         .background(
-            
-            Color(bgColor())
-                .roundedCorner()
-            
+            RoundedRectangle(cornerRadius: DesignTokens.cornerRadiusMedium)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(DesignTokens.shadowOpacity),
+                        radius: DesignTokens.shadowRadius, x: 0, y: DesignTokens.shadowY)
         )
         .navigationDestination(isPresented: $openEdit) {
             EditMachineView { machine }
         }
-    }
-    
-    
-    func bgColor() -> UIColor {
-#if os(visionOS)
-        return UIColor.systemGray2
-#else
-        return UIColor.systemGray6
-#endif
     }
 }
 

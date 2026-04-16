@@ -31,7 +31,7 @@ struct MachineEditView: View {
         if let aid = associatedIdentity {
             return store.identityGroup[aid].shortDescription()
         }
-        return "No Associated Identity"
+        return "None"
     }
 
     var body: some View {
@@ -86,70 +86,137 @@ struct MachineEditView: View {
     }
 
     var sheetBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Group {
-                AlignedLabel("Name", icon: "mail.and.text.magnifyingglass")
-                TextField("Name (Optional)", text: $name)
-                AlignedLabel("Group", icon: "square.stack.3d.down.forward")
-                TextField("Default (Optional)", text: $group)
-            }
-            Group {
-                AlignedLabel("Address", icon: "network")
-                HStack {
-                    TextField("Host Address", text: $remoteAddress)
-                    Text(":")
-                    TextField("Port", text: $remotePort)
-                        .frame(width: 75)
+        VStack(alignment: .leading, spacing: 18) {
+            // General
+            sectionHeader("General")
+            settingsCard {
+                settingsRow("Name") {
+                    TextField("Name (Optional)", text: $name)
+                        .textFieldStyle(.plain)
+                }
+                settingsDivider
+                settingsRow("Group") {
+                    TextField("Default (Optional)", text: $group)
+                        .textFieldStyle(.plain)
+                }
+                settingsDivider
+                settingsRow("Address") {
+                    HStack(spacing: 4) {
+                        TextField("Host Address", text: $remoteAddress)
+                            .textFieldStyle(.plain)
+                        Text(":")
+                            .foregroundStyle(.secondary)
+                        TextField("Port", text: $remotePort)
+                            .textFieldStyle(.plain)
+                            .frame(width: 60)
+                    }
                 }
             }
-            Group {
-                AlignedLabel("Identity", icon: "person")
-                HStack {
-                    Text(identityDescription)
-                        .font(.system(.body, design: .rounded))
-                    Spacer()
+
+            // Authentication
+            sectionHeader("Authentication")
+            settingsCard {
+                settingsRow("Identity") {
                     Button {
                         openIdentityPicker = true
                     } label: {
-                        Text("Browse...")
+                        HStack(spacing: 4) {
+                            Text(identityDescription)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            Group {
-                AlignedLabel("Comment", icon: "text.bubble")
-                TextField("Comment (Optional)", text: $comment)
-            }
-            Group {
-                AlignedLabel("SFTP Login Path", icon: "point.topleft.down.curvedto.point.bottomright.up.fill")
-                TextField("SFTP Login Path", text: $sftpLoginPath)
-            }
-            Group {
-                AlignedLabel("Connection Type", icon: "network")
-                Picker("Connection Type", selection: $connectionType) {
-                    Text("SSH").tag(RDMachine.ConnectionType.ssh)
-                    Text("Mosh").tag(RDMachine.ConnectionType.mosh)
-                }
-                .pickerStyle(.segmented)
 
-                if connectionType == .mosh {
-                    AlignedLabel("Prediction Mode", icon: "waveform")
-                    Picker("Prediction Mode", selection: $moshPredictionMode) {
-                        Text("Adaptive").tag(RDMachine.MoshPredictionMode.adaptive)
-                        Text("Always").tag(RDMachine.MoshPredictionMode.always)
-                        Text("Never").tag(RDMachine.MoshPredictionMode.never)
-                        Text("Experimental").tag(RDMachine.MoshPredictionMode.experimental)
+            // Connection
+            sectionHeader("Connection")
+            settingsCard {
+                settingsRow("Type") {
+                    Picker("", selection: $connectionType) {
+                        Text("SSH").tag(RDMachine.ConnectionType.ssh)
+                        Text("Mosh").tag(RDMachine.ConnectionType.mosh)
                     }
-                    .pickerStyle(.menu)
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 200)
+                }
+                if connectionType == .mosh {
+                    settingsDivider
+                    settingsRow("Prediction") {
+                        Picker("", selection: $moshPredictionMode) {
+                            Text("Adaptive").tag(RDMachine.MoshPredictionMode.adaptive)
+                            Text("Always").tag(RDMachine.MoshPredictionMode.always)
+                            Text("Never").tag(RDMachine.MoshPredictionMode.never)
+                            Text("Experimental").tag(RDMachine.MoshPredictionMode.experimental)
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                    }
                 }
             }
+
+            // File Transfer
+            sectionHeader("File Transfer")
+            settingsCard {
+                settingsRow("SFTP Path") {
+                    TextField("/", text: $sftpLoginPath)
+                        .textFieldStyle(.plain)
+                        .frame(width: 200)
+                }
+                settingsDivider
+                settingsRow("Comment") {
+                    TextField("Comment (Optional)", text: $comment)
+                        .textFieldStyle(.plain)
+                        .frame(width: 200)
+                }
+            }
+
             sheetFoot
         }
     }
 
     var sheetFoot: some View {
-        Group {
-            Text("Editing with GoodTermID: \(inEditWith.uuidString)")
-                .font(.system(.footnote, design: .monospaced))
+        Text("ID: \(inEditWith.uuidString)")
+            .font(.system(size: 10, weight: .light, design: .monospaced))
+            .foregroundStyle(.tertiary)
+    }
+
+    // MARK: - Layout Helpers
+
+    private func sectionHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.secondary)
+    }
+
+    private func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        VStack(spacing: 0) {
+            content()
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func settingsRow<Content: View>(_ title: String,
+                                             @ViewBuilder content: () -> Content) -> some View
+    {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.body)
+            Spacer()
+            content()
+        }
+        .padding(.vertical, 8)
+    }
+
+    private var settingsDivider: some View {
+        Divider().padding(.horizontal, 8)
     }
 }

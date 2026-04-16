@@ -13,7 +13,7 @@ extension View {
     }
 
     func dropShadow() -> some View {
-        shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 0)
+        shadow(color: .black.opacity(DesignTokens.shadowOpacity), radius: DesignTokens.shadowRadius, x: 0, y: DesignTokens.shadowY)
     }
 
     func requiresFrame(_ width: Double = 500, _ height: Double = 250) -> some View {
@@ -35,6 +35,6 @@ extension View {
     }
 
     func roundedCorner() -> some View {
-        cornerRadius(8)
+        cornerRadius(DesignTokens.cornerRadiusMedium)
     }
 }
