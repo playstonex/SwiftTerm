@@ -255,7 +255,7 @@ struct TerminalView: View {
             handleKeyboardTransition(notification: notification)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
-            handleKeyboardTransition(notification: notification)
+            handleKeyboardHideTransition(notification: notification)
         }
         .navigationTitle(context.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -466,18 +466,29 @@ struct TerminalView: View {
         #if canImport(UIKit)
         let userInfo = notification.userInfo ?? [:]
         let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
-        // Resize after the keyboard animation settles so the visible rows match the actual
-        // unobscured terminal area. The terminal view preserves its current viewport on resize.
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64((duration + 0.05) * 1_000_000_000))
             guard !Task.isCancelled else { return }
             context.termInterface.refreshDisplay()
             Task { await updateTerminalSize() }
-            // Re-assert first responder after keyboard transitions to ensure
+            // Re-assert first responder after keyboard show to ensure
             // hardware keyboard events (Ctrl+C, ESC, etc.) reach the terminal.
-            // Keyboard show/hide can cause the responder chain to change, breaking
-            // key delivery until the user taps the terminal view again.
             context.termInterface.activateKeyboard()
+        }
+        #endif
+    }
+
+    private func handleKeyboardHideTransition(notification: Notification) {
+        #if canImport(UIKit)
+        let userInfo = notification.userInfo ?? [:]
+        let duration = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double) ?? 0.25
+        // Resize after the keyboard animation settles, but do NOT re-activate keyboard.
+        // The user intentionally dismissed it.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64((duration + 0.05) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            context.termInterface.refreshDisplay()
+            Task { await updateTerminalSize() }
         }
         #endif
     }
