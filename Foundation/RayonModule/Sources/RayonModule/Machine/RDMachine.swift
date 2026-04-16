@@ -47,7 +47,7 @@ extension RDMachine : iCloudSyncItem {
             machine.lastConnection = record["lastConnection"] as? Date ?? Date()
             machine.lastBanner = record["lastBanner"] as? String ?? ""
             machine.comment = record["comment"] as? String ?? ""
-            machine.associatedIdentity = record["associatedIdentity"] as? String ?? ""
+            machine.associatedIdentity = record["associatedIdentity"] as? String
             
             let attachmentString = record["attachment"] as? String ?? "{}"
             
@@ -66,7 +66,6 @@ extension RDMachine : iCloudSyncItem {
             machine = RDMachine(With: record)
         }
         if var machine = machine {
-            machine.lastModifiedDate = Date()
             if Thread.isMainThread {
                 RayonStore.shared.machineGroup.insert(machine)
             } else {
@@ -93,7 +92,7 @@ extension RDMachine : iCloudSyncItem {
         self.lastConnection = record["lastConnection"] as? Date ?? Date()
         self.lastBanner = record["lastBanner"] as? String ?? ""
         self.comment = record["comment"] as? String ?? ""
-        self.associatedIdentity = record["associatedIdentity"] as? String ?? ""
+        self.associatedIdentity = record["associatedIdentity"] as? String
         
         let attachmentString = record["attachment"] as? String ?? "{}"
         
