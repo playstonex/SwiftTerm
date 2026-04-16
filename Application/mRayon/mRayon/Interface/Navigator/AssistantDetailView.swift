@@ -39,8 +39,47 @@ struct AssistantDetailView: View {
         .onDisappear {
             assistantManager.clearCurrentContext()
         }
+        #if os(iOS)
+        .disableSwipeBack()
+        #endif
     }
 }
+
+// MARK: - Disable Swipe Back (iOS)
+
+#if os(iOS)
+extension View {
+    func disableSwipeBack() -> some View {
+        background(DisableSwipeBackView())
+    }
+}
+
+private struct DisableSwipeBackView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        DispatchQueue.main.async {
+            view.parentViewController?.navigationController?
+                .interactivePopGestureRecognizer?.isEnabled = false
+        }
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.async {
+            uiView.parentViewController?.navigationController?
+                .interactivePopGestureRecognizer?.isEnabled = false
+        }
+    }
+}
+
+private extension UIView {
+    var parentViewController: UIViewController? {
+        sequence(first: self) { $0.superview }
+            .compactMap(\.next as? UIViewController)
+            .first
+    }
+}
+#endif
 
 // MARK: - Assistant Inspector View
 struct AssistantInspectorView: View {
