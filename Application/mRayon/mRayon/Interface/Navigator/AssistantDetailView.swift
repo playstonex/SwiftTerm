@@ -50,33 +50,46 @@ struct AssistantDetailView: View {
 #if os(iOS)
 extension View {
     func disableSwipeBack() -> some View {
-        background(DisableSwipeBackView())
+        overlay(SwipeBackDisablerView())
     }
 }
 
-private struct DisableSwipeBackView: UIViewRepresentable {
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
-        DispatchQueue.main.async {
-            view.parentViewController?.navigationController?
-                .interactivePopGestureRecognizer?.isEnabled = false
-        }
+private struct SwipeBackDisablerView: UIViewRepresentable {
+    func makeUIView(context: Context) -> SwipeBackDisabler {
+        let view = SwipeBackDisabler()
+        view.backgroundColor = .clear
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            uiView.parentViewController?.navigationController?
-                .interactivePopGestureRecognizer?.isEnabled = false
-        }
-    }
+    func updateUIView(_ uiView: SwipeBackDisabler, context: Context) {}
 }
 
-private extension UIView {
-    var parentViewController: UIViewController? {
-        sequence(first: self) { $0.superview }
-            .compactMap(\.next as? UIViewController)
-            .first
+private class SwipeBackDisabler: UIView {
+    private weak var targetNav: UINavigationController?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            findAndDisable()
+        } else {
+            targetNav?.interactivePopGestureRecognizer?.isEnabled = true
+        }
+    }
+
+    private func findAndDisable() {
+        var responder: UIResponder? = self
+        while let r = responder {
+            if let nav = r as? UINavigationController {
+                nav.interactivePopGestureRecognizer?.isEnabled = false
+                targetNav = nav
+                return
+            }
+            responder = r.next
+        }
+    }
+
+    deinit {
+        targetNav?.interactivePopGestureRecognizer?.isEnabled = true
     }
 }
 #endif
