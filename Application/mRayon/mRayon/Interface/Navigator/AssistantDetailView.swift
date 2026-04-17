@@ -50,46 +50,98 @@ struct AssistantDetailView: View {
 #if os(iOS)
 extension View {
     func disableSwipeBack() -> some View {
-        overlay(SwipeBackDisablerView())
+        background(SwipeBackDisablerView())
     }
 }
 
 private struct SwipeBackDisablerView: UIViewRepresentable {
     func makeUIView(context: Context) -> SwipeBackDisabler {
         let view = SwipeBackDisabler()
-        view.backgroundColor = .clear
+        view.isUserInteractionEnabled = false
         return view
     }
 
     func updateUIView(_ uiView: SwipeBackDisabler, context: Context) {}
 }
 
+/// Disables the interactive pop (swipe-back) gesture by walking up the
+/// view-controller hierarchy and disabling the `interactivePopGestureRecognizer`
+/// on every `UINavigationController` it finds.
+///
+/// Previous approaches failed because `NavigationSplitView` nests its
+/// navigation controllers in ways that are invisible to a simple responder-chain
+/// walk.  The current implementation therefore does a **recursive search** of
+/// all ancestor view controllers, which reliably covers `NavigationSplitView`,
+/// `UISplitViewController`, and plain `UINavigationController` hierarchies.
 private class SwipeBackDisabler: UIView {
-    private weak var targetNav: UINavigationController?
+    private var disabledNavs: [WeakNav] = []
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window != nil {
-            findAndDisable()
+            DispatchQueue.main.async { [weak self] in
+                self?.disableAllPopGestures()
+            }
         } else {
-            targetNav?.interactivePopGestureRecognizer?.isEnabled = true
+            restoreAll()
         }
     }
 
-    private func findAndDisable() {
+    private func disableAllPopGestures() {
+        guard let vc = findViewController() else { return }
+
+        // Collect every UINavigationController above us
+        var navControllers: [UINavigationController] = []
+
+        var current: UIViewController? = vc
+        while let c = current {
+            if let nav = c as? UINavigationController {
+                navControllers.append(nav)
+            }
+            if let nav = c.navigationController {
+                navControllers.append(nav)
+            }
+            // UISplitViewController (used by NavigationSplitView) keeps
+            // its children in `viewControllers`.  Walk them all.
+            if let split = c as? UISplitViewController {
+                for child in split.viewControllers {
+                    if let nav = child as? UINavigationController {
+                        navControllers.append(nav)
+                    }
+                }
+            }
+            current = c.parent
+        }
+
+        for nav in navControllers {
+            if nav.interactivePopGestureRecognizer?.isEnabled == true {
+                nav.interactivePopGestureRecognizer?.isEnabled = false
+                disabledNavs.append(WeakNav(nav))
+            }
+        }
+    }
+
+    private func restoreAll() {
+        for weak in disabledNavs {
+            weak.nav?.interactivePopGestureRecognizer?.isEnabled = true
+        }
+        disabledNavs.removeAll()
+    }
+
+    private func findViewController() -> UIViewController? {
         var responder: UIResponder? = self
         while let r = responder {
-            if let nav = r as? UINavigationController {
-                nav.interactivePopGestureRecognizer?.isEnabled = false
-                targetNav = nav
-                return
-            }
+            if let vc = r as? UIViewController { return vc }
             responder = r.next
         }
+        return nil
     }
 
-    deinit {
-        targetNav?.interactivePopGestureRecognizer?.isEnabled = true
+    deinit { restoreAll() }
+
+    private struct WeakNav {
+        weak var nav: UINavigationController?
+        init(_ nav: UINavigationController) { self.nav = nav }
     }
 }
 #endif
