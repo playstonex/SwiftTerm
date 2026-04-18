@@ -90,6 +90,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     /// Selection auto-scroll task for dragging beyond screen edges
     private var selectionScrollTask: Task<(), Never>?
 
+    /// Drag handles for adjusting selection range
+    private var startHandle: SelectionHandleView?
+    private var endHandle: SelectionHandleView?
+
     // MARK: - Initialization
 
     override public init(frame frameRect: CGRect, device: MTLDevice?) {
@@ -914,11 +918,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     // MARK: - Gesture handling
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-        // Make sure we become first responder to receive keyboard input
-        if !isFirstResponder {
-            _ = becomeFirstResponder()
-        }
-
         guard !isLongPress else {
             isLongPress = false
             return
@@ -938,6 +937,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             // Handle selection - clear selection on tap
             stopSelectionScrollTimer()
             selection?.active = false
+            removeSelectionHandles()
             setTerminalNeedsDisplay()
         }
     }
@@ -955,6 +955,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         // Show edit menu after word selection
         showEditMenu(at: location)
+        updateSelectionHandles()
     }
 
     @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
@@ -975,6 +976,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             // Auto-copy selected text and show edit menu
             autoCopySelection()
             showEditMenu(at: location)
+            updateSelectionHandles()
         default:
             break
         }
@@ -992,9 +994,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         }
 
         if gesture.state == .began {
-            if isFirstResponder {
-                _ = resignFirstResponder()
-            }
             terminal.userScrolling = true
         }
 
@@ -1033,6 +1032,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             renderer?.markAllDirty(reason: "gestureScroll")
             terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, maxYDisp)))
             setTerminalNeedsDisplay()
+            updateSelectionHandles()
         }
 
         gesture.setTranslation(.zero, in: self)
@@ -1071,6 +1071,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             autoCopySelection()
             let location = gesture.location(in: self)
             showEditMenu(at: location)
+            updateSelectionHandles()
 
         default:
             break
@@ -1093,6 +1094,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
                     self.renderer?.markAllDirty(reason: "selectionScroll")
                     self.terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, maxYDisp)))
                     self.setTerminalNeedsDisplay()
+                    self.updateSelectionHandles()
 
                     // Extend selection to the new edge row
                     if let selection = self.selection, selection.active {
@@ -1390,7 +1392,12 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        true
+        // Don't allow simultaneous recognition with the navigation swipe-back
+        // edge gesture — it causes the back animation to fire while selecting text.
+        if otherGestureRecognizer is UIScreenEdgePanGestureRecognizer {
+            return false
+        }
+        return true
     }
 
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -1398,7 +1405,12 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        guard gestureRecognizer is UIPanGestureRecognizer else { return false }
+        // Our pan gesture takes priority over the navigation edge-pan so that
+        // scrolling / text selection always wins over swipe-back.
+        if gestureRecognizer is UIPanGestureRecognizer,
+           otherGestureRecognizer is UIScreenEdgePanGestureRecognizer {
+            return true
+        }
         return false
     }
 
@@ -1443,11 +1455,9 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     @objc open override func paste(_ sender: Any?) {
         // Clear any active selection before paste
         selection?.active = false
+        removeSelectionHandles()
 
         if let text = UIPasteboard.general.string {
-            // Capture cursor position before paste
-            let startCursorPos = terminal.map { ($0.buffer.x, $0.buffer.y) }
-            
             if let terminal = terminal, terminal.bracketedPasteMode {
                 send(data: EscapeSequences.bracketedPasteStart[0...])
             }
@@ -1455,26 +1465,15 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             if let terminal = terminal, terminal.bracketedPasteMode {
                 send(data: EscapeSequences.bracketedPasteEnd[0...])
             }
-            
-            // Schedule selection creation after text is processed
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                guard let self = self,
-                      let terminal = self.terminal,
-                      let (startX, startY) = startCursorPos else { return }
-                
-                let endX = terminal.buffer.x
-                let endY = terminal.buffer.y
-                
-                // Create selection for the pasted text region
-                self.selection?.setSelection(
-                    start: Position(col: startX, row: startY),
-                    end: Position(col: endX, row: endY)
-                )
-                self.selection?.active = true
-                self.setTerminalNeedsDisplay()
+        }
+        // The echoed text arrives asynchronously from the remote shell.
+        // Schedule repeated full redraws to ensure it renders correctly.
+        for delay in [0.05, 0.15, 0.4] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.renderer?.markAllDirty(reason: "pasteEcho")
+                self?.refreshDisplay(immediately: true)
             }
         }
-        setTerminalNeedsDisplay()
     }
 
     /// Tell iOS which edit menu actions this view supports
@@ -1507,6 +1506,132 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             let menu = UIMenuController.shared
             menu.showMenu(from: self, rect: menuRect)
         }
+    }
+
+    // MARK: - Selection Handles
+
+    /// Convert a buffer Position to a screen CGPoint in this view's coordinate space.
+    private func screenPoint(for bufferPosition: Position) -> CGPoint {
+        guard let terminal = terminal else { return .zero }
+        let displayBuffer = terminal.displayBuffer
+        let screenRow = bufferPosition.row - displayBuffer.yDisp
+        let x = CGFloat(bufferPosition.col) * cellDimension.width
+        let y = CGFloat(screenRow) * cellDimension.height
+        return CGPoint(x: x, y: y)
+    }
+
+    /// Convert a screen CGPoint to a buffer Position.
+    private func bufferPosition(for screenPoint: CGPoint) -> Position {
+        guard let terminal = terminal else { return Position(col: 0, row: 0) }
+        let col = max(0, min(Int(screenPoint.x / cellDimension.width), terminal.cols - 1))
+        let screenRow = max(0, min(Int(screenPoint.y / cellDimension.height), terminal.rows - 1))
+        let bufferRow = screenRow + terminal.displayBuffer.yDisp
+        return Position(col: col, row: bufferRow)
+    }
+
+    /// Create selection handles if needed and position them at the current selection bounds.
+    func updateSelectionHandles() {
+        guard let selection = selection, selection.active, selection.hasSelectionRange,
+              let terminal = terminal, cellDimension.width > 0, cellDimension.height > 0 else {
+            removeSelectionHandles()
+            return
+        }
+
+        // Ensure handles exist
+        if startHandle == nil {
+            let handle = SelectionHandleView(role: .start)
+            handle.onDrag = { [weak self] location in
+                self?.handleStartDrag(to: location)
+            }
+            addSubview(handle)
+            startHandle = handle
+        }
+        if endHandle == nil {
+            let handle = SelectionHandleView(role: .end)
+            handle.onDrag = { [weak self] location in
+                self?.handleEndDrag(to: location)
+            }
+            addSubview(handle)
+            endHandle = handle
+        }
+
+        // Position handles at selection bounds
+        let normalStart: Position
+        let normalEnd: Position
+        if Position.compare(selection.start, selection.end) == .before {
+            normalStart = selection.start
+            normalEnd = selection.end
+        } else {
+            normalStart = selection.end
+            normalEnd = selection.start
+        }
+
+        let startPoint = screenPoint(for: normalStart)
+        let endPoint = screenPoint(for: normalEnd)
+
+        let handleSize = startHandle!.intrinsicContentSize
+
+        // Start handle: positioned at top-left of start cell, circle at bottom
+        startHandle?.frame = CGRect(
+            x: startPoint.x - handleSize.width / 2,
+            y: startPoint.y - handleSize.height,
+            width: handleSize.width,
+            height: handleSize.height
+        )
+
+        // End handle: positioned at bottom-right of end cell, circle at top
+        endHandle?.frame = CGRect(
+            x: endPoint.x + cellDimension.width - handleSize.width / 2,
+            y: endPoint.y + cellDimension.height - 2,
+            width: handleSize.width,
+            height: handleSize.height
+        )
+    }
+
+    /// Remove all selection handles.
+    func removeSelectionHandles() {
+        startHandle?.removeFromSuperview()
+        startHandle = nil
+        endHandle?.removeFromSuperview()
+        endHandle = nil
+    }
+
+    /// Handle drag of the start selection handle.
+    private func handleStartDrag(to screenLocation: CGPoint) {
+        guard let selection = selection else { return }
+        let bufferPos = bufferPosition(for: screenLocation)
+
+        // Set pivot to the end position and extend from there
+        let normalEnd: Position
+        if Position.compare(selection.start, selection.end) == .before {
+            normalEnd = selection.end
+        } else {
+            normalEnd = selection.start
+        }
+        selection.pivot = normalEnd
+        selection.pivotExtend(bufferPosition: bufferPos)
+
+        setTerminalNeedsDisplay()
+        updateSelectionHandles()
+    }
+
+    /// Handle drag of the end selection handle.
+    private func handleEndDrag(to screenLocation: CGPoint) {
+        guard let selection = selection else { return }
+        let bufferPos = bufferPosition(for: screenLocation)
+
+        // Set pivot to the start position and extend from there
+        let normalStart: Position
+        if Position.compare(selection.start, selection.end) == .before {
+            normalStart = selection.start
+        } else {
+            normalStart = selection.end
+        }
+        selection.pivot = normalStart
+        selection.pivotExtend(bufferPosition: bufferPos)
+
+        setTerminalNeedsDisplay()
+        updateSelectionHandles()
     }
 }
 

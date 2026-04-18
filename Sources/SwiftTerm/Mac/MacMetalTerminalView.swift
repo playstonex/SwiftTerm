@@ -149,8 +149,30 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
 
     // MARK: - Keyboard handling
 
+    /// Intercept key equivalents so Cmd+C / Cmd+V / Cmd+A are handled by the
+    /// terminal view instead of being consumed by the SwiftUI Edit menu.
+    override open func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.type == .keyDown else { return super.performKeyEquivalent(with: event) }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags.contains(.command) else { return super.performKeyEquivalent(with: event) }
+
+        switch event.charactersIgnoringModifiers {
+        case "c":
+            copySelection()
+            return true
+        case "v":
+            pasteFromClipboard()
+            return true
+        case "a":
+            selection?.selectAll()
+            setTerminalNeedsDisplay()
+            return true
+        default:
+            return super.performKeyEquivalent(with: event)
+        }
+    }
+
     override open func keyDown(with event: NSEvent) {
-        selection?.active = false
         let modifierFlags = event.modifierFlags
 
         // Handle Cmd+C copy
@@ -171,6 +193,9 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             setTerminalNeedsDisplay()
             return
         }
+
+        // Clear selection for all other key events
+        selection?.active = false
 
         if hasMarkedText() {
             interpretKeyEvents([event])
@@ -644,10 +669,9 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
     /// Internal paste implementation (avoids name collision with `paste(_ sender:)`)
     private func pasteFromClipboard() {
         guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else { return }
-        
-        // Capture cursor position before paste
-        let startCursorPos = terminal.map { ($0.buffer.x, $0.buffer.y) }
-        
+
+        selection?.active = false
+
         if let terminal = terminal, terminal.bracketedPasteMode {
             send(data: EscapeSequences.bracketedPasteStart[0...])
         }
@@ -655,23 +679,13 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         if let terminal = terminal, terminal.bracketedPasteMode {
             send(data: EscapeSequences.bracketedPasteEnd[0...])
         }
-        
-        // Schedule selection creation after text is processed
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self = self,
-                  let terminal = self.terminal,
-                  let (startX, startY) = startCursorPos else { return }
-            
-            let endX = terminal.buffer.x
-            let endY = terminal.buffer.y
-            
-            // Create selection for the pasted text region
-            self.selection?.setSelection(
-                start: Position(col: startX, row: startY),
-                end: Position(col: endX, row: endY)
-            )
-            self.selection?.active = true
-            self.setTerminalNeedsDisplay()
+        // The echoed text arrives asynchronously from the remote shell.
+        // Schedule repeated full redraws to ensure it renders correctly.
+        for delay in [0.05, 0.15, 0.4] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.renderer?.markAllDirty(reason: "pasteEcho")
+                self?.refreshDisplay(immediately: true)
+            }
         }
     }
 }
