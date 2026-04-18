@@ -74,7 +74,13 @@
       "mcp__zai-mcp-server__extract_text_from_screenshot",
       "Skill(git-commit)",
       "Bash(gh auth:*)",
-      "Read(//Volumes/y/lei/Desktop/**)"
+      "Read(//Volumes/y/lei/Desktop/**)",
+      "Bash(cp \"/Volumes/y/.TemporaryItems/folders.502/TemporaryItems/NSIRD_screencaptureui_avUXSn/Screenshot 2026-04-16 at 12.36.14.png\" /tmp/settings_screenshot1.png)",
+      "Bash(cp \"/Volumes/y/.TemporaryItems/folders.502/TemporaryItems/NSIRD_screencaptureui_2OUnHN/Screenshot 2026-04-16 at 12.36.38.png\" /tmp/settings_screenshot2.png)",
+      "Bash(rm -rf ~/Library/Developer/Xcode/DerivedData/App-*/SourcePackages)",
+      "Bash(rm -rf /Volumes/y/lei/Library/Developer/Xcode/DerivedData/App-*/SourcePackages)",
+      "Bash(killall security *)",
+      "Bash(killall codesign *)"
     ]
   }
 }

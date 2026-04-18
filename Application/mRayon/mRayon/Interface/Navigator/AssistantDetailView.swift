@@ -56,23 +56,19 @@ extension View {
 
 private struct SwipeBackDisablerView: UIViewRepresentable {
     func makeUIView(context: Context) -> SwipeBackDisabler {
-        let view = SwipeBackDisabler()
-        view.isUserInteractionEnabled = false
-        return view
+        SwipeBackDisabler()
     }
 
     func updateUIView(_ uiView: SwipeBackDisabler, context: Context) {}
 }
 
 /// Disables the interactive pop (swipe-back) gesture by walking up the
-/// view-controller hierarchy and disabling the `interactivePopGestureRecognizer`
-/// on every `UINavigationController` it finds.
+/// responder chain and disabling `interactivePopGestureRecognizer` on
+/// every `UINavigationController` it finds.
 ///
-/// Previous approaches failed because `NavigationSplitView` nests its
-/// navigation controllers in ways that are invisible to a simple responder-chain
-/// walk.  The current implementation therefore does a **recursive search** of
-/// all ancestor view controllers, which reliably covers `NavigationSplitView`,
-/// `UISplitViewController`, and plain `UINavigationController` hierarchies.
+/// Note: The primary swipe-back prevention is handled by the terminal
+/// view's gesture recognizer delegate (shouldBeRequiredToFailBy).
+/// This view acts as a secondary safety net.
 private class SwipeBackDisabler: UIView {
     private var disabledNavs: [WeakNav] = []
 
@@ -90,7 +86,6 @@ private class SwipeBackDisabler: UIView {
     private func disableAllPopGestures() {
         guard let vc = findViewController() else { return }
 
-        // Collect every UINavigationController above us
         var navControllers: [UINavigationController] = []
 
         var current: UIViewController? = vc
@@ -101,8 +96,6 @@ private class SwipeBackDisabler: UIView {
             if let nav = c.navigationController {
                 navControllers.append(nav)
             }
-            // UISplitViewController (used by NavigationSplitView) keeps
-            // its children in `viewControllers`.  Walk them all.
             if let split = c as? UISplitViewController {
                 for child in split.viewControllers {
                     if let nav = child as? UINavigationController {
