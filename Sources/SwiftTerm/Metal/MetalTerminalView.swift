@@ -727,14 +727,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func applyExternalFeedDiff(from snapshot: VisibleBufferSnapshot?) {
-        guard let terminal, let renderer else {
+        guard let _ = terminal, let renderer else {
             setTerminalNeedsDisplay()
             return
         }
-        // Correctness currently takes priority over partial redraws here. External feeds can
-        // change viewport state, alternate-buffer content, and cursor placement in ways that
-        // previously left stale rows on screen. Keep the snapshot plumbing in place so the
-        // diff path can be restored later once the invalidation model is reliable again.
         _ = snapshot
         renderer.markAllDirty(reason: "externalFeedFullRefresh")
         renderer.markSelectionDirty()

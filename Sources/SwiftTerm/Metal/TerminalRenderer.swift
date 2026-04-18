@@ -368,22 +368,23 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         let builder = composeCachedFrame()
 
 
-        guard let descriptor = view.currentRenderPassDescriptor,
-              let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
-            // No drawable available — caches were already rebuilt but the frame was not
-            // presented.  Schedule a retry on the next display cycle so the content
-            // doesn't remain stale (e.g. invisible pasted text).
+        guard let descriptor = view.currentRenderPassDescriptor else {
             (view as? MetalTerminalView)?.setTerminalNeedsDisplay()
             return
         }
 
-        // Clear with terminal background color
+        // Set clear color from terminal background BEFORE creating the encoder
         let bgColor = terminal.backgroundColor
         let clearR = Double(bgColor.red) / 65535.0
         let clearG = Double(bgColor.green) / 65535.0
         let clearB = Double(bgColor.blue) / 65535.0
         descriptor.colorAttachments[0].clearColor = MTLClearColor(red: clearR, green: clearG, blue: clearB, alpha: 1.0)
         descriptor.colorAttachments[0].loadAction = .clear
+
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
+            (view as? MetalTerminalView)?.setTerminalNeedsDisplay()
+            return
+        }
 
         var uniforms = VertexUniforms(projectionMatrix: projectionMatrix)
 
