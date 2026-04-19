@@ -325,6 +325,25 @@ public class SwiftTerminalView: UIView {
         return metalView.getSelectedText()
     }
 
+    /// Clear the terminal's text selection (highlight + handles).
+    /// Uses Mirror reflection to reach the internal ``SelectionService``
+    /// on SwiftTerm's ``MetalTerminalView``.
+    public func clearSelection() {
+        var mirror: Mirror? = Mirror(reflecting: metalView)
+        while let m = mirror {
+            for child in m.children {
+                if child.label == "selection",
+                   let service = child.value as? SelectionService, service.active
+                {
+                    service.selectNone()
+                    metalView.setTerminalNeedsDisplay()
+                    return
+                }
+            }
+            mirror = m.superclassMirror
+        }
+    }
+
     public func updateTheme() {
         applyTheme()
     }

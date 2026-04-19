@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.playstone.mRayon.refresh</string>
+		<string>com.playstone.mRayon.processing</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
@@ -26,12 +31,16 @@
 		<string>JetBrainsMono-Thin.ttf</string>
 		<string>MapleMono-NF-CN-Regular.ttf</string>
 	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 	<key>UIFileSharingEnabled</key>
 	<true/>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Microphone access is required for voice input and to turn your speech into terminal commands.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Speech recognition is required to turn your voice into text.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIImageName</key>

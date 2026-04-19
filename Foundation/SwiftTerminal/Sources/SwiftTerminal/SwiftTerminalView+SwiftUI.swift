@@ -170,6 +170,10 @@ public struct STerminalView: NativeTerminalProtocol {
         completion(text.isEmpty ? nil : text)
     }
 
+    public func clearSelection() {
+        terminalView.clearSelection()
+    }
+
     public func refreshDisplay() {
         Task { @MainActor in
             self.terminalView.refreshDisplay()

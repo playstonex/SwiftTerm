@@ -84,7 +84,7 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     // Mosh session (optional, used when connectionType is Mosh)
     private var moshSession: NMSession?
     private var moshConnected: Bool = false
-    private var moshModeActive: Bool { machine.connectionType == .mosh }
+    var moshModeActive: Bool { machine.connectionType == .mosh }
 
     // MARK: - SHELL CONTEXT
 
@@ -93,6 +93,7 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     @Published var interfaceToken: UUID = .init()
     @Published var interfaceDisabled: Bool = false
     private(set) var historyRevision: Int = 0
+    var preservedSnapshot: SessionSnapshot?
 
     static let historyRevisionNotification = Notification.Name("terminal.historyRevision")
 
@@ -131,6 +132,20 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     func insertBuffer(_ str: String) {
+        lastIOAt = Date()
+
+        let commandText = str
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if !commandText.isEmpty && str.contains(where: { $0 == "\r" || $0 == "\n" }) {
+            let sid = id
+            Task { @MainActor in
+                LiveActivityBridge.shared.updateCommandStarted(
+                    sessionId: sid,
+                    command: commandText
+                )
+            }
+        }
+
         routeInput(str, trackAsUserInput: true, addToHistory: true)
     }
 
@@ -139,6 +154,7 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     private func routeInput(_ str: String, trackAsUserInput: Bool, addToHistory: Bool) {
+        lastIOAt = Date()
         if trackAsUserInput {
             Task { [commandMonitor] in
                 await commandMonitor.registerUserInput(str)
@@ -230,6 +246,7 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     /// Handle output received from Mosh UDP session
     /// - Parameter str: The output string from Mosh
     func handleMoshOutput(_ data: Data) {
+        lastIOAt = Date()
         let preview = TerminalContext.decodeMoshText(data)
         debugPrint("[Mosh] handleMoshOutput received: \(preview.prefix(100).replacingOccurrences(of: "\n", with: "\\n").replacingOccurrences(of: "\r", with: "\\r"))...")
 
@@ -250,6 +267,8 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
         }
         return String(decoding: data, as: UTF8.self)
     }
+
+    var lastIOAt: Date = Date()
 
     var continueDecision: Bool = true {
         didSet {
@@ -308,6 +327,10 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     func reconnectInBackground() {
+        let sid = id
+        Task { @MainActor in
+            LiveActivityBridge.shared.updateSessionStatus(sessionId: sid, status: .reconnecting)
+        }
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             self.putInformation(String(localized: "[i] Reconnect will use the information you provide previously,"))
@@ -317,6 +340,7 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     private func handleShellOutput(_ output: String) {
+        lastIOAt = Date()
         addToHistory(output)
         consumeCommandMonitorOutput(output)
     }
@@ -350,6 +374,13 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
             }
             if !update.commandCompletions.isEmpty {
                 self.handleCommandCompletions(update.commandCompletions)
+                for completion in update.commandCompletions {
+                    LiveActivityBridge.shared.updateCommandFinished(sessionId: self.id)
+                    LiveActivityBridge.shared.updateSnippet(
+                        sessionId: self.id,
+                        snippet: completion.command
+                    )
+                }
             }
         }
     }
@@ -379,7 +410,10 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
         case .title(let str):
             title = str
         case .bell:
-            break
+            let sid = id
+            Task { @MainActor in
+                LiveActivityBridge.shared.incrementBell(sessionId: sid)
+            }
         case .size(let size):
             terminalSize = size
         case .copy(let payload):
@@ -796,7 +830,16 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
         guard shell.isConnected, shell.isAuthenticated else {
             putInformation("Failed to authenticate connection")
             putInformation("Did you forget to add identity or enable auto authentication?")
+            let sid = id
+            Task { @MainActor in
+                LiveActivityBridge.shared.updateSessionStatus(sessionId: sid, status: .disconnected)
+            }
             return
+        }
+
+        let sid = id
+        Task { @MainActor in
+            LiveActivityBridge.shared.updateSessionStatus(sessionId: sid, status: .connected)
         }
 
         Task { @MainActor [weak self] in
@@ -895,6 +938,11 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
     }
 
     func processShutdown(exitFromShell: Bool = false) {
+        let sid = id
+        Task { @MainActor in
+            LiveActivityBridge.shared.updateSessionStatus(sessionId: sid, status: .disconnected)
+        }
+
         moshSession?.disconnect()
         moshSession = nil
         moshConnected = false
@@ -1004,6 +1052,43 @@ final class TerminalContext: ObservableObject, Identifiable, Equatable {
 }
 
 extension TerminalContext {
+    struct SessionSnapshot {
+        let sessionId: UUID
+        let machineName: String
+        let remoteAddress: String
+        let remotePort: String
+        let transport: String
+        let wasConnected: Bool
+        let isInTmux: Bool
+        let lastIOAt: Date
+        let savedAt: Date
+    }
+
+    func preserveForBackground() {
+        let snapshot = SessionSnapshot(
+            sessionId: id,
+            machineName: machine.name,
+            remoteAddress: machine.remoteAddress,
+            remotePort: machine.remotePort,
+            transport: moshModeActive ? "Mosh" : "SSH",
+            wasConnected: !closed,
+            isInTmux: isInTmuxSession,
+            lastIOAt: lastIOAt,
+            savedAt: Date()
+        )
+        preservedSnapshot = snapshot
+        debugPrint("\(self) preserveForBackground \(snapshot.sessionId) \(snapshot.transport) connected=\(snapshot.wasConnected)")
+    }
+
+    func restoreFromForeground(_ snapshot: SessionSnapshot) async {
+        debugPrint("\(self) restoreFromForeground \(snapshot.sessionId)")
+        if snapshot.wasConnected, closed {
+            reconnectInBackground()
+        }
+        preservedSnapshot = nil
+        lastIOAt = Date()
+    }
+
     struct DefaultPresent: View {
         let context: TerminalContext
         @Environment(\.presentationMode) var presentationMode
