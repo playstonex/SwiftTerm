@@ -178,6 +178,12 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func insertText(_ text: String) {
+        // Clear selection when user types
+        if selection?.active == true {
+            selection?.active = false
+            removeSelectionHandles()
+            setTerminalNeedsDisplay()
+        }
         let rangeToReplace = _markedTextRange ?? _selectedTextRange
         beginTextInputEdit()
         let insertionOffset = rangeToReplace.startOffset
