@@ -26,6 +26,9 @@ struct mRayonApp: App {
         
         _ = LogRedirect.shared
         _ = RayonStore.shared
+        _ = SessionLifecycleCoordinator.shared
+
+        SessionLifecycleCoordinator.shared.scheduleNextAppRefresh()
 
         AutomationManager.shared.startScheduler()
         NSLog("static main completed")

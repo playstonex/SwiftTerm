@@ -47,6 +47,7 @@ final class TerminalManager: ObservableObject {
         let object = TerminalContext(machine: machine)
         RayonStore.shared.storeRecentIfNeeded(from: machineId)
         terminals.append(object)
+        LiveActivityBridge.shared.startTracking(context: object)
     }
 
     func begin(for command: SSHCommandReader, force: Bool = false) {
@@ -69,10 +70,12 @@ final class TerminalManager: ObservableObject {
         let object = TerminalContext(command: command)
         RayonStore.shared.storeRecentIfNeeded(from: command)
         terminals.append(object)
+        LiveActivityBridge.shared.startTracking(context: object)
     }
 
     func end(for contextId: UUID) {
         debugPrint("\(self) \(#function) \(contextId)")
+        LiveActivityBridge.shared.stopTracking(sessionId: contextId)
         guard let index = terminals.firstIndex(where: { $0.id == contextId }) else { return }
         let term = terminals.remove(at: index)
         shutdown(term)

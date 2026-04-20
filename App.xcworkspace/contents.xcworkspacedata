@@ -58,4 +58,7 @@
    <FileRef
       location = "group:Foundation/NMMoshShell">
    </FileRef>
+   <FileRef
+      location = "group:Foundation/RayonLiveActivity">
+   </FileRef>
 </Workspace>

@@ -74,6 +74,9 @@ struct TerminalView: View {
                         // Background
                         Color(hex: store.terminalTheme.background)
                             .ignoresSafeArea()
+                            .onTapGesture {
+                                context.termInterface.clearSelection()
+                            }
 
                         // Terminal view
                         context.termInterface
@@ -230,6 +233,9 @@ struct TerminalView: View {
                                         )
                                     }
                                 )
+                            }
+                            .onTapGesture {
+                                context.termInterface.clearSelection()
                             }
                         }
                     }
