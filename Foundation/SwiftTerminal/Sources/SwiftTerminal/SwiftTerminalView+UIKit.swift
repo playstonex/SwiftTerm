@@ -332,13 +332,23 @@ public class SwiftTerminalView: UIView {
         var mirror: Mirror? = Mirror(reflecting: metalView)
         while let m = mirror {
             for child in m.children {
-                if child.label == "selection",
-                   let service = child.value as? SelectionService, service.active
-                {
-                    service.selectNone()
-                    metalView.setTerminalNeedsDisplay()
-                    return
+                guard child.label == "selection" else { continue }
+                // SelectionService is internal to SwiftTerm, so we reflect
+                // to read its `active` property and call `selectNone()`.
+                let svc = child.value
+                let svcMirror = Mirror(reflecting: svc)
+                var isActive = false
+                for prop in svcMirror.children {
+                    if prop.label == "active", let val = prop.value as? Bool {
+                        isActive = val
+                        break
+                    }
                 }
+                guard isActive else { return }
+                if let selectNone = (svc as AnyObject).perform(NSSelectorFromString("selectNone")) {
+                    metalView.setTerminalNeedsDisplay()
+                }
+                return
             }
             mirror = m.superclassMirror
         }
