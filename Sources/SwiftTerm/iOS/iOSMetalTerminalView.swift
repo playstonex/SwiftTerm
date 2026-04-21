@@ -82,10 +82,22 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     /// Whether backspace should send Ctrl+H instead of DEL.
     public var backspaceSendsControlH: Bool = false
 
-    /// Edit menu interaction for iOS 16+ (stored as Any to avoid @available issues)
     private var editMenuInteraction: Any?
 
     private var pendingKittyKeyEvent: PendingKittyKeyEvent?
+
+    private lazy var composingLabel: UILabel = {
+        let label = UILabel()
+        label.font = UIFont(name: "Menlo", size: 14) ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+        label.textColor = .white
+        label.backgroundColor = UIColor(white: 0, alpha: 0.7)
+        label.layer.cornerRadius = 3
+        label.clipsToBounds = true
+        label.isHidden = true
+        label.sizeToFit()
+        addSubview(label)
+        return label
+    }()
 
     /// Selection auto-scroll task for dragging beyond screen edges
     private var selectionScrollTask: Task<(), Never>?
@@ -178,7 +190,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func insertText(_ text: String) {
-        // Clear selection when user types
         if selection?.active == true {
             selection?.active = false
             removeSelectionHandles()
@@ -189,6 +200,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let insertionOffset = rangeToReplace.startOffset
         textInputStorage.replaceSubrange(rangeToReplace.fullRange(in: textInputStorage), with: text)
         _markedTextRange = nil
+        hideComposingOverlay()
         let insertedPosition = IMETextPosition(offset: insertionOffset + utf16Length(of: text))
         _selectedTextRange = IMETextRange(start: insertedPosition, end: insertedPosition)
         endTextInputEdit()
@@ -311,6 +323,27 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             return
         }
         send(text: text)
+    }
+
+    private func showComposingOverlay(_ text: String) {
+        composingLabel.text = text
+        composingLabel.sizeToFit()
+        composingLabel.frame.size.width += 6
+        composingLabel.frame.size.height += 4
+        composingLabel.font = UIFont(name: "Menlo", size: min(cellDimension.height - 2, 18)) ?? UIFont.monospacedSystemFont(ofSize: min(cellDimension.height - 2, 18), weight: .regular)
+
+        let cursor = cursorRect()
+        var originX = cursor.origin.x
+        let originY = cursor.origin.y - composingLabel.frame.height - 2
+        if originX + composingLabel.frame.width > bounds.width {
+            originX = bounds.width - composingLabel.frame.width - 4
+        }
+        composingLabel.frame.origin = CGPoint(x: max(0, originX), y: max(0, originY))
+        composingLabel.isHidden = false
+    }
+
+    private func hideComposingOverlay() {
+        composingLabel.isHidden = true
     }
 
     // MARK: - Hardware Keyboard Support
@@ -931,7 +964,13 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         guard let terminal = terminal else { return }
 
-        // Handle mouse reporting
+        stopSelectionScrollTimer()
+        if selection?.active == true {
+            selection?.active = false
+            removeSelectionHandles()
+            setTerminalNeedsDisplay()
+        }
+
         if terminal.mouseMode != .off && allowMouseReporting {
             let location = gesture.location(in: self)
             guard let hit = clampedTouchPosition(at: location) else { return }
@@ -939,12 +978,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 self.sendTouchToTerminal(button: 0, col: hit.grid.col, row: hit.grid.row, pressed: false, motion: false, pixels: hit.pixels)
             }
-        } else {
-            // Handle selection - clear selection on tap
-            stopSelectionScrollTimer()
-            selection?.active = false
-            removeSelectionHandles()
-            setTerminalNeedsDisplay()
         }
     }
 
@@ -993,10 +1026,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let terminal = terminal, cellDimension.height > 0 else { return }
 
-        // If selection is active, extend selection instead of scrolling
         if selection?.active == true {
-            handleSelectionPan(gesture: gesture)
-            return
+            selection?.active = false
+            removeSelectionHandles()
+            setTerminalNeedsDisplay()
         }
 
         if gesture.state == .began {
@@ -1044,43 +1077,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         gesture.setTranslation(.zero, in: self)
         if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
             terminal.userScrolling = false
-        }
-    }
-
-    /// Handle pan gesture when selection is active — extend selection and auto-scroll at edges
-    private func handleSelectionPan(gesture: UIPanGestureRecognizer) {
-        guard let terminal = terminal, let selection = selection else { return }
-
-        switch gesture.state {
-        case .began, .changed:
-            let location = gesture.location(in: self)
-            let col = Int(location.x / cellDimension.width)
-            let row = Int(location.y / cellDimension.height)
-
-            // Extend selection at the current touch position (screen-relative row)
-            selection.dragExtend(row: row, col: col)
-            gesture.setTranslation(.zero, in: self)
-
-            // Auto-scroll when finger goes beyond screen edges
-            let absoluteY = location.y
-            if absoluteY < 0 || absoluteY > bounds.height {
-                startSelectionScrollTimer(direction: absoluteY < 0 ? -1 : 1)
-            } else {
-                stopSelectionScrollTimer()
-            }
-
-            setTerminalNeedsDisplay()
-
-        case .ended, .cancelled, .failed:
-            stopSelectionScrollTimer()
-            // Auto-copy selected text and show edit menu after selection drag
-            autoCopySelection()
-            let location = gesture.location(in: self)
-            showEditMenu(at: location)
-            updateSelectionHandles()
-
-        default:
-            break
         }
     }
 
@@ -1234,11 +1230,13 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
                 start: IMETextPosition(offset: rangeStartOffset + selectedLocation),
                 end: IMETextPosition(offset: rangeStartOffset + selectedLocation + selectedLength)
             )
+            showComposingOverlay(markedText)
         } else {
             textInputStorage.removeSubrange(replacementRange.fullRange(in: textInputStorage))
             _markedTextRange = nil
             let cursor = IMETextPosition(offset: rangeStartOffset)
             _selectedTextRange = IMETextRange(start: cursor, end: cursor)
+            hideComposingOverlay()
         }
 
         endTextInputEdit()
@@ -1256,6 +1254,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let rangeEnd = IMETextPosition(offset: marked.endOffset)
         _selectedTextRange = IMETextRange(start: rangeEnd, end: rangeEnd)
         _markedTextRange = nil
+        hideComposingOverlay()
         endTextInputEdit()
     }
 
