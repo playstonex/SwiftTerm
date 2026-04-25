@@ -67,11 +67,12 @@ class Line : CustomDebugStringConvertible {
     
     func toString () -> String
     {
-        var result = ""
+        var parts: [String] = []
+        parts.reserveCapacity(fragments.count)
         for x in fragments {
-            result += x.text ?? ""
+            parts.append(x.text ?? "")
         }
-        return result
+        return parts.joined()
     }
     
     func getFragmentIndex (forPosition: Int) -> Int
