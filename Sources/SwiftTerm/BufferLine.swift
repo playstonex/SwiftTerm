@@ -171,10 +171,10 @@ public final class BufferLine: CustomDebugStringConvertible {
     public func replaceCells (start: Int, end: Int, fillData : CharData)
     {
         let length = dataSize
-        var idx = start
-        while idx < end && idx < length {
-            data [idx] = fillData
-            idx += 1
+        let clampedStart = max(start, 0)
+        let clampedEnd = min(end, length)
+        if clampedStart < clampedEnd {
+            data[clampedStart..<clampedEnd].update(repeating: fillData)
         }
     }
 
@@ -327,14 +327,16 @@ public final class BufferLine: CustomDebugStringConvertible {
         }
         let limit = max(ec, startCol)
         if !skipNullCellsFollowingWide {
-            var result = ""
+            var chars: [Character] = []
+            chars.reserveCapacity(limit - startCol)
             for i in startCol..<limit {
                 let character = characterProvider?(data [i]) ?? data [i].getCharacter ()
-                result.append (character)
+                chars.append(character)
             }
-            return result
+            return String(chars)
         }
-        var result = ""
+        var chars: [Character] = []
+        chars.reserveCapacity(limit - startCol)
         var idx = startCol
         while idx < limit {
             if idx > 0 && data [idx].code == 0 && data [idx-1].width == 2 {
@@ -343,7 +345,7 @@ public final class BufferLine: CustomDebugStringConvertible {
             }
             let cell = data [idx]
             let character = characterProvider?(cell) ?? cell.getCharacter ()
-            result.append (character)
+            chars.append(character)
             if cell.width == 2 {
                 let nextIndex = idx + 1
                 if nextIndex < limit && data [nextIndex].code == 0 {
@@ -353,7 +355,7 @@ public final class BufferLine: CustomDebugStringConvertible {
             }
             idx += 1
         }
-        return result
+        return String(chars)
     }
 
     /// Attaches the specified terminal image to this buffer line.

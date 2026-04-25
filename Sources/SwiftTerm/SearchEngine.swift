@@ -24,6 +24,9 @@ final class SearchEngine {
     private let lineCache: SearchLineCache
     private let nonWordCharacters: Set<Character> = Set(" ~!@#$%^&*()+`-=[]{}|\\;:\"',./<>?")
 
+    private var regexCache: [String: NSRegularExpression] = [:]
+    private let regexCacheLimit = 16
+
     init (terminal: Terminal, lineCache: SearchLineCache) {
         self.terminal = terminal
         self.lineCache = lineCache
@@ -245,7 +248,20 @@ final class SearchEngine {
 
         if options.regex {
             let regexOptions: NSRegularExpression.Options = options.caseSensitive ? [] : [.caseInsensitive]
-            guard let regex = try? NSRegularExpression(pattern: term, options: regexOptions) else {
+            let cacheKey = (options.caseSensitive ? "s:" : "i:") + term
+            let regex: NSRegularExpression?
+            if let cached = regexCache[cacheKey] {
+                regex = cached
+            } else if let compiled = try? NSRegularExpression(pattern: term, options: regexOptions) {
+                if regexCache.count >= regexCacheLimit {
+                    regexCache.removeAll(keepingCapacity: true)
+                }
+                regexCache[cacheKey] = compiled
+                regex = compiled
+            } else {
+                regex = nil
+            }
+            guard let validRegex = regex else {
                 return nil
             }
             let clampedOffset = min(offset, stringLine.count)
@@ -253,14 +269,14 @@ final class SearchEngine {
 
             if isReverseSearch {
                 let searchRange = NSRange(stringLine.startIndex..<offsetIndex, in: stringLine)
-                let matches = regex.matches(in: stringLine, options: [], range: searchRange)
+                let matches = validRegex.matches(in: stringLine, options: [], range: searchRange)
                 if let match = matches.last, match.range.length > 0, let matchRange = Range(match.range, in: stringLine) {
                     resultIndex = stringLine.distance(from: stringLine.startIndex, to: matchRange.lowerBound)
                     matchTerm = String(stringLine[matchRange])
                 }
             } else {
                 let searchRange = NSRange(offsetIndex..<stringLine.endIndex, in: stringLine)
-                if let match = regex.firstMatch(in: stringLine, options: [], range: searchRange), match.range.length > 0,
+                if let match = validRegex.firstMatch(in: stringLine, options: [], range: searchRange), match.range.length > 0,
                    let matchRange = Range(match.range, in: stringLine) {
                     resultIndex = stringLine.distance(from: stringLine.startIndex, to: matchRange.lowerBound)
                     matchTerm = String(stringLine[matchRange])
