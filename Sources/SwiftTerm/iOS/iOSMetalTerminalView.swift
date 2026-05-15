@@ -177,6 +177,9 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     override open func resignFirstResponder() -> Bool {
         let result = super.resignFirstResponder()
         if result {
+            _ = clearSelection()
+            _markedTextRange = nil
+            hideComposingOverlay()
             // Hide keyboard
             NotificationCenter.default.post(name: UIResponder.keyboardWillHideNotification, object: nil)
         }
@@ -190,11 +193,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func insertText(_ text: String) {
-        if selection?.active == true {
-            selection?.active = false
-            removeSelectionHandles()
-            setTerminalNeedsDisplay()
-        }
+        _ = clearSelection()
         let rangeToReplace = _markedTextRange ?? _selectedTextRange
         beginTextInputEdit()
         let insertionOffset = rangeToReplace.startOffset
@@ -208,6 +207,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     open func deleteBackward() {
+        if deleteBackwardInMarkedTextIfNeeded() {
+            return
+        }
+
         let rangeToDelete = _markedTextRange ?? _selectedTextRange
         var newCursorOffset = rangeToDelete.startOffset
         if rangeToDelete.isEmpty {
@@ -261,6 +264,59 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         }
     }
 
+    private func deleteBackwardInMarkedTextIfNeeded() -> Bool {
+        guard let marked = _markedTextRange else {
+            return false
+        }
+
+        let markedStart = marked.startOffset
+        let markedEnd = marked.endOffset
+        let selectionStart = max(markedStart, min(_selectedTextRange.startOffset, markedEnd))
+        let selectionEnd = max(markedStart, min(_selectedTextRange.endOffset, markedEnd))
+
+        beginTextInputEdit()
+        defer { endTextInputEdit() }
+
+        let deletionRange: Range<String.Index>
+        let newCursorOffset: Int
+        if selectionStart != selectionEnd {
+            deletionRange = IMETextRange(
+                start: IMETextPosition(offset: selectionStart),
+                end: IMETextPosition(offset: selectionEnd)
+            ).fullRange(in: textInputStorage)
+            newCursorOffset = selectionStart
+        } else {
+            guard selectionStart > markedStart else {
+                updateComposingOverlay()
+                return true
+            }
+
+            let cursorIndex = String.Index(utf16Offset: selectionStart, in: textInputStorage)
+            let deleteStartIndex = textInputStorage.index(before: cursorIndex)
+            deletionRange = deleteStartIndex..<cursorIndex
+            newCursorOffset = deleteStartIndex.utf16Offset(in: textInputStorage)
+        }
+
+        let removedLength = deletionRange.upperBound.utf16Offset(in: textInputStorage)
+            - deletionRange.lowerBound.utf16Offset(in: textInputStorage)
+        textInputStorage.removeSubrange(deletionRange)
+
+        let newMarkedEnd = max(markedStart, markedEnd - removedLength)
+        let cursorOffset = max(markedStart, min(newCursorOffset, newMarkedEnd))
+        let cursor = IMETextPosition(offset: cursorOffset)
+        _selectedTextRange = IMETextRange(start: cursor, end: cursor)
+        if newMarkedEnd > markedStart {
+            _markedTextRange = IMETextRange(
+                start: IMETextPosition(offset: markedStart),
+                end: IMETextPosition(offset: newMarkedEnd)
+            )
+        } else {
+            _markedTextRange = nil
+        }
+        updateComposingOverlay()
+        return true
+    }
+
     private func beginTextInputEdit() {
         inputDelegate?.selectionWillChange(self)
         inputDelegate?.textWillChange(self)
@@ -306,7 +362,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         guard let terminal = terminal else { return .zero }
         return CGRect(
             x: CGFloat(terminal.buffer.x) * cellDimension.width,
-            y: CGFloat(terminal.buffer.y) * cellDimension.height,
+            y: contentRenderOffsetY + CGFloat(terminal.buffer.y) * cellDimension.height,
             width: max(2, cellDimension.width),
             height: cellDimension.height
         )
@@ -326,17 +382,27 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     private func showComposingOverlay(_ text: String) {
+        guard !text.isEmpty else {
+            hideComposingOverlay()
+            return
+        }
+
+        let fontSize = max(12, min(max(cellDimension.height - 2, 12), 20))
+        composingLabel.font = UIFont(name: "Menlo", size: fontSize)
+            ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         composingLabel.text = text
         composingLabel.sizeToFit()
         composingLabel.frame.size.width += 6
-        composingLabel.frame.size.height += 4
-        composingLabel.font = UIFont(name: "Menlo", size: min(cellDimension.height - 2, 18)) ?? UIFont.monospacedSystemFont(ofSize: min(cellDimension.height - 2, 18), weight: .regular)
+        composingLabel.frame.size.height = max(cellDimension.height, composingLabel.frame.height + 4)
 
         let cursor = cursorRect()
         var originX = cursor.origin.x
-        let originY = cursor.origin.y - composingLabel.frame.height - 2
+        var originY = cursor.origin.y
         if originX + composingLabel.frame.width > bounds.width {
             originX = bounds.width - composingLabel.frame.width - 4
+        }
+        if originY + composingLabel.frame.height > bounds.height {
+            originY = bounds.height - composingLabel.frame.height - 2
         }
         composingLabel.frame.origin = CGPoint(x: max(0, originX), y: max(0, originY))
         composingLabel.isHidden = false
@@ -344,6 +410,15 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     private func hideComposingOverlay() {
         composingLabel.isHidden = true
+    }
+
+    private func updateComposingOverlay() {
+        guard let marked = _markedTextRange, !marked.isEmpty else {
+            hideComposingOverlay()
+            return
+        }
+        let markedText = String(textInputStorage[marked.fullRange(in: textInputStorage)])
+        showComposingOverlay(markedText)
     }
 
     // MARK: - Hardware Keyboard Support
@@ -366,6 +441,12 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         for press in presses {
             guard let key = press.key else { continue }
+
+            if key.keyCode == .keyboardEscape, selection?.active == true {
+                _ = clearSelection()
+                handledSpecialKey = true
+                continue
+            }
 
             if !kittyFlags.isEmpty {
                 if key.modifierFlags.contains([.alternate, .command]),
@@ -944,7 +1025,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         guard let terminal = terminal else { return nil }
 
         let clampedX = min(max(location.x, 0), bounds.width)
-        let clampedY = min(max(location.y, 0), bounds.height)
+        let adjustedY = location.y - contentRenderOffsetY
+        let clampedY = min(max(adjustedY, 0), CGFloat(terminal.rows) * cellDimension.height)
         let col = max(0, min(Int(clampedX / cellDimension.width), terminal.cols - 1))
         let row = max(0, min(Int(clampedY / cellDimension.height), terminal.rows - 1))
 
@@ -957,18 +1039,17 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     // MARK: - Gesture handling
 
     @objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-        guard !isLongPress else {
+        let suppressTerminalClick = isLongPress
+        if suppressTerminalClick {
             isLongPress = false
-            return
         }
 
         guard let terminal = terminal else { return }
 
         stopSelectionScrollTimer()
-        if selection?.active == true {
-            selection?.active = false
-            removeSelectionHandles()
-            setTerminalNeedsDisplay()
+        let clearedSelection = clearSelection()
+        if suppressTerminalClick || clearedSelection {
+            return
         }
 
         if terminal.mouseMode != .off && allowMouseReporting {
@@ -983,8 +1064,9 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     @objc private func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
         let location = gesture.location(in: self)
-        let col = Int(location.x / cellDimension.width)
-        let row = Int(location.y / cellDimension.height)
+        guard let hit = clampedTouchPosition(at: location) else { return }
+        let col = hit.grid.col
+        let row = hit.grid.row
 
         // Double tap selects word
         guard let terminal = terminal, let selection = selection else { return }
@@ -998,16 +1080,16 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     }
 
     @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
-        isLongPress = true
-
         let location = gesture.location(in: self)
-        let col = Int(location.x / cellDimension.width)
-        let row = Int(location.y / cellDimension.height)
+        guard let hit = clampedTouchPosition(at: location) else { return }
+        let col = hit.grid.col
+        let row = hit.grid.row
 
         guard let terminal = terminal, let selection = selection else { return }
 
         switch gesture.state {
         case .began:
+            isLongPress = true
             selection.startSelection(row: row, col: col)
         case .changed:
             selection.dragExtend(row: row, col: col)
@@ -1016,6 +1098,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             autoCopySelection()
             showEditMenu(at: location)
             updateSelectionHandles()
+        case .cancelled, .failed:
+            isLongPress = false
         default:
             break
         }
@@ -1026,10 +1110,12 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
         guard let terminal = terminal, cellDimension.height > 0 else { return }
 
+        if isLongPress, selection?.active == true {
+            return
+        }
+
         if selection?.active == true {
-            selection?.active = false
-            removeSelectionHandles()
-            setTerminalNeedsDisplay()
+            _ = clearSelection()
         }
 
         if gesture.state == .began {
@@ -1064,7 +1150,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         }
 
         let displayBuffer = terminal.displayBuffer
-        let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+        let maxYDisp = max(0, displayBuffer.yBase)
         let newYDisp = max(0, min(displayBuffer.yDisp + scrollDelta, maxYDisp))
         if newYDisp != displayBuffer.yDisp {
             terminal.setViewYDisp(newYDisp)
@@ -1086,7 +1172,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             while !Task.isCancelled {
                 guard let self, let terminal = self.terminal else { return }
                 let displayBuffer = terminal.displayBuffer
-                let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+                let maxYDisp = max(0, displayBuffer.yBase)
                 let scrollAmount = direction < 0 ? -1 : 1
                 let newYDisp = max(0, min(displayBuffer.yDisp + scrollAmount, maxYDisp))
 
@@ -1159,7 +1245,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let scrollDelta = Int(-delta / cellDimension.height)
         if scrollDelta != 0 {
             terminal.userScrolling = true
-            let maxYDisp = max(0, displayBuffer.lines.count - displayBuffer.rows)
+            let maxYDisp = max(0, displayBuffer.yBase)
             let newYDisp = max(0, min(displayBuffer.yDisp + scrollDelta, maxYDisp))
             if newYDisp != displayBuffer.yDisp {
                 terminal.setViewYDisp(newYDisp)
@@ -1230,7 +1316,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
                 start: IMETextPosition(offset: rangeStartOffset + selectedLocation),
                 end: IMETextPosition(offset: rangeStartOffset + selectedLocation + selectedLength)
             )
-            showComposingOverlay(markedText)
+            updateComposingOverlay()
         } else {
             textInputStorage.removeSubrange(replacementRange.fullRange(in: textInputStorage))
             _markedTextRange = nil
@@ -1367,15 +1453,18 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
         updateDrawableMetrics()
 
-        let newCols = Int(bounds.width / cellDimension.width)
-        let newRows = Int(bounds.height / cellDimension.height)
+        let targetSize = fittingTerminalSize()
+        let newCols = Int(targetSize.width)
+        let newRows = Int(targetSize.height)
 
         if let terminal = terminal,
            (newCols != terminal.cols || newRows != terminal.rows) {
-            selection?.active = false
+            _ = clearSelection()
             terminal.resize(cols: newCols, rows: newRows)
             setTerminalNeedsDisplay()
         }
+
+        updateComposingOverlay()
 
         if window != nil {
             refreshDisplay()
@@ -1384,6 +1473,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     override open func didMoveToWindow() {
         super.didMoveToWindow()
+        _ = clearSelection()
         if window != nil, bounds.width > 1, bounds.height > 1 {
             refreshDisplay(immediately: true)
         }
@@ -1426,6 +1516,26 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         setTerminalNeedsDisplay()
     }
 
+    /// Clear the terminal selection and any iOS selection chrome.
+    @discardableResult
+    open override func clearSelection() -> Bool {
+        let cleared = super.clearSelection()
+        if cleared {
+            stopSelectionScrollTimer()
+            removeSelectionHandles()
+            dismissEditMenu()
+        }
+        return cleared
+    }
+
+    private func dismissEditMenu() {
+        if #available(iOS 16.0, *) {
+            (editMenuInteraction as? UIEditMenuInteraction)?.dismissMenu()
+        } else {
+            UIMenuController.shared.hideMenu()
+        }
+    }
+
     /// Returns the currently selected text, or empty string if no selection
     public func getSelectedText() -> String {
         guard let selection = selection, selection.active else { return "" }
@@ -1437,8 +1547,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         guard let selection = selection, selection.active else { return }
         let text = selection.getSelectedText()
         UIPasteboard.general.string = text
-        selection.active = false
-        setTerminalNeedsDisplay()
+        _ = clearSelection()
     }
 
     /// Auto-copy selected text to clipboard and notify via onTextSelected callback.
@@ -1459,8 +1568,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     /// Standard UIResponder paste action — called by the system edit menu
     @objc open override func paste(_ sender: Any?) {
         // Clear any active selection before paste
-        selection?.active = false
-        removeSelectionHandles()
+        _ = clearSelection()
 
         if let text = UIPasteboard.general.string {
             if let terminal = terminal, terminal.bracketedPasteMode {
@@ -1521,7 +1629,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let displayBuffer = terminal.displayBuffer
         let screenRow = bufferPosition.row - displayBuffer.yDisp
         let x = CGFloat(bufferPosition.col) * cellDimension.width
-        let y = CGFloat(screenRow) * cellDimension.height
+        let y = contentRenderOffsetY + CGFloat(screenRow) * cellDimension.height
         return CGPoint(x: x, y: y)
     }
 
@@ -1529,7 +1637,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     private func bufferPosition(for screenPoint: CGPoint) -> Position {
         guard let terminal = terminal else { return Position(col: 0, row: 0) }
         let col = max(0, min(Int(screenPoint.x / cellDimension.width), terminal.cols - 1))
-        let screenRow = max(0, min(Int(screenPoint.y / cellDimension.height), terminal.rows - 1))
+        let adjustedY = screenPoint.y - contentRenderOffsetY
+        let screenRow = max(0, min(Int(adjustedY / cellDimension.height), terminal.rows - 1))
         let bufferRow = screenRow + terminal.displayBuffer.yDisp
         return Position(col: col, row: bufferRow)
     }

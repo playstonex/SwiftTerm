@@ -185,6 +185,38 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Cell dimensions
     public var cellDimension: CGSize = .zero
 
+    /// Top area that behaves like a scroll view content inset.
+    ///
+    /// The Metal surface can still extend behind translucent navigation chrome,
+    /// but the terminal's live rows are sized and drawn below this inset.
+    public var contentInsetTop: CGFloat = 0 {
+        didSet {
+            let clamped = max(0, contentInsetTop)
+            if clamped != contentInsetTop {
+                contentInsetTop = clamped
+                return
+            }
+            guard contentInsetTop != oldValue else { return }
+            applyContentInsets()
+        }
+    }
+
+    /// Bottom area that behaves like a scroll view content inset.
+    ///
+    /// The Metal surface can still extend behind translucent controls, but the
+    /// terminal's live rows are sized as if this bottom inset were unavailable.
+    public var contentInsetBottom: CGFloat = 0 {
+        didSet {
+            let clamped = max(0, contentInsetBottom)
+            if clamped != contentInsetBottom {
+                contentInsetBottom = clamped
+                return
+            }
+            guard contentInsetBottom != oldValue else { return }
+            applyContentInsets()
+        }
+    }
+
     /// The selection service
     internal var selection: SelectionService?
 
@@ -215,6 +247,40 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     /// Use bright colors for bold
     public var useBrightColors: Bool = true
+
+    private var terminalLayoutSize: CGSize {
+        CGSize(
+            width: bounds.width,
+            height: max(1, bounds.height - contentInsetTop - contentInsetBottom)
+        )
+    }
+
+    public var contentRenderOffsetY: CGFloat {
+        guard let terminal, cellDimension.height > 0 else {
+            return contentInsetTop
+        }
+
+        var offset = contentInsetTop
+        if contentInsetTop > 0 {
+            let buffer = terminal.displayBuffer
+            let rowsAwayFromBottom = max(0, buffer.yBase - buffer.yDisp)
+            offset -= min(contentInsetTop, CGFloat(rowsAwayFromBottom) * cellDimension.height)
+        }
+        return max(0, offset)
+    }
+
+    private func applyContentInsets() {
+        renderer?.topContentInset = contentInsetTop
+        renderer?.bottomContentInset = contentInsetBottom
+        if bounds.width > 1 && bounds.height > 1 && cellDimension.width > 0 {
+            #if os(macOS)
+            handleResize(newSize: terminalLayoutSize)
+            #else
+            handleResize(newSize: terminalLayoutSize)
+            #endif
+        }
+        setTerminalNeedsDisplay()
+    }
 
     // MARK: - Initialization
 
@@ -289,6 +355,8 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         }
 
         self.delegate = renderer
+        renderer?.topContentInset = contentInsetTop
+        renderer?.bottomContentInset = contentInsetBottom
         renderer?.selection = selection
         updateDrawableMetrics()
 
@@ -354,9 +422,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         // and apt from drawing a UI that doesn't span the full terminal view.
         if bounds.width > 1, bounds.height > 1 {
             let cols = max(1, Int(bounds.width / snappedWidth))
-            let rows = max(1, Int(bounds.height / snappedHeight))
+            let layoutHeight = terminalLayoutSize.height
+            let rows = max(1, Int(layoutHeight / snappedHeight))
             let adjustedWidth = bounds.width / CGFloat(cols)
-            let adjustedHeight = bounds.height / CGFloat(rows)
+            let adjustedHeight = layoutHeight / CGFloat(rows)
             self.cellDimension = CGSize(width: adjustedWidth, height: adjustedHeight)
         } else {
             self.cellDimension = CGSize(width: max(1, snappedWidth), height: max(min(snappedHeight, 8192), 1))
@@ -421,6 +490,86 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         )
     }
 
+    // MARK: - ScrollView-style Scrolling
+
+    public var contentSize: CGSize {
+        guard let terminal, cellDimension.width > 0, cellDimension.height > 0 else {
+            return .zero
+        }
+        let displayBuffer = terminal.displayBuffer
+        return CGSize(
+            width: CGFloat(displayBuffer.cols) * cellDimension.width,
+            height: CGFloat(displayBuffer.lines.count) * cellDimension.height
+        )
+    }
+
+    public var contentOffset: CGPoint {
+        get {
+            guard let terminal, cellDimension.height > 0 else {
+                return .zero
+            }
+            return CGPoint(
+                x: 0,
+                y: CGFloat(terminal.displayBuffer.yDisp) * cellDimension.height
+            )
+        }
+        set {
+            setContentOffset(newValue, animated: false)
+        }
+    }
+
+    public var maximumContentOffset: CGPoint {
+        guard let terminal, cellDimension.height > 0 else {
+            return .zero
+        }
+        let displayBuffer = terminal.displayBuffer
+        return CGPoint(x: 0, y: CGFloat(max(0, displayBuffer.yBase)) * cellDimension.height)
+    }
+
+    public func setContentOffset(_ contentOffset: CGPoint, animated _: Bool) {
+        guard cellDimension.height > 0 else {
+            return
+        }
+        let targetRow = Int((max(0, contentOffset.y) / cellDimension.height).rounded(.towardZero))
+        _ = scrollTo(row: targetRow)
+    }
+
+    @discardableResult
+    public func scrollTo(row: Int) -> Bool {
+        guard let terminal else {
+            return false
+        }
+
+        let displayBuffer = terminal.displayBuffer
+        let maxYDisp = max(0, displayBuffer.yBase)
+        let newYDisp = max(0, min(row, maxYDisp))
+        terminal.userScrolling = newYDisp != maxYDisp
+
+        guard newYDisp != displayBuffer.yDisp else {
+            return false
+        }
+
+        terminal.setViewYDisp(newYDisp)
+        renderer?.markAllDirty(reason: "contentOffset")
+        renderer?.markCursorDirty()
+        terminalDelegate?.scrolled(source: self, position: Double(newYDisp) / Double(max(1, maxYDisp)))
+        setTerminalNeedsDisplay()
+        return true
+    }
+
+    /// Clear the active terminal text selection and redraw the selection layer.
+    @discardableResult
+    open func clearSelection() -> Bool {
+        guard let selection, selection.active else {
+            return false
+        }
+
+        selection.selectNone()
+        renderer?.markSelectionDirty()
+        setTerminalNeedsDisplay()
+        return true
+    }
+
     // MARK: - TerminalDelegate
 
     public func showCursor(source: Terminal) {
@@ -441,7 +590,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         renderer?.markAllDirty(reason: "scrollChanged")
         setTerminalNeedsDisplay()
         let displayBuffer = source.displayBuffer
-        terminalDelegate?.scrolled(source: self, position: Double(displayBuffer.yDisp) / Double(max(1, displayBuffer.lines.count - source.rows)))
+        terminalDelegate?.scrolled(source: self, position: Double(displayBuffer.yDisp) / Double(max(1, displayBuffer.yBase)))
     }
 
     public func rangeChanged(source: Terminal, startY: Int, endY: Int) {
@@ -566,7 +715,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
         let displayBuffer = source.displayBuffer
-        terminalDelegate?.scrolled(source: self, position: Double(displayBuffer.yDisp) / Double(max(1, displayBuffer.lines.count - source.rows)))
+        terminalDelegate?.scrolled(source: self, position: Double(displayBuffer.yDisp) / Double(max(1, displayBuffer.yBase)))
     }
 
     public func linefeed(source: Terminal) {
@@ -656,7 +805,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         }
 
         let cols = max(1, Int(bounds.width / cellDimension.width))
-        let rows = max(1, Int(bounds.height / cellDimension.height))
+        let rows = max(1, Int(terminalLayoutSize.height / cellDimension.height))
         return CGSize(width: cols, height: rows)
     }
 
@@ -827,8 +976,9 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         computeCellDimension()
         updateDrawableMetrics()
 
-        let newCols = max(1, Int(newSize.width / cellDimension.width))
-        let newRows = max(1, Int(newSize.height / cellDimension.height))
+        let layoutSize = terminalLayoutSize
+        let newCols = max(1, Int(layoutSize.width / cellDimension.width))
+        let newRows = max(1, Int(layoutSize.height / cellDimension.height))
 
         if newCols != terminal.cols || newRows != terminal.rows {
             terminal.resize(cols: newCols, rows: newRows)
@@ -839,7 +989,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Called when the view's bounds change (iOS)
     open override func layoutSubviews() {
         super.layoutSubviews()
-        handleResize(newSize: bounds.size)
+        handleResize(newSize: terminalLayoutSize)
         if window != nil {
             refreshDisplay()
         }
@@ -856,8 +1006,9 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         computeCellDimension()
         updateDrawableMetrics()
 
-        let newCols = max(1, Int(newSize.width / cellDimension.width))
-        let newRows = max(1, Int(newSize.height / cellDimension.height))
+        let layoutSize = terminalLayoutSize
+        let newCols = max(1, Int(layoutSize.width / cellDimension.width))
+        let newRows = max(1, Int(layoutSize.height / cellDimension.height))
 
         if newCols != terminal.cols || newRows != terminal.rows {
             resizeTerminalPreservingViewport(cols: newCols, rows: newRows)
@@ -879,7 +1030,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
             return
         }
 
-        let maxYDisp = max(0, newDisplayBuffer.lines.count - rows)
+        let maxYDisp = max(0, newDisplayBuffer.yBase)
         terminal.setViewYDisp(max(0, min(oldYDisp, maxYDisp)))
     }
 

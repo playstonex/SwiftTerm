@@ -187,6 +187,13 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         set { cellRenderer.selectionColor = newValue }
     }
 
+    /// Top inset used to keep live content below translucent chrome.
+    var topContentInset: CGFloat = 0
+
+    /// Bottom inset used to keep live content above translucent chrome while
+    /// still allowing manually scrolled content to pass behind it.
+    var bottomContentInset: CGFloat = 0
+
     private var frameCount: Int = 0
     private var lastFrameTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
     private var frameTimes: [CFTimeInterval] = []
@@ -541,7 +548,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     }
 
     private func rebuildCachesIfNeeded(terminal: Terminal, fontSet: FontSet, commandBuffer: MTLCommandBuffer) {
-        let rows = terminal.rows
+        let rows = renderedRowCount(for: terminal)
         let cols = terminal.cols
         let yDisp = terminal.displayBuffer.yDisp
 
@@ -603,7 +610,65 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             builder.decorationVertices.append(contentsOf: row.decorationVertices)
         }
 
+        applyContentInsetOffsets(to: builder)
         return builder
+    }
+
+    private func applyContentInsetOffsets(to builder: VertexBufferBuilder) {
+        let offset = contentRenderOffsetY()
+        guard offset > 0 else { return }
+
+        let y = Float(offset)
+        offsetVertices(&builder.backgroundVertices, y: y)
+        offsetVertices(&builder.selectionVertices, y: y)
+        offsetVertices(&builder.glyphVertices, y: y)
+        offsetVertices(&builder.decorationVertices, y: y)
+        offsetVertices(&builder.cursorVertices, y: y)
+    }
+
+    private func contentRenderOffsetY() -> CGFloat {
+        guard cellDimension.height > 0 else {
+            return topContentInset
+        }
+
+        var offset = topContentInset
+        if topContentInset > 0, let terminal {
+            let buffer = terminal.displayBuffer
+            let rowsAwayFromBottom = max(0, buffer.yBase - buffer.yDisp)
+            offset -= min(topContentInset, CGFloat(rowsAwayFromBottom) * cellDimension.height)
+        }
+        return max(0, offset)
+    }
+
+    private func renderedRowCount(for terminal: Terminal) -> Int {
+        let rows = terminal.rows
+        guard rows > 0, cellDimension.height > 0 else {
+            return rows
+        }
+
+        let buffer = terminal.displayBuffer
+        let rowsAwayFromBottom = max(0, buffer.yBase - buffer.yDisp)
+        guard rowsAwayFromBottom > 0 else {
+            return rows
+        }
+
+        let availableRows = max(0, buffer.lines.count - buffer.yDisp)
+        let maxExtraRows = max(0, availableRows - rows)
+        guard maxExtraRows > 0 else {
+            return rows
+        }
+
+        let releasedTopInset = topContentInset - contentRenderOffsetY()
+        let extraPixelDepth = max(0, releasedTopInset + bottomContentInset)
+        let requestedExtraRows = Int(ceil(extraPixelDepth / cellDimension.height))
+        let extraRows = min(rowsAwayFromBottom, maxExtraRows, max(0, requestedExtraRows))
+        return rows + extraRows
+    }
+
+    private func offsetVertices(_ vertices: inout [TerminalVertex], y: Float) {
+        for index in vertices.indices {
+            vertices[index].position.y += y
+        }
     }
 }
 
