@@ -51,6 +51,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             inputDelegate?.selectionWillChange(self)
             _selectedTextRange = range
             inputDelegate?.selectionDidChange(self)
+            updateMarkedTextRendering()
         }
     }
 
@@ -85,19 +86,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     private var editMenuInteraction: Any?
 
     private var pendingKittyKeyEvent: PendingKittyKeyEvent?
-
-    private lazy var composingLabel: UILabel = {
-        let label = UILabel()
-        label.font = UIFont(name: "Menlo", size: 14) ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-        label.textColor = .white
-        label.backgroundColor = UIColor(white: 0, alpha: 0.7)
-        label.layer.cornerRadius = 3
-        label.clipsToBounds = true
-        label.isHidden = true
-        label.sizeToFit()
-        addSubview(label)
-        return label
-    }()
 
     /// Selection auto-scroll task for dragging beyond screen edges
     private var selectionScrollTask: Task<(), Never>?
@@ -179,7 +167,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         if result {
             _ = clearSelection()
             _markedTextRange = nil
-            hideComposingOverlay()
+            updateMarkedTextRendering()
             // Hide keyboard
             NotificationCenter.default.post(name: UIResponder.keyboardWillHideNotification, object: nil)
         }
@@ -199,10 +187,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let insertionOffset = rangeToReplace.startOffset
         textInputStorage.replaceSubrange(rangeToReplace.fullRange(in: textInputStorage), with: text)
         _markedTextRange = nil
-        hideComposingOverlay()
         let insertedPosition = IMETextPosition(offset: insertionOffset + utf16Length(of: text))
         _selectedTextRange = IMETextRange(start: insertedPosition, end: insertedPosition)
         endTextInputEdit()
+        updateMarkedTextRendering()
         sendCommittedText(text)
     }
 
@@ -275,7 +263,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let selectionEnd = max(markedStart, min(_selectedTextRange.endOffset, markedEnd))
 
         beginTextInputEdit()
-        defer { endTextInputEdit() }
+        defer {
+            endTextInputEdit()
+            updateMarkedTextRendering()
+        }
 
         let deletionRange: Range<String.Index>
         let newCursorOffset: Int
@@ -287,7 +278,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             newCursorOffset = selectionStart
         } else {
             guard selectionStart > markedStart else {
-                updateComposingOverlay()
                 return true
             }
 
@@ -313,7 +303,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         } else {
             _markedTextRange = nil
         }
-        updateComposingOverlay()
         return true
     }
 
@@ -368,6 +357,26 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         )
     }
 
+    private func updateMarkedTextRendering() {
+        guard let marked = _markedTextRange, !marked.isEmpty else {
+            renderer?.setMarkedTextOverlay(nil, selectedRange: NSRange(location: 0, length: 0))
+            setTerminalNeedsDisplay()
+            return
+        }
+
+        let markedText = String(textInputStorage[marked.fullRange(in: textInputStorage)])
+        let selectedStart = max(marked.startOffset, min(_selectedTextRange.startOffset, marked.endOffset)) - marked.startOffset
+        let selectedEnd = max(marked.startOffset, min(_selectedTextRange.endOffset, marked.endOffset)) - marked.startOffset
+        let selectedLocation = min(selectedStart, selectedEnd)
+        let selectedLength = abs(selectedEnd - selectedStart)
+
+        renderer?.setMarkedTextOverlay(
+            markedText,
+            selectedRange: NSRange(location: selectedLocation, length: selectedLength)
+        )
+        setTerminalNeedsDisplay()
+    }
+
     private func sendCommittedText(_ text: String) {
         let hasPendingHardwareKey = pendingKittyKeyEvent != nil
         if !terminal.keyboardEnhancementFlags.isEmpty && hasPendingHardwareKey {
@@ -379,46 +388,6 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             return
         }
         send(text: text)
-    }
-
-    private func showComposingOverlay(_ text: String) {
-        guard !text.isEmpty else {
-            hideComposingOverlay()
-            return
-        }
-
-        let fontSize = max(12, min(max(cellDimension.height - 2, 12), 20))
-        composingLabel.font = UIFont(name: "Menlo", size: fontSize)
-            ?? UIFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        composingLabel.text = text
-        composingLabel.sizeToFit()
-        composingLabel.frame.size.width += 6
-        composingLabel.frame.size.height = max(cellDimension.height, composingLabel.frame.height + 4)
-
-        let cursor = cursorRect()
-        var originX = cursor.origin.x
-        var originY = cursor.origin.y
-        if originX + composingLabel.frame.width > bounds.width {
-            originX = bounds.width - composingLabel.frame.width - 4
-        }
-        if originY + composingLabel.frame.height > bounds.height {
-            originY = bounds.height - composingLabel.frame.height - 2
-        }
-        composingLabel.frame.origin = CGPoint(x: max(0, originX), y: max(0, originY))
-        composingLabel.isHidden = false
-    }
-
-    private func hideComposingOverlay() {
-        composingLabel.isHidden = true
-    }
-
-    private func updateComposingOverlay() {
-        guard let marked = _markedTextRange, !marked.isEmpty else {
-            hideComposingOverlay()
-            return
-        }
-        let markedText = String(textInputStorage[marked.fullRange(in: textInputStorage)])
-        showComposingOverlay(markedText)
     }
 
     // MARK: - Hardware Keyboard Support
@@ -1316,16 +1285,15 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
                 start: IMETextPosition(offset: rangeStartOffset + selectedLocation),
                 end: IMETextPosition(offset: rangeStartOffset + selectedLocation + selectedLength)
             )
-            updateComposingOverlay()
         } else {
             textInputStorage.removeSubrange(replacementRange.fullRange(in: textInputStorage))
             _markedTextRange = nil
             let cursor = IMETextPosition(offset: rangeStartOffset)
             _selectedTextRange = IMETextRange(start: cursor, end: cursor)
-            hideComposingOverlay()
         }
 
         endTextInputEdit()
+        updateMarkedTextRendering()
     }
 
     open func unmarkText() {
@@ -1340,8 +1308,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let rangeEnd = IMETextPosition(offset: marked.endOffset)
         _selectedTextRange = IMETextRange(start: rangeEnd, end: rangeEnd)
         _markedTextRange = nil
-        hideComposingOverlay()
         endTextInputEdit()
+        updateMarkedTextRendering()
     }
 
     open var beginningOfDocument: UITextPosition {
@@ -1464,7 +1432,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             setTerminalNeedsDisplay()
         }
 
-        updateComposingOverlay()
+        updateMarkedTextRendering()
 
         if window != nil {
             refreshDisplay()

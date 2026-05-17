@@ -173,10 +173,19 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     private var rowCache: [CachedRowVertices] = []
     private var cachedSelectionVertices: [TerminalVertex] = []
     private var cachedCursorVertices: [TerminalVertex] = []
+    private var cachedMarkedTextVertices = CachedRowVertices()
     private var dirtyRows = IndexSet()
     private var needsFullRebuild = true
     private var needsSelectionRebuild = true
     private var needsCursorRebuild = true
+    private var needsMarkedTextRebuild = true
+    private var markedTextOverlay: MarkedTextOverlay?
+
+    private struct MarkedTextOverlay {
+        let text: String
+        let selectedLocation: Int
+        let selectedLength: Int
+    }
 
     /// Controls cursor visibility for blinking animation
     public var cursorVisible: Bool = true
@@ -483,6 +492,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         lastRenderedRows = -1
         lastRenderedYDisp = -1
         needsFullRebuild = true
+        needsMarkedTextRebuild = true
     }
 
     /// Clear cached data
@@ -491,16 +501,19 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         rowCache.removeAll()
         cachedSelectionVertices.removeAll()
         cachedCursorVertices.removeAll()
+        cachedMarkedTextVertices = CachedRowVertices()
         lastRenderedYDisp = -1
         needsFullRebuild = true
         needsSelectionRebuild = true
         needsCursorRebuild = true
+        needsMarkedTextRebuild = true
     }
 
     func markAllDirty(reason: String = "markAllDirty") {
         needsFullRebuild = true
         needsSelectionRebuild = true
         needsCursorRebuild = true
+        needsMarkedTextRebuild = true
     }
 
     func markDirtyViewportRows(startY: Int, endY: Int, terminal: Terminal) {
@@ -519,6 +532,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         guard !validRows.isEmpty else { return }
         dirtyRows.formUnion(validRows)
         needsCursorRebuild = true
+        needsMarkedTextRebuild = true
     }
 
     func markDirtyBufferRows(startY: Int, endY: Int, terminal: Terminal) {
@@ -531,6 +545,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     private func markDirtyRows(_ range: ClosedRange<Int>) {
         dirtyRows.insert(integersIn: range)
         needsCursorRebuild = true
+        needsMarkedTextRebuild = true
     }
 
     func markSelectionDirty() {
@@ -539,11 +554,34 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
 
     func markCursorDirty() {
         needsCursorRebuild = true
+        needsMarkedTextRebuild = true
     }
 
     /// Set cursor visibility for blinking animation
     public func setCursorVisible(_ visible: Bool) {
         cursorVisible = visible
+        needsCursorRebuild = true
+        needsMarkedTextRebuild = true
+    }
+
+    func setMarkedTextOverlay(_ text: String?, selectedRange: NSRange) {
+        let newOverlay: MarkedTextOverlay?
+        if let text, !text.isEmpty {
+            let textLength = (text as NSString).length
+            let location = max(0, min(selectedRange.location, textLength))
+            let length = max(0, min(selectedRange.length, textLength - location))
+            newOverlay = MarkedTextOverlay(text: text, selectedLocation: location, selectedLength: length)
+        } else {
+            newOverlay = nil
+        }
+
+        let isSameOverlay = markedTextOverlay?.text == newOverlay?.text
+            && markedTextOverlay?.selectedLocation == newOverlay?.selectedLocation
+            && markedTextOverlay?.selectedLength == newOverlay?.selectedLength
+        guard !isSameOverlay else { return }
+
+        markedTextOverlay = newOverlay
+        needsMarkedTextRebuild = true
         needsCursorRebuild = true
     }
 
@@ -561,6 +599,7 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             lastRenderedYDisp = yDisp
             needsSelectionRebuild = true
             needsCursorRebuild = true
+            needsMarkedTextRebuild = true
         }
 
         cellRenderer.prepareFrame(terminal: terminal)
@@ -587,15 +626,36 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             needsSelectionRebuild = false
         }
         if needsCursorRebuild {
-            cachedCursorVertices = cellRenderer.buildCursorVertices(
-                terminal: terminal,
-                cellDimension: cellDimension
-            )
-            // Apply cursor visibility for blinking animation
-            if !cursorVisible {
+            if markedTextOverlay != nil {
                 cachedCursorVertices = []
+            } else {
+                cachedCursorVertices = cellRenderer.buildCursorVertices(
+                    terminal: terminal,
+                    cellDimension: cellDimension
+                )
+                // Apply cursor visibility for blinking animation
+                if !cursorVisible {
+                    cachedCursorVertices = []
+                }
             }
             needsCursorRebuild = false
+        }
+
+        if needsMarkedTextRebuild {
+            if let markedTextOverlay {
+                cachedMarkedTextVertices = cellRenderer.buildMarkedTextVertices(
+                    terminal: terminal,
+                    fontSet: fontSet,
+                    cellDimension: cellDimension,
+                    text: markedTextOverlay.text,
+                    selectedLocation: markedTextOverlay.selectedLocation,
+                    selectedLength: markedTextOverlay.selectedLength,
+                    commandBuffer: commandBuffer
+                )
+            } else {
+                cachedMarkedTextVertices = CachedRowVertices()
+            }
+            needsMarkedTextRebuild = false
         }
     }
 
@@ -609,6 +669,8 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             builder.glyphVertices.append(contentsOf: row.glyphVertices)
             builder.decorationVertices.append(contentsOf: row.decorationVertices)
         }
+        builder.glyphVertices.append(contentsOf: cachedMarkedTextVertices.glyphVertices)
+        builder.decorationVertices.append(contentsOf: cachedMarkedTextVertices.decorationVertices)
 
         applyContentInsetOffsets(to: builder)
         return builder

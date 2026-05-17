@@ -595,6 +595,141 @@ class TerminalCellRenderer {
         return builder.cursorVertices
     }
 
+    internal func buildMarkedTextVertices(
+        terminal: Terminal,
+        fontSet: FontSet,
+        cellDimension: CGSize,
+        text: String,
+        selectedLocation: Int,
+        selectedLength: Int,
+        commandBuffer: MTLCommandBuffer? = nil
+    ) -> CachedRowVertices {
+        guard !text.isEmpty else { return CachedRowVertices() }
+        guard cellDimension.width > 0, cellDimension.height > 0 else { return CachedRowVertices() }
+
+        let buffer = terminal.displayBuffer
+        let cols = terminal.cols
+        let rows = terminal.rows
+        let cursorX = buffer.x
+        let cursorY = buffer.y
+        guard cursorY >= 0 && cursorY < rows && cursorX >= 0 && cursorX < cols else {
+            return CachedRowVertices()
+        }
+
+        let cellWidth = Float(cellDimension.width)
+        let cellHeight = Float(cellDimension.height)
+        let originX = Float(cursorX) * cellWidth
+        let originY = Float(cursorY) * cellHeight
+        let foregroundColor = terminal.foregroundColor.toSIMD4()
+        let backgroundColor = terminal.backgroundColor.toSIMD4()
+        let font = fontSet.normal
+
+        var cached = CachedRowVertices()
+        var columnOffset = 0
+
+        for character in text {
+            let characterWidth = markedTextColumnWidth(of: character)
+            guard characterWidth > 0 else { continue }
+            guard cursorX + columnOffset < cols else { break }
+
+            if let cachedGlyph = glyphCache.getOrCreateGlyph(character: character, font: font, commandBuffer: commandBuffer) {
+                let cellX = originX + Float(columnOffset) * cellWidth
+                let glyphX = pixelAlign(cellX + cachedGlyph.bearing.x)
+                let glyphY = pixelAlign(originY + cachedGlyph.bearing.y)
+                let glyphWidth = max(1 / max(Float(scale), 1), pixelAlign(Float(cachedGlyph.size.x)))
+                let glyphHeight = max(1 / max(Float(scale), 1), pixelAlign(Float(cachedGlyph.size.y)))
+
+                appendGlyphQuad(
+                    to: &cached.glyphVertices,
+                    x: glyphX,
+                    y: glyphY,
+                    width: glyphWidth,
+                    height: glyphHeight,
+                    uvRect: cachedGlyph.uvRect,
+                    fgColor: foregroundColor,
+                    bgColor: backgroundColor
+                )
+            }
+
+            columnOffset += characterWidth
+        }
+
+        let visibleColumns = min(columnOffset, max(0, cols - cursorX))
+        guard visibleColumns > 0 else { return cached }
+
+        appendQuad(
+            to: &cached.decorationVertices,
+            x: originX,
+            y: originY + cellHeight - 2.0,
+            width: Float(visibleColumns) * cellWidth,
+            height: 1.0,
+            color: foregroundColor
+        )
+
+        let selectedStartColumn = min(max(0, markedTextColumnOffset(in: text, upToUTF16Offset: selectedLocation)), visibleColumns)
+        let selectedEndColumn = min(
+            max(selectedStartColumn, markedTextColumnOffset(in: text, upToUTF16Offset: selectedLocation + selectedLength)),
+            visibleColumns
+        )
+
+        if selectedEndColumn > selectedStartColumn {
+            appendQuad(
+                to: &cached.decorationVertices,
+                x: originX + Float(selectedStartColumn) * cellWidth,
+                y: originY + cellHeight - 4.0,
+                width: Float(selectedEndColumn - selectedStartColumn) * cellWidth,
+                height: 2.0,
+                color: foregroundColor
+            )
+        } else {
+            let caretWidth = max(1 / max(Float(scale), 1), 1.0)
+            let maxCaretX = Float(cols) * cellWidth - caretWidth
+            let caretX = min(originX + Float(selectedStartColumn) * cellWidth, maxCaretX)
+            appendQuad(
+                to: &cached.decorationVertices,
+                x: caretX,
+                y: originY + cellHeight * 0.15,
+                width: caretWidth,
+                height: cellHeight * 0.7,
+                color: foregroundColor
+            )
+        }
+
+        return cached
+    }
+
+    private func markedTextColumnOffset(in text: String, upToUTF16Offset targetOffset: Int) -> Int {
+        guard targetOffset > 0 else { return 0 }
+
+        var columns = 0
+        var utf16Offset = 0
+        for character in text {
+            let characterLength = (String(character) as NSString).length
+            guard utf16Offset + characterLength <= targetOffset else {
+                break
+            }
+            columns += markedTextColumnWidth(of: character)
+            utf16Offset += characterLength
+        }
+        return columns
+    }
+
+    private func markedTextColumnWidth(of character: Character) -> Int {
+        if character.unicodeScalars.count == 1, let scalar = character.unicodeScalars.first {
+            return max(1, UnicodeUtil.columnWidth(rune: scalar))
+        }
+
+        var width = 0
+        for scalar in character.unicodeScalars {
+            let scalarWidth = UnicodeUtil.columnWidth(rune: scalar)
+            if scalarWidth < 0 {
+                continue
+            }
+            width = max(width, scalarWidth)
+        }
+        return max(1, width)
+    }
+
     private func appendQuad(
         to vertices: inout [TerminalVertex],
         x: Float,
