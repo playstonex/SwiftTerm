@@ -256,6 +256,16 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         guard let marked = _markedTextRange else {
             return false
         }
+        guard !marked.isEmpty else {
+            // Empty marked ranges are visually cleared IME state; let Backspace reach the terminal.
+            beginTextInputEdit()
+            let cursor = IMETextPosition(offset: marked.startOffset)
+            _markedTextRange = nil
+            _selectedTextRange = IMETextRange(start: cursor, end: cursor)
+            endTextInputEdit()
+            updateMarkedTextRendering()
+            return false
+        }
 
         let markedStart = marked.startOffset
         let markedEnd = marked.endOffset
@@ -1272,7 +1282,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let rangeStartOffset = replacementRange.startOffset
         beginTextInputEdit()
 
-        if let markedText {
+        if let markedText, !markedText.isEmpty {
             textInputStorage.replaceSubrange(replacementRange.fullRange(in: textInputStorage), with: markedText)
             let markedLength = utf16Length(of: markedText)
             let selectedLocation = max(0, min(selectedRange.location, markedLength))
