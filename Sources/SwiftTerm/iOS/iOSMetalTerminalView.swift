@@ -312,6 +312,7 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             )
         } else {
             _markedTextRange = nil
+            return false
         }
         return true
     }
