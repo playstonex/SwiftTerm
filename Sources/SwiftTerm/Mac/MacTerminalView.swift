@@ -615,8 +615,9 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
     func startTracking ()
     {
         if tracking == nil {
-            tracking = NSTrackingArea (rect: frame, options: [.activeAlways, .mouseMoved, .mouseEnteredAndExited], owner: self, userInfo: [:])
-            addTrackingArea(tracking!)
+            let area = NSTrackingArea (rect: frame, options: [.activeAlways, .mouseMoved, .mouseEnteredAndExited], owner: self, userInfo: [:])
+            tracking = area
+            addTrackingArea(area)
         }
     }
     
@@ -642,8 +643,8 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
     func deregisterTrackingInterest ()
     {
         if !shouldTrackMouse() {
-            if tracking != nil {
-                removeTrackingArea(tracking!)
+            if let area = tracking {
+                removeTrackingArea(area)
                 tracking = nil
             }
         }
@@ -1493,7 +1494,8 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
     open func firstRect(forCharacterRange range: NSRange, actualRange: NSRangePointer?) -> NSRect {
         actualRange?.pointee = range
         
-        if let r = window?.convertToScreen(convert(caretView!.frame, to: nil)) {
+        guard let caret = caretView else { return .zero }
+        if let r = window?.convertToScreen(convert(caret.frame, to: nil)) {
             return r
         }
         
@@ -1720,15 +1722,16 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
         
         // Schedule selection creation after text is processed
         if let text = text, !text.isEmpty {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                guard let self = self,
+            let startPos = startCursorPos
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                guard let self,
                       let terminal = self.terminal,
-                      let (startX, startY) = startCursorPos else { return }
+                      let (startX, startY) = startPos else { return }
                 
                 let endX = terminal.buffer.x
                 let endY = terminal.buffer.y
                 
-                // Create selection for the pasted text region
                 self.selection?.setSelection(
                     start: Position(col: startX, row: startY),
                     end: Position(col: endX, row: endY)
@@ -2131,7 +2134,7 @@ open class TerminalView: NSView, NSTextInputClient, NSUserInterfaceValidations, 
         if Thread.isMainThread {
             handleProgressReport(report)
         } else {
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.handleProgressReport(report)
             }
         }
@@ -2277,6 +2280,25 @@ extension TerminalViewDelegate {
     }
     
     public func iTermContent (source: TerminalView, content: ArraySlice<UInt8>) {
+    }
+}
+
+// MARK: - NSAccessibility Overrides
+extension TerminalView {
+    override public var accessibilityRole: NSAccessibility.Role? {
+        accessibility.accessibilityRole()
+    }
+
+    override public var accessibilityLabel: String? {
+        accessibility.accessibilityLabel()
+    }
+
+    override public var accessibilityValue: Any? {
+        accessibility.accessibilityValue(terminal: terminal)
+    }
+
+    override public var accessibilitySelectedText: String? {
+        accessibility.accessibilitySelectedText(selection: selection)
     }
 }
 #endif

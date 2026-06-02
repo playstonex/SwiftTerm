@@ -1036,8 +1036,10 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             let location = gesture.location(in: self)
             guard let hit = clampedTouchPosition(at: location) else { return }
             sendTouchToTerminal(button: 0, col: hit.grid.col, row: hit.grid.row, pressed: true, motion: false, pixels: hit.pixels)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                self.sendTouchToTerminal(button: 0, col: hit.grid.col, row: hit.grid.row, pressed: false, motion: false, pixels: hit.pixels)
+            let gridCol = hit.grid.col, gridRow = hit.grid.row, px = hit.pixels
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                self?.sendTouchToTerminal(button: 0, col: gridCol, row: gridRow, pressed: false, motion: false, pixels: px)
             }
         }
     }
@@ -1561,7 +1563,9 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         // The echoed text arrives asynchronously from the remote shell.
         // Schedule repeated full redraws to ensure it renders correctly.
         for delay in [0.05, 0.15, 0.4] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            let nanos = UInt64(delay * 1_000_000_000)
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: nanos)
                 self?.renderer?.markAllDirty(reason: "pasteEcho")
                 self?.refreshDisplay(immediately: true)
             }
@@ -1662,10 +1666,11 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
         let startPoint = screenPoint(for: normalStart)
         let endPoint = screenPoint(for: normalEnd)
 
-        let handleSize = startHandle!.intrinsicContentSize
+        guard let startH = startHandle else { return }
+        let handleSize = startH.intrinsicContentSize
 
         // Start handle: positioned at top-left of start cell, circle at bottom
-        startHandle?.frame = CGRect(
+        startH.frame = CGRect(
             x: startPoint.x - handleSize.width / 2,
             y: startPoint.y - handleSize.height,
             width: handleSize.width,
@@ -1799,6 +1804,34 @@ private class IMETextSelectionRect: UITextSelectionRect {
         self._containsStart = range.startOffset == 0
         self._containsEnd = range.endOffset == (string as NSString).length
         super.init()
+    }
+}
+
+// MARK: - UIAccessibility
+extension iOSMetalTerminalView {
+    override open var isAccessibilityElement: Bool {
+        get { true }
+        set { }
+    }
+
+    override open var accessibilityLabel: String? {
+        get { accessibility.accessibilityLabel() }
+        set { }
+    }
+
+    override open var accessibilityValue: String? {
+        get { accessibility.accessibilityValue(terminal: terminal) }
+        set { }
+    }
+
+    override open var accessibilityTraits: UIAccessibilityTraits {
+        get { [.staticText, .keyboardKey] }
+        set { }
+    }
+
+    override open var accessibilitySelectedText: String? {
+        guard let selection else { return nil }
+        return accessibility.accessibilitySelectedText(selection: selection)
     }
 }
 #endif

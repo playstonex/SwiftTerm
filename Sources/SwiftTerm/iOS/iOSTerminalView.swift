@@ -393,17 +393,17 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
             }
             queuePendingDisplay()
             
-            // Schedule selection creation after text is processed
             let textLen = text.count
             if textLen > 0 {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                    guard let self = self else { return }
+                let startPos = startCursorPos
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    guard let self else { return }
                     let endX = self.terminal.buffer.x
                     let endY = self.terminal.buffer.y
                     
-                    // Create selection for the pasted text region
                     self.selection.setSelection(
-                        start: Position(col: startCursorPos.0, row: startCursorPos.1),
+                        start: Position(col: startPos.0, row: startPos.1),
                         end: Position(col: endX, row: endY)
                     )
                     self.selection.active = true
@@ -431,10 +431,8 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
             selection.selectWordOrExpression(at: Position (col: loc.col, row: loc.row), in: terminal.displayBuffer)
             selection.selectionMode = .character
             enableSelectionPanGesture()
-            DispatchQueue.main.async {
-                self.showContextMenu(forRegion:  self.makeContextMenuRegionForSelection(), pos: loc)
-            }
-            
+            // Already on main thread via @objc UIKit responder
+            showContextMenu(forRegion: makeContextMenuRegionForSelection(), pos: loc)
         }
         lastLongSelect = nil
     }
@@ -710,19 +708,23 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
             let w = 80
             let h = 80
             let f = frame
-            directionView = UIView (
+            let dv = UIView (
                 frame: CGRect (x: (Int (f.width)-w)/2,
                                y: (Int(f.height)-w)/2,
                                width: w,
                                height: h))
-            addSubview(directionView!)
+            directionView = dv
+            addSubview(dv)
         }
-        let dv = directionView!
+        guard let dv = directionView else { return UIView() }
         dv.backgroundColor = UIColor.gray
         dv.alpha = 0.5
         
         directionCount += 1
-        DispatchQueue.main.asyncAfter (deadline: .now() + timeout) {
+        let timeoutNanos = UInt64(timeout * 1_000_000_000)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: timeoutNanos)
+            guard let self else { return }
             self.directionCount -= 1
             if self.directionCount == 0 {
                 if let dv = self.directionView {
@@ -2413,7 +2415,7 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
         if Thread.isMainThread {
             handleProgressReport(report)
         } else {
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.handleProgressReport(report)
             }
         }
@@ -2424,13 +2426,14 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
             return
         }
         pendingSelectionChanged = true
-        DispatchQueue.main.async {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
             self.pendingSelectionChanged = false
             
-            self.inputDelegate?.selectionWillChange (self)
+            self.inputDelegate?.selectionWillChange(self)
             self.inputDelegate?.selectionDidChange(self)
  
-            self.setNeedsDisplay (self.bounds)
+            self.setNeedsDisplay(self.bounds)
             
             if !self.selection.active {
                 UIMenuController.shared.hideMenu()
@@ -2460,13 +2463,13 @@ open class TerminalView: UIScrollView, UITextInputTraits, UIKeyInput, UIScrollVi
     }
     
     open func setTerminalTitle(source: Terminal, title: String) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalDelegate?.setTerminalTitle(source: self, title: title)
         }
     }
   
     open func sizeChanged(source: Terminal) {
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.terminalDelegate?.sizeChanged(source: self, newCols: source.cols, newRows: source.rows)
             self.updateScroller()
         }
@@ -2531,5 +2534,32 @@ extension TerminalViewDelegate {
     }
 }
 #endif
+
+// MARK: - UIAccessibility Overrides
+extension TerminalView {
+    override open var isAccessibilityElement: Bool {
+        get { true }
+        set { }
+    }
+
+    override open var accessibilityLabel: String? {
+        get { accessibility.accessibilityLabel() }
+        set { }
+    }
+
+    override open var accessibilityValue: String? {
+        get { accessibility.accessibilityValue(terminal: terminal) }
+        set { }
+    }
+
+    override open var accessibilityTraits: UIAccessibilityTraits {
+        get { [.staticText, .keyboardKey] }
+        set { }
+    }
+
+    override open var accessibilitySelectedText: String? {
+        accessibility.accessibilitySelectedText(selection: selection)
+    }
+}
 
 #endif

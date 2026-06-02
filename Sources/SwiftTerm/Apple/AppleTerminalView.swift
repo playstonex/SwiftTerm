@@ -586,11 +586,15 @@ extension TerminalView {
                 continue
             }
 
-            if builder == nil || builder!.columnWidth != width {
-                flushPending()
-                if let finished = builder?.buildIfNeeded() {
-                    segments.append(finished)
+            if let b = builder {
+                if b.columnWidth != width {
+                    flushPending()
+                    if let finished = b.buildIfNeeded() {
+                        segments.append(finished)
+                    }
+                    builder = ViewLineSegmentBuilder(column: col, columnWidth: width)
                 }
+            } else {
                 builder = ViewLineSegmentBuilder(column: col, columnWidth: width)
             }
 

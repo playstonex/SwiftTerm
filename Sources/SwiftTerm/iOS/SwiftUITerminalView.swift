@@ -28,7 +28,9 @@ private struct TerminalViewContainer: UIViewRepresentable {
     func makeUIView(context: Context) -> SwiftUITerminalHostView {
         let view = SwiftUITerminalHostView(frame: .zero)
         view.terminalDelegate = context.coordinator
-        DispatchQueue.main.async {
+        // Already on main thread in makeUIView; dispatch to next runloop
+        // so the view hierarchy is fully constructed before feeding data.
+        Task { @MainActor in
             context.coordinator.feedOnceIfNeeded(view, startupFeed: startupFeed)
         }
         return view

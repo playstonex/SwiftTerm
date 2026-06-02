@@ -682,11 +682,31 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         // The echoed text arrives asynchronously from the remote shell.
         // Schedule repeated full redraws to ensure it renders correctly.
         for delay in [0.05, 0.15, 0.4] {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            let nanos = UInt64(delay * 1_000_000_000)
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: nanos)
                 self?.renderer?.markAllDirty(reason: "pasteEcho")
                 self?.refreshDisplay(immediately: true)
             }
         }
+    }
+
+    // MARK: - NSAccessibility Overrides
+    override public var accessibilityRole: NSAccessibility.Role? {
+        accessibility.accessibilityRole()
+    }
+
+    override public var accessibilityLabel: String? {
+        accessibility.accessibilityLabel()
+    }
+
+    override public var accessibilityValue: Any? {
+        accessibility.accessibilityValue(terminal: terminal)
+    }
+
+    override public var accessibilitySelectedText: String? {
+        guard let selection else { return nil }
+        return accessibility.accessibilitySelectedText(selection: selection)
     }
 }
 #endif
