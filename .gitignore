@@ -119,3 +119,4 @@ xcuserdata
 xcuserdata/
 yarn-debug.log*
 yarn-error.log*
+.omo/
