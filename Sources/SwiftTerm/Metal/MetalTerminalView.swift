@@ -966,8 +966,17 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     /// Handle view resize by updating terminal dimensions
     private func handleResize(newSize: NSSize) {
-        guard cellDimension.width > 0 && cellDimension.height > 0 else { return }
         guard newSize.width > 1 && newSize.height > 1 else { return }
+
+        // If cellDimension is still zero (font not yet set, or computeCellDimension ran
+        // before bounds were valid), try to compute it now. Without this, the initial
+        // layout pass — which often fires before setupFont completes — returns early and
+        // the terminal stays at the default 80x24 while the view is already larger,
+        // producing a render area that doesn't match the view bounds.
+        if cellDimension.width <= 0 || cellDimension.height <= 0 {
+            computeCellDimension()
+        }
+        guard cellDimension.width > 0, cellDimension.height > 0 else { return }
 
         // Recalculate cell dimensions so the adjustment (which stretches cells
         // to exactly fill the view) matches the *new* bounds instead of the old
@@ -997,7 +1006,17 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     /// Handle view resize by updating terminal dimensions
     private func handleResize(newSize: CGSize) {
-        guard cellDimension.width > 0 && cellDimension.height > 0 else { return }
+        guard newSize.width > 1, newSize.height > 1 else { return }
+
+        // If cellDimension is still zero (font not yet set, or computeCellDimension ran
+        // before bounds were valid), try to compute it now. Without this, the initial
+        // layout pass — which often fires before setupFont completes — returns early and
+        // the terminal stays at the default 80x24 while the view is already larger,
+        // producing a render area that doesn't match the view bounds.
+        if cellDimension.width <= 0 || cellDimension.height <= 0 {
+            computeCellDimension()
+        }
+        guard cellDimension.width > 0, cellDimension.height > 0 else { return }
 
         // Recalculate cell dimensions so the adjustment (which stretches cells
         // to exactly fill the view) matches the *new* bounds instead of the old
