@@ -2557,7 +2557,7 @@ extension TerminalView {
         set { }
     }
 
-    @available(iOS, introduced: 0, deprecated: 26, message: "No longer overrides a superclass property")
+    @available(iOS, introduced: 15.0, deprecated: 26.0, message: "No longer overrides a superclass property")
     open var accessibilitySelectedText: String? {
         accessibility.accessibilitySelectedText(selection: selection)
     }

@@ -126,11 +126,16 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         actualRange?.pointee = hasMarkedText() ? markedRange() : range
         let buffer = terminal.buffer
         let x = buffer.x
-        let y = buffer.y
+        // The cursor is off-screen while the viewport is scrolled back;
+        // anchor the IME panel to the last visible row in that case.
+        let screenRow = min(
+            max(0, TerminalCellRenderer.cursorScreenRow(buffer: buffer)),
+            max(0, terminal.rows - 1)
+        )
 
         let cellRect = NSRect(
             x: CGFloat(x) * cellDimension.width,
-            y: frame.height - CGFloat(y + 1) * cellDimension.height,
+            y: frame.height - CGFloat(screenRow + 1) * cellDimension.height,
             width: cellDimension.width,
             height: cellDimension.height
         )
@@ -622,32 +627,8 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         }
     }
 
-    override open func setFrameSize(_ newSize: NSSize) {
-        super.setFrameSize(newSize)
-        handleResize(newSize: newSize)
-    }
-
-    override open func setBoundsSize(_ newSize: NSSize) {
-        super.setBoundsSize(newSize)
-        handleResize(newSize: newSize)
-    }
-
-    private func handleResize(newSize: NSSize) {
-        guard cellDimension != .zero else { return }
-        guard newSize.width > 1, newSize.height > 1 else { return }
-
-        updateDrawableMetrics()
-
-        let newCols = Int(newSize.width / cellDimension.width)
-        let newRows = Int(newSize.height / cellDimension.height)
-
-        if let terminal = terminal,
-           (newCols != terminal.cols || newRows != terminal.rows) {
-            selection?.active = false
-            terminal.resize(cols: newCols, rows: newRows)
-            setTerminalNeedsDisplay()
-        }
-    }
+    // Layout and resize are handled entirely by MetalTerminalView's
+    // handleLayoutChange(); this subclass must not duplicate that logic.
 
     // MARK: - Selection
 
@@ -677,34 +658,29 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         }
         send(text: text)
         if let terminal = terminal, terminal.bracketedPasteMode {
-            send(data: EscapeSequences.bracketedPasteEnd[0...])
+            send(data: EscapeSequences.bracketedPasteEnd[...])
         }
-        // The echoed text arrives asynchronously from the remote shell.
-        // Schedule repeated full redraws to ensure it renders correctly.
-        for delay in [0.05, 0.15, 0.4] {
-            let nanos = UInt64(delay * 1_000_000_000)
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: nanos)
-                self?.renderer?.markAllDirty(reason: "pasteEcho")
-                self?.refreshDisplay(immediately: true)
-            }
-        }
+        // No deferred redraws needed: feeding routes through
+        // processPendingUpdates(), which marks the touched rows dirty.
     }
 
     // MARK: - NSAccessibility Overrides
-    override public var accessibilityRole: NSAccessibility.Role? {
+    //
+    // On newer SDKs these are NSAccessibility protocol members rather than
+    // overridable NSView properties, hence no `override` keyword.
+    public var accessibilityRole: NSAccessibility.Role? {
         accessibility.accessibilityRole()
     }
 
-    override public var accessibilityLabel: String? {
+    public var accessibilityLabel: String? {
         accessibility.accessibilityLabel()
     }
 
-    override public var accessibilityValue: Any? {
+    public var accessibilityValue: Any? {
         accessibility.accessibilityValue(terminal: terminal)
     }
 
-    override public var accessibilitySelectedText: String? {
+    public var accessibilitySelectedText: String? {
         guard let selection else { return nil }
         return accessibility.accessibilitySelectedText(selection: selection)
     }

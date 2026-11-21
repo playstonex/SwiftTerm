@@ -2284,20 +2284,23 @@ extension TerminalViewDelegate {
 }
 
 // MARK: - NSAccessibility Overrides
+//
+// On newer SDKs these are NSAccessibility protocol members rather than
+// overridable NSView properties, hence no `override` keyword.
 extension TerminalView {
-    override public var accessibilityRole: NSAccessibility.Role? {
+    public var accessibilityRole: NSAccessibility.Role? {
         accessibility.accessibilityRole()
     }
 
-    override public var accessibilityLabel: String? {
+    public var accessibilityLabel: String? {
         accessibility.accessibilityLabel()
     }
 
-    override public var accessibilityValue: Any? {
+    public var accessibilityValue: Any? {
         accessibility.accessibilityValue(terminal: terminal)
     }
 
-    override public var accessibilitySelectedText: String? {
+    public var accessibilitySelectedText: String? {
         accessibility.accessibilitySelectedText(selection: selection)
     }
 }

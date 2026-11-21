@@ -14,15 +14,20 @@ import simd
 
 /// Renders terminal content using Metal
 public class TerminalRenderer: NSObject, MTKViewDelegate {
-    /// Metal shader source code (compiled at runtime for Swift Package Manager compatibility)
-    private static let shaderSource = """
+    /// Fallback shader source, kept in sync with Shaders.metal. Used when the
+    /// toolchain did not embed a compiled default library for the package.
+    private static let fallbackShaderSource = """
         #include <metal_stdlib>
         #include <simd/simd.h>
 
         using namespace metal;
 
-        struct VertexUniforms {
-            float4x4 projectionMatrix;
+        struct TerminalVertex {
+            float2 position;
+            float2 uv;
+            float4 fgColor;
+            float4 bgColor;
+            float flags;
         };
 
         struct VertexOut {
@@ -33,15 +38,11 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             float flags;
         };
 
-        struct TerminalVertex {
-            float2 position;
-            float2 uv;
-            float4 fgColor;
-            float4 bgColor;
-            float flags;
+        struct VertexUniforms {
+            float4x4 projectionMatrix;
         };
 
-        vertex VertexOut background_vertex(
+        vertex VertexOut terminal_vertex(
             device const TerminalVertex* vertices [[buffer(0)]],
             constant VertexUniforms& uniforms [[buffer(1)]],
             uint vid [[vertex_id]])
@@ -59,70 +60,31 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             return in.bgColor;
         }
 
-        float3 srgb_to_linear(float3 srgb) {
-            float3 linear;
-            for (int i = 0; i < 3; i++) {
-                if (srgb[i] <= 0.04045) {
-                    linear[i] = srgb[i] / 12.92;
-                } else {
-                    linear[i] = pow((srgb[i] + 0.055) / 1.055, 2.4);
-                }
-            }
-            return linear;
-        }
-
-        float3 linear_to_srgb(float3 linear) {
-            float3 srgb;
-            for (int i = 0; i < 3; i++) {
-                float rgb = max(1.055 * linear[i] - 0.055, 0.0);
-                srgb[i] = min(rgb, 1.0);
-            }
-            return srgb;
-        }
-
-        vertex VertexOut glyph_vertex(
-            device const TerminalVertex* vertices [[buffer(0)]],
-            constant VertexUniforms& uniforms [[buffer(1)]],
-            uint vid [[vertex_id]])
-        {
-            VertexOut out;
-            out.position = uniforms.projectionMatrix * float4(vertices[vid].position, 0.0, 1.0);
-            out.uv = vertices[vid].uv;
-            out.fgColor = vertices[vid].fgColor;
-            out.bgColor = vertices[vid].bgColor;
-            out.flags = vertices[vid].flags;
-            return out;
-        }
-
         fragment float4 glyph_fragment(
             VertexOut in [[stage_in]],
             texture2d<float> atlas [[texture(0)]],
             sampler atlasSampler [[sampler(0)]])
         {
             float4 glyphColor = atlas.sample(atlasSampler, in.uv);
-            float alpha = glyphColor.a;
-            // Output true text color with alpha so Metal hardware blending blends it over the background and selection
-            return float4(in.fgColor.rgb, alpha * in.fgColor.a);
+            return float4(in.fgColor.rgb, glyphColor.a * in.fgColor.a);
         }
 
-        vertex VertexOut decoration_vertex(
-            device const TerminalVertex* vertices [[buffer(0)]],
-            constant VertexUniforms& uniforms [[buffer(1)]],
-            uint vid [[vertex_id]])
+        fragment float4 color_glyph_fragment(
+            VertexOut in [[stage_in]],
+            texture2d<float> atlas [[texture(0)]],
+            sampler atlasSampler [[sampler(0)]])
         {
-            VertexOut out;
-            out.position = uniforms.projectionMatrix * float4(vertices[vid].position, 0.0, 1.0);
-            out.uv = vertices[vid].uv;
-            out.fgColor = vertices[vid].fgColor;
-            out.bgColor = vertices[vid].bgColor;
-            out.flags = vertices[vid].flags;
-            return out;
+            float4 glyphColor = atlas.sample(atlasSampler, in.uv);
+            float alpha = glyphColor.a;
+            if (alpha <= 0.0001) {
+                return float4(0.0, 0.0, 0.0, 0.0);
+            }
+            return float4(glyphColor.rgb / alpha, alpha);
         }
 
         fragment float4 decoration_fragment(VertexOut in [[stage_in]]) {
             return in.fgColor;
         }
-
         """
 
     /// The Metal device
@@ -131,9 +93,10 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     /// The command queue
     public let commandQueue: MTLCommandQueue
 
-    /// Pipeline states for different render passes
+    /// Pipeline states for the render passes
     private var backgroundPipelineState: MTLRenderPipelineState?
     private var glyphPipelineState: MTLRenderPipelineState?
+    private var colorGlyphPipelineState: MTLRenderPipelineState?
     private var decorationPipelineState: MTLRenderPipelineState?
 
     /// Sampler state for texture sampling
@@ -142,11 +105,11 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     /// The cell renderer
     let cellRenderer: TerminalCellRenderer
 
-    /// Vertex buffers (double-buffered)
-    private var vertexBuffers: [MTLBuffer] = []
-
-    /// Current vertex buffer index
-    private var currentVertexBufferIndex: Int = 0
+    /// Round-robin upload arenas replacing per-frame MTLBuffer allocation.
+    /// Three slots keep at least three frames of GPU reads in flight safe.
+    private var arenas: [MTLBuffer] = []
+    private var arenaSlot = 0
+    private var arenaWriteOffset = 0
 
     /// Projection matrix
     private var projectionMatrix: matrix_float4x4 = matrix_identity_float4x4
@@ -154,8 +117,12 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     /// The terminal being rendered
     public weak var terminal: Terminal?
 
+    /// Owning view, used to schedule redraws (glyph-cache resets, blink).
+    weak var metalView: MetalTerminalView?
+
     /// Font set for rendering
     var fontSet: FontSet?
+    private var lastFontID: ObjectIdentifier?
 
     /// Cell dimension
     public var cellDimension: CGSize = .zero
@@ -166,13 +133,12 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     /// Scale factor
     public var scale: CGFloat = 1.0
 
-    private var dirtyRect: CGRect? = nil
     private var lastRenderedCols: Int = -1
     private var lastRenderedRows: Int = -1
     private var lastRenderedYDisp: Int = -1
     private var rowCache: [CachedRowVertices] = []
     private var cachedSelectionVertices: [TerminalVertex] = []
-    private var cachedCursorVertices: [TerminalVertex] = []
+    private var cursorOverlays: (on: CursorOverlay, off: CursorOverlay)?
     private var cachedMarkedTextVertices = CachedRowVertices()
     private var dirtyRows = IndexSet()
     private var needsFullRebuild = true
@@ -190,10 +156,31 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     /// Controls cursor visibility for blinking animation
     public var cursorVisible: Bool = true
 
+    /// Set while a frame should only repaint the cursor cell (blink toggle
+    /// on an otherwise clean frame).
+    private var blinkOnlyFramePending = false
+
     /// Selection highlight color propagated to the cell renderer
     public var selectionColor: SIMD4<Float> {
         get { cellRenderer.selectionColor }
         set { cellRenderer.selectionColor = newValue }
+    }
+
+    /// Block cursor fill / text colors propagated to the cell renderer
+    public var caretColor: SIMD4<Float> {
+        get { cellRenderer.caretColor }
+        set { cellRenderer.caretColor = newValue }
+    }
+
+    public var caretTextColor: SIMD4<Float> {
+        get { cellRenderer.caretTextColor }
+        set { cellRenderer.caretTextColor = newValue }
+    }
+
+    /// Whether bold text also uses the bright palette entries
+    public var useBrightColors: Bool {
+        get { cellRenderer.useBrightColors }
+        set { cellRenderer.useBrightColors = newValue }
     }
 
     /// Top inset used to keep live content below translucent chrome.
@@ -203,34 +190,12 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     /// still allowing manually scrolled content to pass behind it.
     var bottomContentInset: CGFloat = 0
 
-    private var frameCount: Int = 0
-    private var lastFrameTime: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
-    private var frameTimes: [CFTimeInterval] = []
-
-    /// Edge smoothness for anti-aliasing (0.0-1.0 range)
-    public var edgeSmoothness: Float = 0.1
-
-    /// Enable sRGB/gamma corrected color blending
-    public var enableColorCorrection: Bool = true
-
-    /// Use scissor test for dirty rectangle optimization
-    public var useDirtyRectOptimization: Bool = true
-
-    /// Whether to use bright colors for bold
-    public var useBrightColors: Bool = true
-
-    /// Performance metrics
-    public var frameRate: Double = 0.0
-    public var averageFrameTime: CFTimeInterval = 0.0
-
-    /// Enable performance profiling
-    public var enableProfiling: Bool = false
-
     /// Initialize a new terminal renderer
     init?(device: MTLDevice, terminal: Terminal, fontSet: FontSet, cellDimension: CGSize, scale: CGFloat) {
         self.device = device
         self.terminal = terminal
         self.fontSet = fontSet
+        self.lastFontID = ObjectIdentifier(fontSet.normal)
         self.cellDimension = cellDimension
         self.scale = scale
 
@@ -240,9 +205,13 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         self.commandQueue = commandQueue
 
         // Create cell renderer
-        self.cellRenderer = TerminalCellRenderer(device: device, commandQueue: commandQueue, scale: scale)
+        self.cellRenderer = TerminalCellRenderer(device: device, scale: scale)
 
         super.init()
+
+        cellRenderer.glyphCache.onCacheReset = { [weak self] in
+            self?.handleGlyphCacheReset()
+        }
 
         // Create pipeline states
         createPipelineStates()
@@ -250,8 +219,15 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         // Create sampler state
         createSamplerState()
 
-        // Create vertex buffers
-        createVertexBuffers()
+        // Create vertex arenas
+        createArenas()
+    }
+
+    /// Every cached glyph was invalidated (all atlases filled up); rebuild all
+    /// vertex caches before the next frame so no cell is silently skipped.
+    private func handleGlyphCacheReset() {
+        markAllDirty(reason: "glyphCacheReset")
+        metalView?.setTerminalNeedsDisplay()
     }
 
     /// Create the sampler state for texture sampling
@@ -259,90 +235,122 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         let descriptor = MTLSamplerDescriptor()
         descriptor.minFilter = .linear
         descriptor.magFilter = .linear
-        descriptor.mipFilter = .linear
+        descriptor.mipFilter = .notMipmapped
         descriptor.sAddressMode = .clampToEdge
         descriptor.tAddressMode = .clampToEdge
         samplerState = device.makeSamplerState(descriptor: descriptor)
     }
 
-    /// Create the pipeline states
-    private func createPipelineStates() {
-        // Compile shaders from source to ensure they work with Swift Package Manager
-        let library: MTLLibrary?
+    private func loadShaderLibrary() -> MTLLibrary? {
+        // Shaders.metal is the single source of truth. SwiftPM compiles it
+        // into the package resource bundle's default.metallib, so prefer that
+        // and fall back to a runtime compile only when no library was embedded.
+        if let library = try? device.makeDefaultLibrary(bundle: Bundle(for: TerminalRenderer.self)),
+           library.makeFunction(name: "terminal_vertex") != nil {
+            return library
+        }
+        if let library = try? device.makeDefaultLibrary(),
+           library.makeFunction(name: "terminal_vertex") != nil {
+            return library
+        }
         do {
-            library = try device.makeLibrary(source: Self.shaderSource, options: nil)
+            return try device.makeLibrary(source: Self.fallbackShaderSource, options: nil)
         } catch {
             print("TerminalRenderer: Failed to compile shaders: \(error)")
-            return
+            return nil
         }
-
-        guard let library = library else {
-            print("TerminalRenderer: Failed to create shader library")
-            return
-        }
-
-        // Background pipeline
-        let backgroundDescriptor = MTLRenderPipelineDescriptor()
-        backgroundDescriptor.label = "Background Pipeline"
-        backgroundDescriptor.vertexFunction = library.makeFunction(name: "background_vertex")
-        backgroundDescriptor.fragmentFunction = library.makeFunction(name: "background_fragment")
-        backgroundDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        backgroundDescriptor.colorAttachments[0].isBlendingEnabled = true
-        backgroundDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-        backgroundDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-
-        do {
-            backgroundPipelineState = try device.makeRenderPipelineState(descriptor: backgroundDescriptor)
-        } catch {
-            print("TerminalRenderer: Failed to create background pipeline state: \(error)")
-        }
-
-        // Glyph pipeline
-        let glyphDescriptor = MTLRenderPipelineDescriptor()
-        glyphDescriptor.label = "Glyph Pipeline"
-        glyphDescriptor.vertexFunction = library.makeFunction(name: "glyph_vertex")
-        glyphDescriptor.fragmentFunction = library.makeFunction(name: "glyph_fragment")
-        glyphDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        glyphDescriptor.colorAttachments[0].isBlendingEnabled = true
-        glyphDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-        glyphDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-
-        do {
-            glyphPipelineState = try device.makeRenderPipelineState(descriptor: glyphDescriptor)
-        } catch {
-            print("TerminalRenderer: Failed to create glyph pipeline state: \(error)")
-        }
-
-        // Decoration pipeline
-        let decorationDescriptor = MTLRenderPipelineDescriptor()
-        decorationDescriptor.label = "Decoration Pipeline"
-        decorationDescriptor.vertexFunction = library.makeFunction(name: "decoration_vertex")
-        decorationDescriptor.fragmentFunction = library.makeFunction(name: "decoration_fragment")
-        decorationDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-        decorationDescriptor.colorAttachments[0].isBlendingEnabled = true
-        decorationDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
-        decorationDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
-
-        do {
-            decorationPipelineState = try device.makeRenderPipelineState(descriptor: decorationDescriptor)
-        } catch {
-            print("TerminalRenderer: Failed to create decoration pipeline state: \(error)")
-        }
-
     }
 
-    /// Create vertex buffers
-    private func createVertexBuffers() {
-        // Create initial buffers
-        for _ in 0..<3 {
-            if let buffer = device.makeBuffer(length: 1024 * 1024, options: .storageModeShared) {
-                vertexBuffers.append(buffer)
+    /// Create the pipeline states
+    private func createPipelineStates() {
+        guard let library = loadShaderLibrary() else {
+            print("TerminalRenderer: No shader library available")
+            return
+        }
+
+        func makePipeline(label: String, vertex: String, fragment: String) -> MTLRenderPipelineState? {
+            guard let vertexFunction = library.makeFunction(name: vertex),
+                  let fragmentFunction = library.makeFunction(name: fragment) else {
+                print("TerminalRenderer: Shader function not found: \(vertex) / \(fragment)")
+                return nil
+            }
+            let descriptor = MTLRenderPipelineDescriptor()
+            descriptor.label = label
+            descriptor.vertexFunction = vertexFunction
+            descriptor.fragmentFunction = fragmentFunction
+            descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+            descriptor.colorAttachments[0].isBlendingEnabled = true
+            descriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
+            descriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+            descriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
+            descriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            do {
+                return try device.makeRenderPipelineState(descriptor: descriptor)
+            } catch {
+                print("TerminalRenderer: Failed to create \(label) pipeline state: \(error)")
+                return nil
             }
         }
+
+        backgroundPipelineState = makePipeline(label: "Background Pipeline", vertex: "terminal_vertex", fragment: "background_fragment")
+        glyphPipelineState = makePipeline(label: "Glyph Pipeline", vertex: "terminal_vertex", fragment: "glyph_fragment")
+        colorGlyphPipelineState = makePipeline(label: "Color Glyph Pipeline", vertex: "terminal_vertex", fragment: "color_glyph_fragment")
+        decorationPipelineState = makePipeline(label: "Decoration Pipeline", vertex: "terminal_vertex", fragment: "decoration_fragment")
     }
 
-    /// Update projection matrix for the given size
-    public func updateProjectionMatrix(size: CGSize) {
+    /// Create the round-robin vertex upload arenas
+    private func createArenas() {
+        arenas = (0..<3).compactMap { _ in
+            device.makeBuffer(length: 1 << 20, options: .storageModeShared)
+        }
+    }
+
+    /// Advance to the next arena slot for this frame.
+    private func beginArenaFrame() {
+        guard !arenas.isEmpty else { return }
+        arenaSlot = (arenaSlot + 1) % arenas.count
+        arenaWriteOffset = 0
+    }
+
+    private struct ArenaSlice {
+        let buffer: MTLBuffer
+        let offset: Int
+        let vertexCount: Int
+    }
+
+    /// Copy vertices into the current arena, growing it when needed.
+    private func appendToArena(_ vertices: [TerminalVertex]) -> ArenaSlice? {
+        guard !vertices.isEmpty, !arenas.isEmpty else { return nil }
+
+        let stride = MemoryLayout<TerminalVertex>.stride
+        let byteCount = vertices.count * stride
+        var offset = (arenaWriteOffset + 255) & ~255
+        var buffer = arenas[arenaSlot]
+
+        if offset + byteCount > buffer.length {
+            let newLength = max(byteCount, buffer.length * 2)
+            guard let grown = device.makeBuffer(length: newLength, options: .storageModeShared) else {
+                return nil
+            }
+            arenas[arenaSlot] = grown
+            buffer = grown
+            offset = 0
+        }
+
+        vertices.withUnsafeBytes { raw in
+            if let base = raw.baseAddress {
+                memcpy(buffer.contents() + offset, base, byteCount)
+            }
+        }
+        arenaWriteOffset = offset + byteCount
+        return ArenaSlice(buffer: buffer, offset: offset, vertexCount: vertices.count)
+    }
+
+    /// Update projection matrix for the given size.
+    ///
+    /// `yOffset` shifts content down by the top content inset; it replaces
+    /// the old per-vertex offset pass.
+    public func updateProjectionMatrix(size: CGSize, yOffset: CGFloat = 0) {
         // Create an orthographic projection matrix
         // Origin at top-left, Y pointing down
         let left: Float = 0
@@ -351,14 +359,15 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         let bottom: Float = Float(size.height)
         let near: Float = -1
         let far: Float = 1
+        let yScale = 2.0 / (top - bottom)
 
         projectionMatrix = matrix_float4x4(
             SIMD4<Float>(2.0 / (right - left), 0, 0, 0),
-            SIMD4<Float>(0, 2.0 / (top - bottom), 0, 0),
+            SIMD4<Float>(0, yScale, 0, 0),
             SIMD4<Float>(0, 0, -2.0 / (far - near), 0),
             SIMD4<Float>(
                 -(right + left) / (right - left),
-                -(top + bottom) / (top - bottom),
+                -(top + bottom) / (top - bottom) + yScale * Float(yOffset),
                 -(far + near) / (far - near),
                 1
             )
@@ -368,24 +377,39 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
     // MARK: - MTKViewDelegate
 
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        updateProjectionMatrix(size: view.bounds.size)
+        // draw() recomputes the projection (with content offset) every frame.
     }
 
     public func draw(in view: MTKView) {
         guard let terminal = terminal,
-              let fontSet = fontSet,
-              let commandBuffer = commandQueue.makeCommandBuffer() else {
+              let fontSet = fontSet else {
             return
         }
 
-        updateProjectionMatrix(size: view.bounds.size)
+        let contentOffset = contentRenderOffsetY()
+        updateProjectionMatrix(size: view.bounds.size, yOffset: contentOffset)
 
-        rebuildCachesIfNeeded(terminal: terminal, fontSet: fontSet, commandBuffer: commandBuffer)
-        let builder = composeCachedFrame()
+        // Blink fast path: only the cursor visibility flipped since the last
+        // frame. Caches are already valid, so skip the (cheap but pointless)
+        // rebuild pass and reuse the composed base frame.
+        //
+        // Note the frame is still fully redrawn with loadAction .clear:
+        // partial .load-style updates are unsound here because CAMetalLayer
+        // rotates through a pool of drawables, and a stale pooled drawable
+        // would flash old screen content.
+        let skipRebuilds = blinkOnlyFramePending && canDrawBlinkOnlyFrame
+        blinkOnlyFramePending = false
 
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            return
+        }
+
+        if !skipRebuilds {
+            rebuildCachesIfNeeded(terminal: terminal, fontSet: fontSet)
+        }
 
         guard let descriptor = view.currentRenderPassDescriptor else {
-            (view as? MetalTerminalView)?.setTerminalNeedsDisplay()
+            metalView?.setTerminalNeedsDisplay()
             return
         }
 
@@ -398,64 +422,32 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         descriptor.colorAttachments[0].loadAction = .clear
 
         guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: descriptor) else {
-            (view as? MetalTerminalView)?.setTerminalNeedsDisplay()
+            metalView?.setTerminalNeedsDisplay()
             return
         }
 
         var uniforms = VertexUniforms(projectionMatrix: projectionMatrix)
-
-        func createVertexBuffer(_ vertices: [TerminalVertex]) -> MTLBuffer? {
-            guard !vertices.isEmpty else { return nil }
-            let size = vertices.count * MemoryLayout<TerminalVertex>.stride
-            return device.makeBuffer(bytes: vertices, length: size, options: .storageModeShared)
-        }
-
         renderEncoder.setVertexBytes(&uniforms, length: MemoryLayout<VertexUniforms>.stride, index: 1)
 
+        beginArenaFrame()
+        let base = currentComposedBase()
+
         // Draw backgrounds
-        if !builder.backgroundVertices.isEmpty, let pipelineState = backgroundPipelineState,
-           let vertexBuffer = createVertexBuffer(builder.backgroundVertices) {
-            renderEncoder.setRenderPipelineState(pipelineState)
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: builder.backgroundVertices.count)
-        }
+        drawSolidList(renderEncoder, base.background, pipeline: backgroundPipelineState)
 
         // Draw selection
-        if !builder.selectionVertices.isEmpty, let pipelineState = backgroundPipelineState,
-           let vertexBuffer = createVertexBuffer(builder.selectionVertices) {
-            renderEncoder.setRenderPipelineState(pipelineState)
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: builder.selectionVertices.count)
-        }
+        drawSolidList(renderEncoder, base.selection, pipeline: backgroundPipelineState)
 
-        // Draw glyphs
-        if !builder.glyphVertices.isEmpty, let pipelineState = glyphPipelineState,
-           let vertexBuffer = createVertexBuffer(builder.glyphVertices) {
-            renderEncoder.setRenderPipelineState(pipelineState)
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            if let texture = cellRenderer.glyphCache.atlasTexture(at: 0) {
-                renderEncoder.setFragmentTexture(texture, index: 0)
-            }
-            if let sampler = samplerState {
-                renderEncoder.setFragmentSamplerState(sampler, index: 0)
-            }
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: builder.glyphVertices.count)
-        }
+        // Draw glyphs (batched per atlas texture and monochrome/color)
+        drawGlyphBuckets(renderEncoder, base.glyphBuckets)
 
-        // Draw decorations
-        if !builder.decorationVertices.isEmpty, let pipelineState = decorationPipelineState,
-           let vertexBuffer = createVertexBuffer(builder.decorationVertices) {
-            renderEncoder.setRenderPipelineState(pipelineState)
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: builder.decorationVertices.count)
-        }
+        // Draw decorations (underline / strikethrough / marked-text marks)
+        drawSolidList(renderEncoder, base.decorations, pipeline: decorationPipelineState)
 
-        // Draw cursor
-        if !builder.cursorVertices.isEmpty, let pipelineState = decorationPipelineState,
-           let vertexBuffer = createVertexBuffer(builder.cursorVertices) {
-            renderEncoder.setRenderPipelineState(pipelineState)
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: builder.cursorVertices.count)
+        // Draw the cursor cell: background quad then the glyph on top
+        if let overlay = currentCursorOverlay {
+            drawSolidList(renderEncoder, overlay.quads, pipeline: decorationPipelineState)
+            drawGlyphBuckets(renderEncoder, overlay.glyphBuckets)
         }
 
         renderEncoder.endEncoding()
@@ -467,25 +459,65 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         commandBuffer.commit()
     }
 
-    private func calculateDirtyRect() -> CGRect? {
-        guard let terminal = terminal else { return nil }
-        let bounds = CGRect(x: 0, y: 0, width: CGFloat(cellDimension.width) * CGFloat(terminal.cols), height: CGFloat(cellDimension.height) * CGFloat(terminal.rows))
-        guard let rect = dirtyRect else {
-            return nil
+    private var canDrawBlinkOnlyFrame: Bool {
+        !needsFullRebuild && dirtyRows.isEmpty && !needsSelectionRebuild
+            && markedTextOverlay == nil && !(selection?.active ?? false)
+    }
+
+    private var currentCursorOverlay: CursorOverlay? {
+        guard let overlays = cursorOverlays else { return nil }
+        return cursorVisible ? overlays.on : overlays.off
+    }
+
+    private func drawSolidList(
+        _ encoder: MTLRenderCommandEncoder,
+        _ vertices: [TerminalVertex],
+        pipeline: MTLRenderPipelineState?
+    ) {
+        guard !vertices.isEmpty, let pipeline, let slice = appendToArena(vertices) else {
+            return
         }
-        return CGRectIntersection(bounds, rect)
+        encoder.setRenderPipelineState(pipeline)
+        encoder.setVertexBuffer(slice.buffer, offset: slice.offset, index: 0)
+        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: slice.vertexCount)
+    }
+
+    private func drawGlyphBuckets(_ encoder: MTLRenderCommandEncoder, _ buckets: GlyphBucketList) {
+        guard let sampler = samplerState else { return }
+
+        for bucket in buckets.buckets where !bucket.vertices.isEmpty {
+            let pipeline = bucket.key.isColor ? colorGlyphPipelineState : glyphPipelineState
+            guard let pipeline, let slice = appendToArena(bucket.vertices) else {
+                continue
+            }
+            guard let texture = cellRenderer.glyphCache.atlasTexture(at: bucket.key.atlasIndex) else {
+                continue
+            }
+            encoder.setRenderPipelineState(pipeline)
+            encoder.setVertexBuffer(slice.buffer, offset: slice.offset, index: 0)
+            encoder.setFragmentTexture(texture, index: 0)
+            encoder.setFragmentSamplerState(sampler, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: slice.vertexCount)
+        }
     }
 
     /// Update the terminal and font references
     func update(terminal: Terminal, fontSet: FontSet, cellDimension: CGSize, scale: CGFloat) {
         let scaleChanged = self.scale != scale
+        let fontChanged = lastFontID != ObjectIdentifier(fontSet.normal)
         self.terminal = terminal
         self.fontSet = fontSet
+        self.lastFontID = ObjectIdentifier(fontSet.normal)
         self.cellDimension = cellDimension
         self.scale = scale
         cellRenderer.scale = scale
         if scaleChanged {
             cellRenderer.glyphCache.updateScale(scale)
+        }
+        if fontChanged {
+            // A different font rasterizes every glyph differently; drop the
+            // old atlas entries instead of leaking them until an atlas reset.
+            cellRenderer.clearCache()
         }
         // Reset cached dimensions to force full redraw
         lastRenderedCols = -1
@@ -493,20 +525,30 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         lastRenderedYDisp = -1
         needsFullRebuild = true
         needsMarkedTextRebuild = true
+        composedBaseDirty = true
     }
 
-    /// Clear cached data
-    public func clearCache() {
-        cellRenderer.clearCache()
+    /// Drop cached vertex data (rows, selection, cursor, marked text) but keep
+    /// the rasterized glyph atlas. Color and alternate-buffer switches only
+    /// need this level.
+    public func clearVertexCaches() {
         rowCache.removeAll()
         cachedSelectionVertices.removeAll()
-        cachedCursorVertices.removeAll()
+        cursorOverlays = nil
         cachedMarkedTextVertices = CachedRowVertices()
         lastRenderedYDisp = -1
         needsFullRebuild = true
         needsSelectionRebuild = true
         needsCursorRebuild = true
         needsMarkedTextRebuild = true
+        composedBase = nil
+        composedBaseDirty = true
+    }
+
+    /// Clear cached data, including the glyph atlas (font or scale changed)
+    public func clearCache() {
+        clearVertexCaches()
+        cellRenderer.clearCache()
     }
 
     func markAllDirty(reason: String = "markAllDirty") {
@@ -557,11 +599,18 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         needsMarkedTextRebuild = true
     }
 
-    /// Set cursor visibility for blinking animation
+    /// Toggle cursor visibility for the blinking animation. When the rest of
+    /// the frame is clean this only swaps the cached overlay and reuses the
+    /// composed base, so a blink costs an arena upload and a GPU redraw —
+    /// no row rebuilds and no cache invalidation.
     public func setCursorVisible(_ visible: Bool) {
         cursorVisible = visible
-        needsCursorRebuild = true
-        needsMarkedTextRebuild = true
+        if cursorOverlays != nil && canDrawBlinkOnlyFrame {
+            blinkOnlyFramePending = true
+        } else {
+            needsCursorRebuild = true
+        }
+        metalView?.setTerminalNeedsDisplay()
     }
 
     func setMarkedTextOverlay(_ text: String?, selectedRange: NSRange) {
@@ -585,10 +634,11 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         needsCursorRebuild = true
     }
 
-    private func rebuildCachesIfNeeded(terminal: Terminal, fontSet: FontSet, commandBuffer: MTLCommandBuffer) {
+    private func rebuildCachesIfNeeded(terminal: Terminal, fontSet: FontSet) {
         let rows = renderedRowCount(for: terminal)
         let cols = terminal.cols
         let yDisp = terminal.displayBuffer.yDisp
+        var baseChanged = false
 
         if needsFullRebuild || rowCache.count != rows || lastRenderedCols != cols || lastRenderedRows != rows || lastRenderedYDisp != yDisp {
             rowCache = Array(repeating: CachedRowVertices(), count: rows)
@@ -602,19 +652,21 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
             needsMarkedTextRebuild = true
         }
 
-        cellRenderer.prepareFrame(terminal: terminal)
-
         if !dirtyRows.isEmpty {
-            for row in dirtyRows {
+            // Iterate over a copy: building a row can trigger a glyph-cache
+            // reset that marks additional rows dirty for the next frame.
+            let rowsToBuild = dirtyRows
+            for row in rowsToBuild {
+                guard row < rowCache.count else { continue }
                 rowCache[row] = cellRenderer.buildRowVertices(
                     terminal: terminal,
                     fontSet: fontSet,
                     cellDimension: cellDimension,
-                    row: row,
-                    commandBuffer: commandBuffer
+                    row: row
                 )
             }
-            self.dirtyRows.removeAll()
+            dirtyRows.subtract(rowsToBuild)
+            baseChanged = true
         }
 
         if needsSelectionRebuild {
@@ -624,19 +676,17 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
                 selection: selection
             )
             needsSelectionRebuild = false
+            baseChanged = true
         }
         if needsCursorRebuild {
             if markedTextOverlay != nil {
-                cachedCursorVertices = []
+                cursorOverlays = nil
             } else {
-                cachedCursorVertices = cellRenderer.buildCursorVertices(
+                cursorOverlays = cellRenderer.buildCursorOverlay(
                     terminal: terminal,
+                    fontSet: fontSet,
                     cellDimension: cellDimension
                 )
-                // Apply cursor visibility for blinking animation
-                if !cursorVisible {
-                    cachedCursorVertices = []
-                }
             }
             needsCursorRebuild = false
         }
@@ -649,43 +699,49 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
                     cellDimension: cellDimension,
                     text: markedTextOverlay.text,
                     selectedLocation: markedTextOverlay.selectedLocation,
-                    selectedLength: markedTextOverlay.selectedLength,
-                    commandBuffer: commandBuffer
+                    selectedLength: markedTextOverlay.selectedLength
                 )
             } else {
                 cachedMarkedTextVertices = CachedRowVertices()
             }
             needsMarkedTextRebuild = false
+            baseChanged = true
+        }
+
+        if baseChanged {
+            composedBaseDirty = true
         }
     }
 
-    private func composeCachedFrame() -> VertexBufferBuilder {
-        let builder = VertexBufferBuilder()
-        builder.selectionVertices = cachedSelectionVertices
-        builder.cursorVertices = cachedCursorVertices
-
-        for row in rowCache {
-            builder.backgroundVertices.append(contentsOf: row.backgroundVertices)
-            builder.glyphVertices.append(contentsOf: row.glyphVertices)
-            builder.decorationVertices.append(contentsOf: row.decorationVertices)
-        }
-        builder.glyphVertices.append(contentsOf: cachedMarkedTextVertices.glyphVertices)
-        builder.decorationVertices.append(contentsOf: cachedMarkedTextVertices.decorationVertices)
-
-        applyContentInsetOffsets(to: builder)
-        return builder
+    /// The frame minus the cursor overlay. Cached until any row, selection or
+    /// marked-text cache changes, so blink toggles and cursor moves reuse it.
+    private struct ComposedBase {
+        var background: [TerminalVertex] = []
+        var selection: [TerminalVertex] = []
+        var glyphBuckets = GlyphBucketList()
+        var decorations: [TerminalVertex] = []
     }
 
-    private func applyContentInsetOffsets(to builder: VertexBufferBuilder) {
-        let offset = contentRenderOffsetY()
-        guard offset > 0 else { return }
+    private var composedBase: ComposedBase?
+    private var composedBaseDirty = true
 
-        let y = Float(offset)
-        offsetVertices(&builder.backgroundVertices, y: y)
-        offsetVertices(&builder.selectionVertices, y: y)
-        offsetVertices(&builder.glyphVertices, y: y)
-        offsetVertices(&builder.decorationVertices, y: y)
-        offsetVertices(&builder.cursorVertices, y: y)
+    private func currentComposedBase() -> ComposedBase {
+        if composedBase == nil || composedBaseDirty {
+            var base = ComposedBase()
+            base.selection = cachedSelectionVertices
+
+            for row in rowCache {
+                base.background.append(contentsOf: row.backgroundVertices)
+                base.glyphBuckets.merge(row.glyphBuckets)
+                base.decorations.append(contentsOf: row.decorationVertices)
+            }
+            base.glyphBuckets.merge(cachedMarkedTextVertices.glyphBuckets)
+            base.decorations.append(contentsOf: cachedMarkedTextVertices.decorationVertices)
+
+            composedBase = base
+            composedBaseDirty = false
+        }
+        return composedBase ?? ComposedBase()
     }
 
     private func contentRenderOffsetY() -> CGFloat {
@@ -725,12 +781,6 @@ public class TerminalRenderer: NSObject, MTKViewDelegate {
         let requestedExtraRows = Int(ceil(extraPixelDepth / cellDimension.height))
         let extraRows = min(rowsAwayFromBottom, maxExtraRows, max(0, requestedExtraRows))
         return rows + extraRows
-    }
-
-    private func offsetVertices(_ vertices: inout [TerminalVertex], y: Float) {
-        for index in vertices.indices {
-            vertices[index].position.y += y
-        }
     }
 }
 

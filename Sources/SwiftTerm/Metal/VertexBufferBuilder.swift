@@ -16,9 +16,10 @@ enum VertexFlags: Float {
     case selection = 2
 }
 
-/// Vertex structure for terminal rendering
+/// Vertex structure for terminal rendering. Must match the Metal
+/// `TerminalVertex` layout in Shaders.metal (56 byte stride).
 struct TerminalVertex {
-    /// Position in screen coordinates
+    /// Position in view coordinates (points, y down)
     var position: SIMD2<Float>
     /// UV coordinates for texture sampling
     var uv: SIMD2<Float>
@@ -38,144 +39,154 @@ struct TerminalVertex {
     }
 }
 
+/// Glyph quads must be batched by the atlas texture they sample and by the
+/// monochrome/color pipeline that draws them.
+struct GlyphBucketKey: Equatable {
+    let atlasIndex: Int
+    let isColor: Bool
+}
+
+/// An ordered list of glyph-vertex buckets. Bucket order follows first use
+/// so glyph z-order stays stable within a row.
+struct GlyphBucketList {
+    fileprivate(set) var buckets: [(key: GlyphBucketKey, vertices: [TerminalVertex])] = []
+
+    var isEmpty: Bool { buckets.isEmpty }
+
+    var totalCount: Int {
+        buckets.reduce(0) { $0 + $1.vertices.count }
+    }
+
+    /// Append a quad sampling `glyph`. The UV rect is inset by half a texel
+    /// (measured in texture texels) so linear sampling never bleeds into the
+    /// transparent padding of neighboring atlas slots.
+    mutating func addQuad(
+        glyph: CachedGlyph,
+        fgColor: SIMD4<Float>,
+        bgColor: SIMD4<Float>,
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float
+    ) {
+        let uv = glyph.uvRect
+        let texelWidth = max(glyph.texelSize.x, 1)
+        let texelHeight = max(glyph.texelSize.y, 1)
+        let insetU = Float(uv.width) / Float(texelWidth) * 0.5
+        let insetV = Float(uv.height) / Float(texelHeight) * 0.5
+        let u0 = Float(uv.minX) + insetU
+        let v0 = Float(uv.minY) + insetV
+        let u1 = Float(uv.maxX) - insetU
+        let v1 = Float(uv.maxY) - insetV
+
+        let key = GlyphBucketKey(atlasIndex: glyph.atlasIndex, isColor: glyph.isColor)
+        let index = bucketIndex(forKey: key)
+
+        // Two triangles forming a quad
+        buckets[index].vertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(u0, v1), fgColor: fgColor, bgColor: bgColor))
+        buckets[index].vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(u0, v0), fgColor: fgColor, bgColor: bgColor))
+        buckets[index].vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(u1, v1), fgColor: fgColor, bgColor: bgColor))
+        buckets[index].vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(u1, v1), fgColor: fgColor, bgColor: bgColor))
+        buckets[index].vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(u0, v0), fgColor: fgColor, bgColor: bgColor))
+        buckets[index].vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(u1, v0), fgColor: fgColor, bgColor: bgColor))
+    }
+
+    /// Merge another list bucket-by-bucket, preserving per-bucket order.
+    mutating func merge(_ other: GlyphBucketList) {
+        for bucket in other.buckets {
+            let index = bucketIndex(forKey: bucket.key)
+            buckets[index].vertices.append(contentsOf: bucket.vertices)
+        }
+    }
+
+    mutating func removeAll(keepingCapacity: Bool = true) {
+        buckets.removeAll(keepingCapacity: keepingCapacity)
+    }
+
+    private mutating func bucketIndex(forKey key: GlyphBucketKey) -> Int {
+        for index in buckets.indices where buckets[index].key == key {
+            return index
+        }
+        buckets.append((key, []))
+        return buckets.count - 1
+    }
+}
+
 /// Builds vertex buffers for rendering terminal content
 class VertexBufferBuilder {
     /// Background vertices (drawn first, no texture)
     var backgroundVertices: [TerminalVertex] = []
 
-    /// Glyph vertices (drawn second, with atlas texture)
-    var glyphVertices: [TerminalVertex] = []
+    /// Selection highlight vertices (drawn after backgrounds, before glyphs)
+    var selectionVertices: [TerminalVertex] = []
 
-    /// Decoration vertices (drawn last, for underline/strikethrough)
+    /// Glyph vertices grouped by render bucket (atlas texture × pipeline)
+    var glyphBuckets = GlyphBucketList()
+
+    /// Decoration vertices (underline / strikethrough / marked-text marks)
     var decorationVertices: [TerminalVertex] = []
 
-    /// Cursor vertices
+    /// Cursor cell background quads
     var cursorVertices: [TerminalVertex] = []
 
-    /// Selection vertices
-    var selectionVertices: [TerminalVertex] = []
+    /// Glyphs redrawn on top of the block cursor (inverted text)
+    var cursorGlyphBuckets = GlyphBucketList()
 
     init() {}
 
     /// Clear all vertices
     func clear() {
         backgroundVertices.removeAll(keepingCapacity: true)
-        glyphVertices.removeAll(keepingCapacity: true)
+        selectionVertices.removeAll(keepingCapacity: true)
+        glyphBuckets.removeAll()
         decorationVertices.removeAll(keepingCapacity: true)
         cursorVertices.removeAll(keepingCapacity: true)
-        selectionVertices.removeAll(keepingCapacity: true)
+        cursorGlyphBuckets.removeAll()
     }
 
     /// Add a background quad
-    /// - Parameters:
-    ///   - x: X position
-    ///   - y: Y position
-    ///   - width: Width
-    ///   - height: Height
-    ///   - color: Background color
     func addBackgroundQuad(x: Float, y: Float, width: Float, height: Float, color: SIMD4<Float>) {
-        // Two triangles forming a quad
-        // Triangle 1: top-left, bottom-left, top-right
-        backgroundVertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(0, 0), fgColor: color, bgColor: color))
-        backgroundVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color))
-        backgroundVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color))
-
-        // Triangle 2: top-right, bottom-left, bottom-right
-        backgroundVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color))
-        backgroundVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color))
-        backgroundVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(1, 1), fgColor: color, bgColor: color))
-    }
-
-    /// Add a glyph quad
-    /// - Parameters:
-    ///   - x: X position
-    ///   - y: Y position
-    ///   - width: Width
-    ///   - height: Height
-    ///   - uvRect: UV coordinates in the atlas
-    ///   - fgColor: Foreground color
-    func addGlyphQuad(x: Float, y: Float, width: Float, height: Float, uvRect: CGRect, fgColor: SIMD4<Float>, bgColor: SIMD4<Float>) {
-        // Sample inside the glyph texel footprint to avoid bleeding from transparent atlas padding.
-        let atlasWidth = max(Float(width), 1)
-        let atlasHeight = max(Float(height), 1)
-        let insetU = Float(uvRect.width) / atlasWidth * 0.5
-        let insetV = Float(uvRect.height) / atlasHeight * 0.5
-        let u0 = Float(uvRect.origin.x) + insetU
-        let v0 = Float(uvRect.origin.y) + insetV
-        let u1 = Float(uvRect.origin.x + uvRect.width) - insetU
-        let v1 = Float(uvRect.origin.y + uvRect.height) - insetV
-
-        // Two triangles forming a quad
-        // Triangle 1: top-left, bottom-left, top-right
-        glyphVertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(u0, v1), fgColor: fgColor, bgColor: bgColor))
-        glyphVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(u0, v0), fgColor: fgColor, bgColor: bgColor))
-        glyphVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(u1, v1), fgColor: fgColor, bgColor: bgColor))
-
-        // Triangle 2: top-right, bottom-left, bottom-right
-        glyphVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(u1, v1), fgColor: fgColor, bgColor: bgColor))
-        glyphVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(u0, v0), fgColor: fgColor, bgColor: bgColor))
-        glyphVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(u1, v0), fgColor: fgColor, bgColor: bgColor))
-    }
-
-    /// Add a decoration quad (for underline or strikethrough)
-    /// - Parameters:
-    ///   - x: X position
-    ///   - y: Y position
-    ///   - width: Width
-    ///   - height: Height
-    ///   - color: Decoration color
-    func addDecorationQuad(x: Float, y: Float, width: Float, height: Float, color: SIMD4<Float>) {
-        // Two triangles forming a quad
-        // Triangle 1: top-left, bottom-left, top-right
-        decorationVertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(0, 0), fgColor: color, bgColor: color))
-        decorationVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color))
-        decorationVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color))
-
-        // Triangle 2: top-right, bottom-left, bottom-right
-        decorationVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color))
-        decorationVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color))
-        decorationVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(1, 1), fgColor: color, bgColor: color))
-    }
-
-    /// Add a cursor quad
-    /// - Parameters:
-    ///   - x: X position
-    ///   - y: Y position
-    ///   - width: Width
-    ///   - height: Height
-    ///   - color: Cursor color
-    func addCursorQuad(x: Float, y: Float, width: Float, height: Float, color: SIMD4<Float>) {
-        // Two triangles forming a quad
-        cursorVertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(0, 0), fgColor: color, bgColor: color, flags: VertexFlags.cursor.rawValue))
-        cursorVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color, flags: VertexFlags.cursor.rawValue))
-        cursorVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color, flags: VertexFlags.cursor.rawValue))
-
-        cursorVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color, flags: VertexFlags.cursor.rawValue))
-        cursorVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color, flags: VertexFlags.cursor.rawValue))
-        cursorVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(1, 1), fgColor: color, bgColor: color, flags: VertexFlags.cursor.rawValue))
+        appendQuad(to: &backgroundVertices, x: x, y: y, width: width, height: height, color: color)
     }
 
     /// Add a selection quad
-    /// - Parameters:
-    ///   - x: X position
-    ///   - y: Y position
-    ///   - width: Width
-    ///   - height: Height
-    ///   - color: Selection color
     func addSelectionQuad(x: Float, y: Float, width: Float, height: Float, color: SIMD4<Float>) {
-        // Two triangles forming a quad
-        selectionVertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(0, 0), fgColor: color, bgColor: color, flags: VertexFlags.selection.rawValue))
-        selectionVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color, flags: VertexFlags.selection.rawValue))
-        selectionVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color, flags: VertexFlags.selection.rawValue))
+        appendQuad(to: &selectionVertices, x: x, y: y, width: width, height: height, color: color, flags: VertexFlags.selection.rawValue)
+    }
 
-        selectionVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color, flags: VertexFlags.selection.rawValue))
-        selectionVertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color, flags: VertexFlags.selection.rawValue))
-        selectionVertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(1, 1), fgColor: color, bgColor: color, flags: VertexFlags.selection.rawValue))
+    /// Add a decoration quad (for underline or strikethrough)
+    func addDecorationQuad(x: Float, y: Float, width: Float, height: Float, color: SIMD4<Float>) {
+        appendQuad(to: &decorationVertices, x: x, y: y, width: width, height: height, color: color)
+    }
+
+    /// Add a cursor quad
+    func addCursorQuad(x: Float, y: Float, width: Float, height: Float, color: SIMD4<Float>) {
+        appendQuad(to: &cursorVertices, x: x, y: y, width: width, height: height, color: color, flags: VertexFlags.cursor.rawValue)
+    }
+
+    /// Two triangles forming a quad
+    private func appendQuad(
+        to vertices: inout [TerminalVertex],
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        color: SIMD4<Float>,
+        flags: Float = 0
+    ) {
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y), uv: SIMD2<Float>(0, 0), fgColor: color, bgColor: color, flags: flags))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color, flags: flags))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color, flags: flags))
+
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y), uv: SIMD2<Float>(1, 0), fgColor: color, bgColor: color, flags: flags))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x, y + height), uv: SIMD2<Float>(0, 1), fgColor: color, bgColor: color, flags: flags))
+        vertices.append(TerminalVertex(position: SIMD2<Float>(x + width, y + height), uv: SIMD2<Float>(1, 1), fgColor: color, bgColor: color, flags: flags))
     }
 
     /// Get the total vertex count
     var totalVertexCount: Int {
-        return backgroundVertices.count + glyphVertices.count + decorationVertices.count + cursorVertices.count + selectionVertices.count
+        return backgroundVertices.count + selectionVertices.count + glyphBuckets.totalCount
+            + decorationVertices.count + cursorVertices.count + cursorGlyphBuckets.totalCount
     }
 }
 #endif

@@ -140,7 +140,9 @@ struct FontSet {
 
 /// Metal-based terminal view for Apple platforms
 open class MetalTerminalView: MTView, TerminalDelegate {
-    private var suppressLargeCursorRangeChanges = false
+    /// True when no Metal device is available; the view renders nothing and
+    /// the host should fall back to the CoreText terminal view.
+    public private(set) var metalUnavailable = false
 
     private func pinViewportToBottomIfNeeded(for source: Terminal) {
         guard !source.userScrolling else { return }
@@ -154,14 +156,6 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         pinViewportToBottomIfNeeded(for: terminal)
     }
 
-    public struct VisibleBufferSnapshot {
-        let rowSignatures: [Int]
-        let cursorCol: Int
-        let cursorRow: Int
-        let topVisibleRow: Int
-        let cols: Int
-        let rows: Int
-    }
     /// The terminal emulator
     public var terminal: Terminal!
 
@@ -183,7 +177,17 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     /// Cell dimensions
-    public var cellDimension: CGSize = .zero
+    /// Kept in sync with the renderer: `computeCellDimension()` stretches cells
+    /// to fill the current bounds, and a stale renderer copy would lay out the
+    /// new rows/cols with the old cell size, clipping the last row and column.
+    public var cellDimension: CGSize = .zero {
+        didSet {
+            guard cellDimension != oldValue, let renderer else { return }
+            renderer.cellDimension = cellDimension
+            renderer.markAllDirty(reason: "cellDimension")
+            setTerminalNeedsDisplay()
+        }
+    }
 
     /// Top area that behaves like a scroll view content inset.
     ///
@@ -245,8 +249,15 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Caret text color
     internal var caretTextColor: TTColor = TTColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 1.0)
 
-    /// Use bright colors for bold
-    public var useBrightColors: Bool = true
+    /// Use bright colors for bold. Forwards to the renderer.
+    public var useBrightColors: Bool = true {
+        didSet {
+            guard useBrightColors != oldValue else { return }
+            renderer?.useBrightColors = useBrightColors
+            renderer?.markAllDirty(reason: "useBrightColors")
+            setTerminalNeedsDisplay()
+        }
+    }
 
     private var terminalLayoutSize: CGSize {
         CGSize(
@@ -273,11 +284,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         renderer?.topContentInset = contentInsetTop
         renderer?.bottomContentInset = contentInsetBottom
         if bounds.width > 1 && bounds.height > 1 && cellDimension.width > 0 {
-            #if os(macOS)
-            handleResize(newSize: terminalLayoutSize)
-            #else
-            handleResize(newSize: terminalLayoutSize)
-            #endif
+            handleLayoutChange()
         }
         setTerminalNeedsDisplay()
     }
@@ -287,7 +294,6 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Configure MTKView for on-demand terminal rendering.
     private func configureMetalView() {
         colorPixelFormat = .bgra8Unorm
-        framebufferOnly = false
         enableSetNeedsDisplay = true
         isPaused = true
         // Set content scale factor for retina display
@@ -310,7 +316,10 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Initialize the terminal view with options
     public func setupTerminal(options: TerminalOptions? = nil) {
         guard let device = MTLCreateSystemDefaultDevice() else {
-            fatalError("Metal is not supported on this device")
+            // No crash: flag the failure so the host can fall back to the
+            // CoreText rendering path.
+            metalUnavailable = true
+            return
         }
 
         self.device = device
@@ -335,6 +344,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     /// Set up the Metal renderer
     func setupRenderer() {
         guard let device = device,
+              terminal != nil,
               let fontSet = fontSet,
               cellDimension != .zero else {
             return
@@ -355,14 +365,17 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         }
 
         self.delegate = renderer
+        renderer?.metalView = self
         renderer?.topContentInset = contentInsetTop
         renderer?.bottomContentInset = contentInsetBottom
         renderer?.selection = selection
+        renderer?.useBrightColors = useBrightColors
+        applyCaretColors()
         updateDrawableMetrics()
 
         // Resize terminal to fit current view bounds if bounds are valid
         if bounds.width > 1 && bounds.height > 1 {
-            handleResize(newSize: bounds.size)
+            handleLayoutChange()
         }
     }
 
@@ -382,7 +395,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
         // Trigger resize after font setup to ensure proper dimensions
         if bounds.width > 1 && bounds.height > 1 {
-            handleResize(newSize: bounds.size)
+            handleLayoutChange()
         }
     }
 
@@ -421,15 +434,26 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         // typically < 0.1 pt — imperceptible — but prevents applications like vim
         // and apt from drawing a UI that doesn't span the full terminal view.
         if bounds.width > 1, bounds.height > 1 {
-            let cols = max(1, Int(bounds.width / snappedWidth))
+            let cols = Self.cellCount(bounds.width, cell: snappedWidth)
             let layoutHeight = terminalLayoutSize.height
-            let rows = max(1, Int(layoutHeight / snappedHeight))
+            let rows = Self.cellCount(layoutHeight, cell: snappedHeight)
             let adjustedWidth = bounds.width / CGFloat(cols)
             let adjustedHeight = layoutHeight / CGFloat(rows)
             self.cellDimension = CGSize(width: adjustedWidth, height: adjustedHeight)
         } else {
             self.cellDimension = CGSize(width: max(1, snappedWidth), height: max(min(snappedHeight, 8192), 1))
         }
+    }
+
+    /// Whole cells that fit in `length`.
+    ///
+    /// `computeCellDimension()` stretches cells to exactly `length / count`, and
+    /// dividing back can land just under the integer (400 / (400 / 44) is
+    /// 43.99…), which would silently drop a column or row and desync the grid
+    /// from the stretched cell size.
+    static func cellCount(_ length: CGFloat, cell: CGFloat) -> Int {
+        guard cell > 0 else { return 1 }
+        return max(1, Int((length / cell + 1e-6).rounded(.down)))
     }
 
     /// Get the backing scale factor
@@ -571,48 +595,18 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     // MARK: - TerminalDelegate
+    //
+    // Note: Terminal never invokes rangeChanged/scrollChanged/screenChanged/
+    // lineBufferChanged on its delegate — those were dead in this view.
+    // Buffer content updates flow through processPendingUpdates(), which
+    // consumes the terminal's update range after feeding.
 
     public func showCursor(source: Terminal) {
-        suppressLargeCursorRangeChanges = true
         renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
     }
 
     public func hideCursor(source: Terminal) {
-        suppressLargeCursorRangeChanges = true
-        renderer?.markCursorDirty()
-        setTerminalNeedsDisplay()
-    }
-
-    public func scrollChanged(source: Terminal) {
-        suppressLargeCursorRangeChanges = false
-        pinViewportToBottomIfNeeded(for: source)
-        renderer?.markAllDirty(reason: "scrollChanged")
-        setTerminalNeedsDisplay()
-        let displayBuffer = source.displayBuffer
-        terminalDelegate?.scrolled(source: self, position: Double(displayBuffer.yDisp) / Double(max(1, displayBuffer.yBase)))
-    }
-
-    public func rangeChanged(source: Terminal, startY: Int, endY: Int) {
-        if suppressLargeCursorRangeChanges {
-            setTerminalNeedsDisplay()
-            return
-        }
-        renderer?.markDirtyViewportRows(startY: startY, endY: endY, terminal: source)
-        setTerminalNeedsDisplay()
-        terminalDelegate?.rangeChanged(source: self, startY: startY, endY: endY)
-    }
-
-    public func screenChanged(source: Terminal) {
-        suppressLargeCursorRangeChanges = false
-        pinViewportToBottomIfNeeded(for: source)
-        renderer?.markAllDirty(reason: "screenChanged")
-        setTerminalNeedsDisplay()
-    }
-
-    public func lineBufferChanged(source: Terminal, startY: Int, endY: Int) {
-        pinViewportToBottomIfNeeded(for: source)
-        renderer?.markAllDirty(reason: "lineBufferChanged")
         renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
     }
@@ -623,7 +617,8 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     public func bufferActivated(source: Terminal) {
         pinViewportToBottomIfNeeded(for: source)
-        renderer?.clearCache()
+        // Switching buffers changes row content, not glyph rasterization.
+        renderer?.clearVertexCaches()
         renderer?.markAllDirty(reason: "bufferActivated")
         setTerminalNeedsDisplay()
         terminalDelegate?.bufferActivated(source: self)
@@ -638,8 +633,8 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func colorsChanged(source: Terminal) {
-        suppressLargeCursorRangeChanges = false
-        renderer?.clearCache()
+        // Colors live in the vertices, not in the glyph atlas.
+        renderer?.clearVertexCaches()
         renderer?.markAllDirty(reason: "colorsChanged")
         setTerminalNeedsDisplay()
     }
@@ -657,7 +652,6 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     public func sizeChanged(source: Terminal) {
-        suppressLargeCursorRangeChanges = false
         renderer?.markAllDirty(reason: "sizeChanged")
         terminalDelegate?.sizeChanged(source: self, newCols: source.cols, newRows: source.rows)
         setTerminalNeedsDisplay()
@@ -684,6 +678,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     public func setCursorColor(source: Terminal, color: Color?) {
         if let setColor = color {
             caretColor = TTColor.make(color: setColor)
+            applyCaretColors()
         }
     }
 
@@ -693,7 +688,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
 
     public func synchronizedOutputChanged(source: Terminal, active: Bool) {
         pinViewportToBottomIfNeeded(for: source)
-        renderer?.clearCache()
+        renderer?.clearVertexCaches()
         renderer?.markAllDirty(reason: active ? "synchronizedOutputBegin" : "synchronizedOutputEnd")
         setTerminalNeedsDisplay()
     }
@@ -804,8 +799,8 @@ open class MetalTerminalView: MTView, TerminalDelegate {
             return CGSize(width: max(1, terminal?.cols ?? 80), height: max(1, terminal?.rows ?? 24))
         }
 
-        let cols = max(1, Int(bounds.width / cellDimension.width))
-        let rows = max(1, Int(terminalLayoutSize.height / cellDimension.height))
+        let cols = Self.cellCount(bounds.width, cell: cellDimension.width)
+        let rows = Self.cellCount(terminalLayoutSize.height, cell: cellDimension.height)
         return CGSize(width: cols, height: rows)
     }
 
@@ -835,14 +830,14 @@ open class MetalTerminalView: MTView, TerminalDelegate {
     }
 
     /// Force a complete redraw when the view is reattached or visibility changes.
-    public func refreshDisplay(clearCache: Bool = false, immediately: Bool = false) {
+    ///
+    /// Only vertex caches are dropped: colors live in the vertices, so theme
+    /// switches do not re-rasterize the glyph atlas. Font changes go through
+    /// setupFont → renderer.update, which clears glyphs when the font differs.
+    public func refreshDisplay(clearCache _: Bool = false, immediately: Bool = false) {
         guard bounds.width > 1, bounds.height > 1 else { return }
         _ = syncTerminalSizeToView()
-        if clearCache {
-            renderer?.clearCache()
-        } else {
-            renderer?.markAllDirty(reason: "refreshDisplay")
-        }
+        renderer?.clearVertexCaches()
         renderer?.markSelectionDirty()
         renderer?.markCursorDirty()
         setTerminalNeedsDisplay()
@@ -851,89 +846,90 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         }
     }
 
-    public func captureVisibleBufferSnapshot() -> VisibleBufferSnapshot? {
-        guard let terminal else { return nil }
-        let buffer = terminal.displayBuffer
-        let rows = terminal.rows
-        let cols = terminal.cols
-        let yDisp = buffer.yDisp
-
-        var rowSignatures: [Int] = []
-        rowSignatures.reserveCapacity(rows)
-
-        for row in 0..<rows {
-            rowSignatures.append(Self.signature(for: buffer.lines[yDisp + row], cols: cols))
-        }
-
-        return VisibleBufferSnapshot(
-            rowSignatures: rowSignatures,
-            cursorCol: buffer.x,
-            cursorRow: buffer.y,
-            topVisibleRow: yDisp,
-            cols: cols,
-            rows: rows
-        )
-    }
-
-    public func applyExternalFeedDiff(from snapshot: VisibleBufferSnapshot?) {
-        guard let _ = terminal, let renderer else {
+    /// Consume the terminal's update range after feeding data and mark only
+    /// the affected rows dirty.
+    ///
+    /// `Terminal.getUpdateRange()` reports viewport-relative rows accumulated
+    /// since the last `clearUpdateRange()`. Viewport or size changes are
+    /// caught separately by the renderer's rebuild guard (yDisp/cols/rows).
+    public func processPendingUpdates() {
+        guard let terminal, let renderer else {
             setTerminalNeedsDisplay()
             return
         }
-        _ = snapshot
-        renderer.markAllDirty(reason: "externalFeedFullRefresh")
-        renderer.markSelectionDirty()
+        if let (startY, endY) = terminal.getUpdateRange() {
+            terminal.clearUpdateRange()
+            renderer.markDirtyViewportRows(startY: startY, endY: endY, terminal: terminal)
+        }
+        // Untouched rows can still render stale when the cursor moved (the
+        // cursor overlay redraws the glyph beneath it) or selection shifted.
         renderer.markCursorDirty()
+        renderer.markSelectionDirty()
         setTerminalNeedsDisplay()
     }
 
-    private static func signature(for line: BufferLine, cols: Int) -> Int {
-        var hasher = Hasher()
-        hasher.combine(cols)
-        hasher.combine(line.isWrapped)
-        switch line.renderMode {
-        case .single:
-            hasher.combine(0)
-        case .doubleWidth:
-            hasher.combine(1)
-        case .doubledTop:
-            hasher.combine(2)
-        case .doubledDown:
-            hasher.combine(3)
-        }
-        hasher.combine(line.images?.count ?? 0)
+    /// Propagate the caret colors to the renderer, deriving a readable text
+    /// color for the block cursor from the caret's luminance when the host
+    /// has not set one explicitly.
+    private func applyCaretColors() {
+        var red: CGFloat = 1
+        var green: CGFloat = 1
+        var blue: CGFloat = 1
+        var alpha: CGFloat = 1
+        caretColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
 
-        for idx in 0..<cols {
-            let cell = line[idx]
-            hasher.combine(cell.code)
-            hasher.combine(cell.width)
-            hasher.combine(cell.attribute)
-            hasher.combine(cell.hasPayload)
-        }
+        let luminance = 0.2126 * Double(red) + 0.7152 * Double(green) + 0.0722 * Double(blue)
+        let textColor = luminance > 0.5
+            ? TTColor(red: 0, green: 0, blue: 0, alpha: 1)
+            : TTColor(red: 1, green: 1, blue: 1, alpha: 1)
+        caretTextColor = textColor
 
-        return hasher.finalize()
+        func channel(_ value: CGFloat) -> Float {
+            Float(max(0, min(1, value)))
+        }
+        renderer?.caretColor = SIMD4<Float>(channel(red), channel(green), channel(blue), 1)
+        renderer?.caretTextColor = luminance > 0.5 ? SIMD4<Float>(0, 0, 0, 1) : SIMD4<Float>(1, 1, 1, 1)
+        renderer?.markCursorDirty()
+        setTerminalNeedsDisplay()
     }
 
     #if os(macOS)
     /// Called when the view is added to or removed from a window
     open override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        // Update scale factor when window changes (important for retina displays)
-        if let _ = window {
-            layer?.contentsScale = scale
-            updateDrawableMetrics()
-            // Reconfigure renderer with correct scale
-            if let fontSet = fontSet, cellDimension != .zero {
-                computeCellDimension()
-                renderer?.update(terminal: terminal, fontSet: fontSet, cellDimension: cellDimension, scale: scale)
-                renderer?.clearCache()
-                // Resize terminal to fit view bounds
-                if bounds.width > 1 && bounds.height > 1 {
-                    handleResize(newSize: bounds.size)
-                }
-            }
-            refreshDisplay(clearCache: false, immediately: true)
+        if window != nil {
+            applyBackingScale()
         }
+    }
+
+    /// Called when the window moves to a display with a different scale factor
+    /// without changing windows (e.g. dragging between Retina and non-Retina).
+    open override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        if window != nil {
+            applyBackingScale()
+        }
+    }
+
+    /// Re-snaps cell metrics, drawable size and the glyph atlas to the
+    /// current backing scale, then refits the grid.
+    private func applyBackingScale() {
+        let previousScale = renderer?.scale ?? scale
+        layer?.contentsScale = scale
+        updateDrawableMetrics()
+        // Only a scale change invalidates the rasterized glyph atlas; moving
+        // between windows of the same density keeps it.
+        if let fontSet = fontSet, cellDimension != .zero {
+            computeCellDimension()
+            renderer?.update(terminal: terminal, fontSet: fontSet, cellDimension: cellDimension, scale: scale)
+            if previousScale != scale {
+                renderer?.clearCache()
+            }
+            if bounds.width > 1 && bounds.height > 1 {
+                handleLayoutChange()
+            }
+        }
+        refreshDisplay(clearCache: false, immediately: true)
     }
 
     /// Called when the view's layout changes (important for auto layout)
@@ -941,7 +937,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         super.layout()
         // Handle resize for auto layout based views
         if bounds.width > 1 && bounds.height > 1 && cellDimension.width > 0 {
-            handleResize(newSize: bounds.size)
+            handleLayoutChange()
         }
     }
 
@@ -950,7 +946,7 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         super.viewDidMoveToSuperview()
         // Resize when added to a superview with valid bounds
         if superview != nil && bounds.width > 1 && bounds.height > 1 && cellDimension.width > 0 {
-            handleResize(newSize: bounds.size)
+            handleLayoutChange()
             refreshDisplay(immediately: true)
         }
     }
@@ -960,53 +956,27 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         super.setFrameSize(newSize)
         // Use bounds.size which is in points (not pixels)
         if bounds.width > 1 && bounds.height > 1 {
-            handleResize(newSize: bounds.size)
+            handleLayoutChange()
         }
-    }
-
-    /// Handle view resize by updating terminal dimensions
-    private func handleResize(newSize: NSSize) {
-        guard newSize.width > 1 && newSize.height > 1 else { return }
-
-        // If cellDimension is still zero (font not yet set, or computeCellDimension ran
-        // before bounds were valid), try to compute it now. Without this, the initial
-        // layout pass — which often fires before setupFont completes — returns early and
-        // the terminal stays at the default 80x24 while the view is already larger,
-        // producing a render area that doesn't match the view bounds.
-        if cellDimension.width <= 0 || cellDimension.height <= 0 {
-            computeCellDimension()
-        }
-        guard cellDimension.width > 0, cellDimension.height > 0 else { return }
-
-        // Recalculate cell dimensions so the adjustment (which stretches cells
-        // to exactly fill the view) matches the *new* bounds instead of the old
-        // ones.  Without this, cols * cellWidth can be < bounds.width, leaving
-        // a visible gap on the right/bottom edge.
-        computeCellDimension()
-        updateDrawableMetrics()
-
-        let layoutSize = terminalLayoutSize
-        let newCols = max(1, Int(layoutSize.width / cellDimension.width))
-        let newRows = max(1, Int(layoutSize.height / cellDimension.height))
-
-        if newCols != terminal.cols || newRows != terminal.rows {
-            terminal.resize(cols: newCols, rows: newRows)
-        }
-        setTerminalNeedsDisplay()
     }
     #else
     /// Called when the view's bounds change (iOS)
     open override func layoutSubviews() {
         super.layoutSubviews()
-        handleResize(newSize: terminalLayoutSize)
+        handleLayoutChange()
         if window != nil {
             refreshDisplay()
         }
     }
+    #endif
 
-    /// Handle view resize by updating terminal dimensions
-    private func handleResize(newSize: CGSize) {
-        guard newSize.width > 1, newSize.height > 1 else { return }
+    /// Single cross-platform layout handler: recompute cell metrics for the
+    /// current bounds and resize the terminal (preserving the viewport).
+    ///
+    /// Subclasses must not duplicate this — earlier copies in the macOS and
+    /// iOS views drifted apart (raw frame vs. inset-adjusted layout size).
+    func handleLayoutChange() {
+        guard bounds.width > 1, bounds.height > 1 else { return }
 
         // If cellDimension is still zero (font not yet set, or computeCellDimension ran
         // before bounds were valid), try to compute it now. Without this, the initial
@@ -1026,22 +996,30 @@ open class MetalTerminalView: MTView, TerminalDelegate {
         updateDrawableMetrics()
 
         let layoutSize = terminalLayoutSize
-        let newCols = max(1, Int(layoutSize.width / cellDimension.width))
-        let newRows = max(1, Int(layoutSize.height / cellDimension.height))
+        let newCols = Self.cellCount(layoutSize.width, cell: cellDimension.width)
+        let newRows = Self.cellCount(layoutSize.height, cell: cellDimension.height)
 
-        if newCols != terminal.cols || newRows != terminal.rows {
+        if let terminal, newCols != terminal.cols || newRows != terminal.rows {
             resizeTerminalPreservingViewport(cols: newCols, rows: newRows)
         }
         setTerminalNeedsDisplay()
     }
-    #endif
 
     private func resizeTerminalPreservingViewport(cols: Int, rows: Int) {
         let oldDisplayBuffer = terminal.displayBuffer
         let oldYDisp = oldDisplayBuffer.yDisp
         let wasPinnedToBottom = oldDisplayBuffer.yDisp == oldDisplayBuffer.yBase
+        let sizeChanged = cols != terminal.cols || rows != terminal.rows
 
         terminal.resize(cols: cols, rows: rows)
+        defer {
+            // Terminal.resize() does not call sizeChanged, so without this a
+            // grid change from a font, inset or scale change never reaches the
+            // PTY and the remote keeps drawing for the old cols/rows.
+            if sizeChanged {
+                terminalDelegate?.sizeChanged(source: self, newCols: terminal.cols, newRows: terminal.rows)
+            }
+        }
 
         let newDisplayBuffer = terminal.displayBuffer
         if wasPinnedToBottom {

@@ -360,9 +360,15 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
 
     private func cursorRect() -> CGRect {
         guard let terminal = terminal else { return .zero }
+        // The cursor sits below the viewport while the user is scrolled
+        // back; clamp the IME caret to the last visible row then.
+        let screenRow = min(
+            max(0, TerminalCellRenderer.cursorScreenRow(buffer: terminal.buffer)),
+            max(0, terminal.rows - 1)
+        )
         return CGRect(
             x: CGFloat(terminal.buffer.x) * cellDimension.width,
-            y: contentRenderOffsetY + CGFloat(terminal.buffer.y) * cellDimension.height,
+            y: contentRenderOffsetY + CGFloat(screenRow) * cellDimension.height,
             width: max(2, cellDimension.width),
             height: cellDimension.height
         )
@@ -1429,22 +1435,8 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
     override open func layoutSubviews() {
         super.layoutSubviews()
 
-        guard cellDimension != .zero else { return }
-        guard bounds.width > 1, bounds.height > 1 else { return }
-
-        updateDrawableMetrics()
-
-        let targetSize = fittingTerminalSize()
-        let newCols = Int(targetSize.width)
-        let newRows = Int(targetSize.height)
-
-        if let terminal = terminal,
-           (newCols != terminal.cols || newRows != terminal.rows) {
-            _ = clearSelection()
-            terminal.resize(cols: newCols, rows: newRows)
-            setTerminalNeedsDisplay()
-        }
-
+        // Sizing is handled entirely by MetalTerminalView.layoutSubviews()
+        // (handleLayoutChange); this subclass only refreshes IME state.
         updateMarkedTextRendering()
 
         if window != nil {
@@ -1557,19 +1549,11 @@ open class iOSMetalTerminalView: MetalTerminalView, UITextInput, UITextInputTrai
             }
             send(text: text)
             if let terminal = terminal, terminal.bracketedPasteMode {
-                send(data: EscapeSequences.bracketedPasteEnd[0...])
+                send(data: EscapeSequences.bracketedPasteEnd[...])
             }
         }
-        // The echoed text arrives asynchronously from the remote shell.
-        // Schedule repeated full redraws to ensure it renders correctly.
-        for delay in [0.05, 0.15, 0.4] {
-            let nanos = UInt64(delay * 1_000_000_000)
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: nanos)
-                self?.renderer?.markAllDirty(reason: "pasteEcho")
-                self?.refreshDisplay(immediately: true)
-            }
-        }
+        // No deferred redraws needed: feeding routes through
+        // processPendingUpdates(), which marks the touched rows dirty.
     }
 
     /// Tell iOS which edit menu actions this view supports
@@ -1829,7 +1813,7 @@ extension iOSMetalTerminalView {
         set { }
     }
 
-    @available(iOS, introduced: 0, deprecated: 26, message: "No longer overrides a superclass property")
+    @available(iOS, introduced: 15.0, deprecated: 26.0, message: "No longer overrides a superclass property")
     open var accessibilitySelectedText: String? {
         guard let selection else { return nil }
         return accessibility.accessibilitySelectedText(selection: selection)
