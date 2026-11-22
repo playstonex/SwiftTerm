@@ -541,10 +541,17 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
         // Holding Option overrides mouse reporting for text selection
         let forceSelection = event.modifierFlags.contains(.option)
 
-        if let terminal = terminal, terminal.mouseMode != .off && allowMouseReporting && mouseTrackingActive && !forceSelection {
-            guard let hit = clampedScreenGridPosition(for: event) else { return }
-            sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: false, event: event)
-            mouseTrackingActive = false
+        // The application owns the mouse (tmux, vim with mouse on): this
+        // release belongs to it, not to a local selection left over from
+        // before. Do not move that selection or overwrite the clipboard.
+        if let terminal = terminal, terminal.mouseMode != .off && allowMouseReporting && !forceSelection {
+            if mouseTrackingActive {
+                guard let hit = clampedScreenGridPosition(for: event) else { return }
+                sendMouseEvent(button: event.buttonNumber, col: hit.col, row: hit.row, pressed: false, event: event)
+                mouseTrackingActive = false
+            }
+            setTerminalNeedsDisplay()
+            return
         }
 
         // Include the release position: the last mouseDragged may precede it.
