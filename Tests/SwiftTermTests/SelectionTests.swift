@@ -47,6 +47,31 @@ final class SelectionTests: TerminalDelegate {
         #expect(selection.getSelectedText() == "hello")
     }
 
+    @Test func testDragSelectionIncludesLastCell() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "hello world")
+
+        selection.setSoftStart(bufferPosition: Position(col: 0, row: 0))
+        selection.startSelection()
+        selection.dragExtend(bufferPosition: Position(col: 4, row: 0))
+        #expect(selection.getSelectedText() == "hello")
+
+        // Reverse drag: the anchor cell must be included too
+        selection.setSoftStart(bufferPosition: Position(col: 4, row: 0))
+        selection.startSelection()
+        selection.dragExtend(bufferPosition: Position(col: 0, row: 0))
+        #expect(selection.getSelectedText() == "hello")
+    }
+
+    @Test func testSoftStartAloneSelectsNothing() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "hello world")
+        selection.setSoftStart(bufferPosition: Position(col: 2, row: 0))
+        #expect(selection.getSelectedText().isEmpty)
+    }
+
     @Test func testSelectWordOrExpressionSelectsBalancedParens() {
         let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
         let selection = SelectionService(terminal: terminal)

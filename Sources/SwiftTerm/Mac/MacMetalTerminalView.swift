@@ -547,6 +547,13 @@ open class MacMetalTerminalView: MetalTerminalView, NSTextInputClient {
             mouseTrackingActive = false
         }
 
+        // Include the release position: the last mouseDragged may precede it.
+        if let selection = selection, selection.active, selection.endIsInclusive,
+           selection.selectionMode == .character,
+           let hit = unclampedGridPosition(for: event) {
+            selection.dragExtend(bufferPosition: hit)
+        }
+
         // Auto-copy selected text to clipboard
         if let selection = selection, selection.active {
             let text = selection.getSelectedText()
