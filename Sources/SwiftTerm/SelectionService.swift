@@ -71,6 +71,11 @@ class SelectionService: CustomDebugStringConvertible {
      */
     public var pivot: Position? 
 
+    /// When true, `end` (the later of start/end) is the last selected cell (closed interval),
+    /// as produced by dragging, shift-clicking and iOS handles. When false, `end` is one past
+    /// the last selected cell, as produced by word/expression selection and soft starts.
+    public private(set) var endIsInclusive: Bool = false
+
     /**
      * Returns the selection ending point in buffer coordinates
      */
@@ -109,6 +114,7 @@ class SelectionService: CustomDebugStringConvertible {
         
         self.start = sclamped
         self.end = eclamped
+        endIsInclusive = false
         
         setActiveAndNotify()
     }
@@ -119,6 +125,7 @@ class SelectionService: CustomDebugStringConvertible {
     public func startSelection ()
     {
         end = start
+        endIsInclusive = true
         selectingRows = false
         selectionMode = .character
         setActiveAndNotify()
@@ -147,6 +154,7 @@ class SelectionService: CustomDebugStringConvertible {
     public func setSoftStart (bufferPosition: Position) {
         start = bufferPosition
         end = bufferPosition
+        endIsInclusive = false
         setActiveAndNotify()
     }
     
@@ -206,6 +214,7 @@ class SelectionService: CustomDebugStringConvertible {
             start = end
         }
         end = adjustedNewEnd
+        endIsInclusive = selectionMode != .word
         
         setActiveAndNotify()
     }
@@ -241,6 +250,7 @@ class SelectionService: CustomDebugStringConvertible {
             adjustedPosition = extendToWordBoundary(position: bufferPosition, in: terminal.displayBuffer, direction: direction)
         }
         
+        endIsInclusive = selectionMode != .word
         switch Position.compare (adjustedPosition, pivot) {
         case .after:
             start = pivot
@@ -279,6 +289,7 @@ class SelectionService: CustomDebugStringConvertible {
         }
         
         end = adjustedEnd
+        endIsInclusive = selectionMode != .word
         setActiveAndNotify()
     }
     
@@ -289,6 +300,7 @@ class SelectionService: CustomDebugStringConvertible {
     {
         start = Position(col: 0, row: 0)
         end = Position(col: terminal.cols-1, row: terminal.displayBuffer.lines.maxLength - 1)
+        endIsInclusive = true
         setActiveAndNotify()
     }
     
@@ -310,6 +322,7 @@ class SelectionService: CustomDebugStringConvertible {
     {
         start = Position(col: 0, row: row)
         end = Position(col: terminal.cols-1, row: row)
+        endIsInclusive = true
         selectingRows = true
         selectionMode = .row
         setActiveAndNotify()
@@ -493,6 +506,7 @@ class SelectionService: CustomDebugStringConvertible {
 //            row: max (min (uncheckedPosition.row, buffer.rows-1+buffer.yDisp), buffer.yDisp))
         let position = Position (col: (min (terminal.cols, max (uncheckedPosition.col, 0))),
                                  row: (max (uncheckedPosition.row, 0)))
+        var singleCell = false
         switch character (at: position, in: buffer) {
         case Character(UnicodeScalar(0)):
             simpleScanSelection (from: position, in: buffer) { ch in ch == nullChar }
@@ -514,11 +528,13 @@ class SelectionService: CustomDebugStringConvertible {
         case "}":
             balancedSearchBackward(from: position, in: buffer)
         default:
-            // For other characters, we just stop there
+            // For other characters, select just that cell
             start = position
             end = position
+            singleCell = true
         }
         selectionMode = .word
+        endIsInclusive = singleCell
         setActiveAndNotify()
     }
     
@@ -539,7 +555,11 @@ class SelectionService: CustomDebugStringConvertible {
         } else {
             (end, start)
         }
-        let r = terminal.getDisplayText(start: min, end: max)
+        var textEnd = max
+        if endIsInclusive {
+            textEnd = Position(col: Swift.min(max.col + 1, terminal.cols), row: max.row)
+        }
+        let r = terminal.getDisplayText(start: min, end: textEnd)
         return r
     }
     

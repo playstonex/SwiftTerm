@@ -47,6 +47,77 @@ final class SelectionTests: TerminalDelegate {
         #expect(selection.getSelectedText() == "hello")
     }
 
+    @Test func testDragSelectionIncludesLastCell() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "hello world")
+
+        selection.setSoftStart(bufferPosition: Position(col: 0, row: 0))
+        selection.startSelection()
+        selection.dragExtend(bufferPosition: Position(col: 4, row: 0))
+        #expect(selection.getSelectedText() == "hello")
+
+        // Reverse drag: the anchor cell must be included too
+        selection.setSoftStart(bufferPosition: Position(col: 4, row: 0))
+        selection.startSelection()
+        selection.dragExtend(bufferPosition: Position(col: 0, row: 0))
+        #expect(selection.getSelectedText() == "hello")
+    }
+
+    @Test func testRowSelectionIncludesLastColumn() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 5, rows: 2))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "abcde")
+        selection.select(row: 0)
+        #expect(selection.endIsInclusive)
+        #expect(selection.getSelectedText() == "abcde")
+    }
+
+    @Test func testSelectAllIncludesLastColumn() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 5, rows: 1))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "abcde")
+        selection.selectAll()
+        #expect(selection.getSelectedText().hasPrefix("abcde"))
+    }
+
+    @Test func testMultiLineDragIncludesLastCellOfLastLine() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 10, rows: 3))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "first\r\nsecond")
+        selection.setSoftStart(bufferPosition: Position(col: 2, row: 0))
+        selection.startSelection()
+        selection.dragExtend(bufferPosition: Position(col: 2, row: 1))
+        #expect(selection.getSelectedText() == "rst\nsec")
+    }
+
+    @Test func testWordSelectionIsExclusiveAndExact() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "foo bar")
+        selection.selectWordOrExpression(at: Position(col: 5, row: 0), in: terminal.buffer)
+        #expect(!selection.endIsInclusive)
+        #expect(selection.end.col == 7)
+        #expect(selection.getSelectedText() == "bar")
+    }
+
+    @Test func testDoubleClickOnPunctuationSelectsThatCell() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "a;b")
+        selection.selectWordOrExpression(at: Position(col: 1, row: 0), in: terminal.buffer)
+        #expect(selection.endIsInclusive)
+        #expect(selection.getSelectedText() == ";")
+    }
+
+    @Test func testSoftStartAloneSelectsNothing() {
+        let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
+        let selection = SelectionService(terminal: terminal)
+        terminal.feed(text: "hello world")
+        selection.setSoftStart(bufferPosition: Position(col: 2, row: 0))
+        #expect(selection.getSelectedText().isEmpty)
+    }
+
     @Test func testSelectWordOrExpressionSelectsBalancedParens() {
         let terminal = Terminal(delegate: self, options: TerminalOptions(cols: 20, rows: 1))
         let selection = SelectionService(terminal: terminal)

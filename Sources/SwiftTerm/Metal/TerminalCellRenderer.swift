@@ -224,6 +224,9 @@ class TerminalCellRenderer {
         let isReversed = Position.compare(selection.start, selection.end) == .after
         let trueStart = isReversed ? selection.end : selection.start
         let trueEnd = isReversed ? selection.start : selection.end
+        // `endIsInclusive` selections (drag, shift-click, handles) cover the end cell;
+        // word/expression selections store the column one past the last selected cell.
+        let lastSelectedCol = selection.endIsInclusive ? trueEnd.col : trueEnd.col - 1
 
         let startRow = trueStart.row - yDisp
         let endRow = trueEnd.row - yDisp
@@ -238,13 +241,13 @@ class TerminalCellRenderer {
 
                 if row == startRow && row == endRow {
                     startCol = trueStart.col
-                    endCol = trueEnd.col
+                    endCol = lastSelectedCol
                 } else if row == startRow {
                     startCol = trueStart.col
                     endCol = cols - 1
                 } else if row == endRow {
                     startCol = 0
-                    endCol = trueEnd.col
+                    endCol = lastSelectedCol
                 } else {
                     startCol = 0
                     endCol = cols - 1
